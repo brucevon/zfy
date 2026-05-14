@@ -301,6 +301,80 @@ body {
 
 .mono { font-family: var(--mono); }
 
+/* category panel — 全屏墨色浮窗，background blur 制造朦胧远山感 */
+.category-panel {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 90;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 120px 20px 40px;
+  background: rgba(255,255,255,.06);
+  backdrop-filter: blur(60px) brightness(1.1);
+  -webkit-backdrop-filter: blur(60px) brightness(1.1);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity .4s cubic-bezier(.4,0,.2,1), visibility .4s;
+  pointer-events: none;
+}
+.category-panel.open {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+[data-theme="dark"] .category-panel {
+  background: rgba(0,0,0,.15);
+}
+
+/* tag flex-wrap 流式容器 */
+.category-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  max-width: 700px;
+  justify-content: center;
+  align-content: flex-start;
+}
+
+/* 单个分类胶囊 */
+.tag-chip {
+  padding: 10px 24px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  border-radius: 99px;
+  font-family: var(--sans);
+  font-size: .9rem;
+  font-weight: 500;
+  color: var(--text);
+  cursor: pointer;
+  user-select: none;
+  transition: background .3s, color .3s, transform .3s;
+  white-space: nowrap;
+}
+.tag-chip:hover {
+  background: rgba(47,53,66,.9);
+  color: #fff;
+  transform: scale(1.05) translateY(-2px);
+}
+[data-theme="dark"] .tag-chip:hover {
+  background: rgba(210,210,215,.15);
+  color: #fff;
+}
+
+/* 加载/空状态 */
+.tag-placeholder {
+  padding: 8px 20px;
+  font-size: .85rem;
+  font-family: var(--mono);
+  color: var(--muted);
+  border-radius: 99px;
+  background: var(--glass-bg);
+}
+
 /* 选中颜色 — 防止暗色主题突兀高亮 */
 ::selection { background: rgba(87,96,111,.2); }
 .mod ::selection { background: rgba(87,96,111,.25); }

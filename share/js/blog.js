@@ -97,6 +97,40 @@
             );
     }
 
+    /* --- top bar scroll show/hide --- */
+    var topBar = document.getElementById("injected-top-bar") || document.querySelector(".top-bar");
+    var SCROLL_THRESHOLD = 15;
+    var lastScrollY = window.scrollY;
+    var barVisible = true;
+    var scrollTicking = false;
+
+    function setBarVisible(show) {
+        if (show === barVisible || !topBar) return;
+        barVisible = show;
+        topBar.classList.toggle("top-bar--hidden", !show);
+    }
+
+    window.addEventListener("scroll", function () {
+        if (!scrollTicking) {
+            requestAnimationFrame(function () {
+                var sy = window.scrollY;
+                var delta = sy - lastScrollY;
+
+                if (sy <= 0) {
+                    setBarVisible(true);
+                } else if (delta > SCROLL_THRESHOLD) {
+                    setBarVisible(false);
+                } else if (delta < -SCROLL_THRESHOLD) {
+                    setBarVisible(true);
+                }
+
+                lastScrollY = sy;
+                scrollTicking = false;
+            });
+            scrollTicking = true;
+        }
+    });
+
     /* --- running days --- */
     var el = document.getElementById("run-days");
     if (el) {

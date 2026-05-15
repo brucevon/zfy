@@ -112,6 +112,10 @@ body {
     transform: translateX(-50%);
     width: fit-content;
     z-index: 100;
+    transition: transform .35s cubic-bezier(.4,0,.2,1);
+}
+.top-bar--hidden {
+    transform: translateX(-50%) translateY(calc(-100% - 30px));
 }
 
 .top-inner {
@@ -572,6 +576,7 @@ body {
 @media (max-width: 48em) {
     body {
         padding-top: 100px;
+        overflow-x: hidden;
         background:
             linear-gradient(rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.35)),
             url("/share/bg-mobile.png") center / cover fixed;
@@ -583,8 +588,10 @@ body {
     }
 
     .top-bar {
+        left: 16px;
+        transform: none;
         width: calc(100% - 32px);
-        max-width: calc(1100px - 32px);
+        max-width: none;
     }
     .top-inner {
         border-radius: var(--radius);

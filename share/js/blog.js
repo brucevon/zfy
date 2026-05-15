@@ -5,6 +5,24 @@
     meta.content = "width=device-width, initial-scale=1";
     document.head.appendChild(meta);
 
+    // 移动端检测兜底（@media 未触发时通过 .mobile-view class 启用移动样式）
+    (function () {
+        var MOBILE_BREAKPOINT = 768;
+        var root = document.documentElement;
+        function update() {
+            root.classList.toggle(
+                "mobile-view",
+                window.innerWidth <= MOBILE_BREAKPOINT,
+            );
+        }
+        update();
+        setTimeout(update, 500);
+        window.addEventListener("resize", update);
+        window.addEventListener("orientationchange", function () {
+            setTimeout(update, 200);
+        });
+    })();
+
     var KEY = "bento-theme";
     var doc = document.documentElement;
     var themeBtn = document.getElementById("theme-toggle");

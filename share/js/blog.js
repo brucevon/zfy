@@ -170,12 +170,24 @@
             // 标题
             var titleEl;
             var isCurrent = item.noteId === currentNoteId;
-            console.log(item.category);
             if (item.category === true) {
                 titleEl = document.createElement("span");
                 titleEl.className = "tag-chip";
                 titleEl.textContent = item.title;
-                titleEl.style.cursor = "default";
+                // 有子节点的分类：点击标题也展开/折叠
+                if (hasChildren) {
+                    titleEl.style.cursor = "pointer";
+                    titleEl.addEventListener("click", function (e) {
+                        e.stopPropagation();
+                        toggleTree({
+                            currentTarget: toggle,
+                            preventDefault: function () {},
+                            stopPropagation: function () {},
+                        });
+                    });
+                } else {
+                    titleEl.style.cursor = "default";
+                }
             } else {
                 titleEl = document.createElement("a");
                 titleEl.href = item.noteId;

@@ -1,11 +1,11 @@
 (function () {
-    // 动态注入 viewport meta（Trilium 默认不输出，缺少会导致移动端 media query 不触发）
+    // 动态注入 viewport meta
     var meta = document.createElement("meta");
     meta.name = "viewport";
     meta.content = "width=device-width, initial-scale=1";
     document.head.appendChild(meta);
 
-    // 移动端检测兜底（@media 未触发时通过 .mobile-view class 启用移动样式）
+    // 移动端检测兜底
     (function () {
         var MOBILE_BREAKPOINT = 768;
         var root = document.documentElement;
@@ -69,7 +69,10 @@
     if (menuBtn && mobileMenu) {
         menuBtn.addEventListener("click", function (e) {
             e.stopPropagation();
-            mobileMenu.classList.toggle("open");
+            var isOpen = mobileMenu.classList.toggle("open");
+            if (isOpen && categoryPanel) {
+                categoryPanel.classList.remove("open");
+            }
         });
 
         mobileMenu.querySelectorAll(".nav-item").forEach(function (link) {
@@ -77,6 +80,21 @@
                 mobileMenu.classList.remove("open");
             });
         });
+
+        // capture 阶段捕获点击，确保点菜单外任意位置都能关闭
+        document.addEventListener(
+            "click",
+            function (e) {
+                if (
+                    mobileMenu.classList.contains("open") &&
+                    !mobileMenu.contains(e.target) &&
+                    !menuBtn.contains(e.target)
+                ) {
+                    mobileMenu.classList.remove("open");
+                }
+            },
+            true,
+        );
 
         document.addEventListener("keydown", function (e) {
             if (e.key === "Escape") mobileMenu.classList.remove("open");
@@ -86,50 +104,46 @@
     /* --- category panel --- */
     var TREE_JSON_URL = "/share/blog-tree";
     var treeData = null;
-
     var categoryBtnMobile = document.getElementById("category-btn-mobile");
 
-    if (categoryPanel) {
-        function openCategoryPanel(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            categoryPanel.classList.add("open");
-            loadCategoryTree();
-        }
-        if (categoryBtn) categoryBtn.addEventListener("click", openCategoryPanel);
-        if (categoryBtnMobile) categoryBtnMobile.addEventListener("click", openCategoryPanel);
+    function closeCategoryPanel() {
+        if (categoryPanel) categoryPanel.classList.remove("open");
+    }
 
+    function openCategoryPanel(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (mobileMenu) mobileMenu.classList.remove("open");
+        categoryPanel.classList.add("open");
+        loadCategoryTree();
+    }
+
+    if (categoryPanel) {
+        if (categoryBtn)
+            categoryBtn.addEventListener("click", openCategoryPanel);
+        if (categoryBtnMobile)
+            categoryBtnMobile.addEventListener("click", openCategoryPanel);
+
+        // 点击面板背景（category-tags 之外）关闭
         categoryPanel.addEventListener("click", function (e) {
-            if (e.target === categoryPanel) {
-                categoryPanel.classList.remove("open");
-            }
+            var inner = document.getElementById("category-tags");
+            if (inner && inner.contains(e.target)) return;
+            closeCategoryPanel();
         });
 
         document.addEventListener("keydown", function (e) {
-            if (e.key === "Escape") categoryPanel.classList.remove("open");
+            if (e.key === "Escape") closeCategoryPanel();
         });
-    } else {
-        if (!categoryBtn)
-            console.log(
-                '❌ category-btn 未找到！检查 HTML 中是否有 id="category-btn"',
-            );
-        if (!categoryPanel)
-            console.log(
-                '❌ category-panel 未找到！检查 HTML 中是否有 id="category-panel"',
-            );
     }
 
-    /* --- top bar scroll show/hide --- */
-    var SCROLL_THRESHOLD = 15;
+    /* ============================================
+       顶部胶囊滚动显隐
+       真实滚动容器：div.page（通过 document capture 捕获）
+    ============================================ */
+    var SCROLL_THRESHOLD = 10;
     var barVisible = true;
+    var lastScrollY = 0;
     var scrollTicking = false;
-
-    function getScrollY() {
-        var sy = window.scrollY;
-        if (sy > 0) return sy;
-        var ce = document.getElementById("content");
-        return ce ? ce.scrollTop : 0;
-    }
 
     function setBarVisible(show) {
         if (show === barVisible) return;
@@ -138,14 +152,19 @@
         if (bar) bar.classList.toggle("top-bar--hidden", !show);
     }
 
-    function onScroll() {
+    function onScroll(e) {
         if (scrollTicking) return;
         scrollTicking = true;
         requestAnimationFrame(function () {
-            var sy = getScrollY();
-            var delta = sy - (window._lastScrollY || 0);
+            var target = (e && e.target) || document.documentElement;
+            var sy =
+                target && typeof target.scrollTop === "number"
+                    ? target.scrollTop
+                    : window.scrollY || 0;
 
-            if (sy <= 0) {
+            var delta = sy - lastScrollY;
+
+            if (sy <= 5) {
                 setBarVisible(true);
             } else if (delta > SCROLL_THRESHOLD) {
                 setBarVisible(false);
@@ -153,14 +172,31 @@
                 setBarVisible(true);
             }
 
-            window._lastScrollY = sy;
+            lastScrollY = sy;
             scrollTicking = false;
         });
     }
 
-    window.addEventListener("scroll", onScroll);
-    var contentEl = document.getElementById("content");
-    if (contentEl) contentEl.addEventListener("scroll", onScroll);
+    // capture:true 可以捕获冒泡不到 window 的 scroll 事件（如 div.page）
+    document.addEventListener("scroll", onScroll, {
+        capture: true,
+        passive: true,
+    });
+
+    // 直接绑定 div.page，双重保险
+    function bindPageScroll() {
+        var pageEl = document.querySelector(".page");
+        if (pageEl) {
+            pageEl.addEventListener("scroll", onScroll, { passive: true });
+            lastScrollY = pageEl.scrollTop;
+        }
+    }
+    // DOM 可能还没渲染完，延迟一帧再绑
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", bindPageScroll);
+    } else {
+        bindPageScroll();
+    }
 
     /* --- running days --- */
     var el = document.getElementById("run-days");
@@ -208,7 +244,7 @@
             });
     }
 
-    // ===== 递归渲染 JSON 到 DOM（支持定位展开） =====
+    // ===== 递归渲染 JSON 到 DOM =====
     function renderTreeFromJson(items, container, currentNoteId) {
         container.innerHTML = "";
         var foundInThisLevel = false;
@@ -220,7 +256,6 @@
             var node = document.createElement("div");
             node.className = "tree-node";
 
-            // 展开/折叠按钮
             var hasChildren = item.children && item.children.length > 0;
             var toggle = document.createElement("span");
             toggle.className = "tree-toggle";
@@ -232,14 +267,12 @@
                 toggle.textContent = "▶";
             }
 
-            // 标题
             var titleEl;
             var isCurrent = item.noteId === currentNoteId;
             if (item.category === true) {
                 titleEl = document.createElement("span");
                 titleEl.className = "tag-chip";
                 titleEl.textContent = item.title;
-                // 有子节点的分类：点击标题也展开/折叠
                 if (hasChildren) {
                     titleEl.style.cursor = "pointer";
                     titleEl.addEventListener("click", function (e) {
@@ -258,9 +291,11 @@
                 titleEl.href = item.noteId;
                 titleEl.className = "tag-chip";
                 titleEl.textContent = item.title;
+                titleEl.addEventListener("click", function () {
+                    closeCategoryPanel();
+                });
             }
 
-            // 高亮当前笔记
             if (isCurrent) {
                 titleEl.style.fontWeight = "bold";
                 titleEl.style.color = "var(--accent, #3b82f6)";
@@ -271,7 +306,6 @@
             node.appendChild(titleEl);
             li.appendChild(node);
 
-            // 子节点
             if (hasChildren) {
                 var childContainer = document.createElement("ul");
                 childContainer.className = "tree-children";
@@ -283,7 +317,6 @@
                     currentNoteId,
                 );
 
-                // 如果子节点中包含当前笔记，展开当前层级
                 if (childFound) {
                     childContainer.style.display = "block";
                     toggle.classList.add("expanded");

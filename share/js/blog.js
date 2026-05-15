@@ -69,13 +69,17 @@
     var TREE_JSON_URL = "/share/blog-tree";
     var treeData = null;
 
-    if (categoryBtn && categoryPanel) {
-        categoryBtn.addEventListener("click", function (e) {
+    var categoryBtnMobile = document.getElementById("category-btn-mobile");
+
+    if (categoryPanel) {
+        function openCategoryPanel(e) {
             e.preventDefault();
             e.stopPropagation();
             categoryPanel.classList.add("open");
             loadCategoryTree();
-        });
+        }
+        if (categoryBtn) categoryBtn.addEventListener("click", openCategoryPanel);
+        if (categoryBtnMobile) categoryBtnMobile.addEventListener("click", openCategoryPanel);
 
         categoryPanel.addEventListener("click", function (e) {
             if (e.target === categoryPanel) {

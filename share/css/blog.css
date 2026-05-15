@@ -632,7 +632,7 @@ body {
     }
 
     .category-panel {
-        padding: 90px 24px 24px;
+        padding: 110px 24px 24px;
     }
 
     .site-footer {
@@ -695,7 +695,7 @@ html.mobile-view .note-content .mod {
     padding: 20px 16px;
 }
 html.mobile-view .category-panel {
-    padding: 90px 24px 24px;
+    padding: 110px 24px 24px;
 }
 html.mobile-view .site-footer {
     gap: 8px 12px;

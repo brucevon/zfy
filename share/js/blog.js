@@ -120,38 +120,47 @@
     }
 
     /* --- top bar scroll show/hide --- */
-    var topBar = document.getElementById("injected-top-bar") || document.querySelector(".top-bar");
     var SCROLL_THRESHOLD = 15;
-    var lastScrollY = window.scrollY;
     var barVisible = true;
     var scrollTicking = false;
 
-    function setBarVisible(show) {
-        if (show === barVisible || !topBar) return;
-        barVisible = show;
-        topBar.classList.toggle("top-bar--hidden", !show);
+    function getScrollY() {
+        var sy = window.scrollY;
+        if (sy > 0) return sy;
+        var ce = document.getElementById("content");
+        return ce ? ce.scrollTop : 0;
     }
 
-    window.addEventListener("scroll", function () {
-        if (!scrollTicking) {
-            requestAnimationFrame(function () {
-                var sy = window.scrollY;
-                var delta = sy - lastScrollY;
+    function setBarVisible(show) {
+        if (show === barVisible) return;
+        barVisible = show;
+        var bar = document.querySelector(".top-bar");
+        if (bar) bar.classList.toggle("top-bar--hidden", !show);
+    }
 
-                if (sy <= 0) {
-                    setBarVisible(true);
-                } else if (delta > SCROLL_THRESHOLD) {
-                    setBarVisible(false);
-                } else if (delta < -SCROLL_THRESHOLD) {
-                    setBarVisible(true);
-                }
+    function onScroll() {
+        if (scrollTicking) return;
+        scrollTicking = true;
+        requestAnimationFrame(function () {
+            var sy = getScrollY();
+            var delta = sy - (window._lastScrollY || 0);
 
-                lastScrollY = sy;
-                scrollTicking = false;
-            });
-            scrollTicking = true;
-        }
-    });
+            if (sy <= 0) {
+                setBarVisible(true);
+            } else if (delta > SCROLL_THRESHOLD) {
+                setBarVisible(false);
+            } else if (delta < -SCROLL_THRESHOLD) {
+                setBarVisible(true);
+            }
+
+            window._lastScrollY = sy;
+            scrollTicking = false;
+        });
+    }
+
+    window.addEventListener("scroll", onScroll);
+    var contentEl = document.getElementById("content");
+    if (contentEl) contentEl.addEventListener("scroll", onScroll);
 
     /* --- running days --- */
     var el = document.getElementById("run-days");

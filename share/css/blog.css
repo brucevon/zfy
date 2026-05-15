@@ -85,6 +85,14 @@ body {
     max-width: 100% !important;
     flex: none !important;
 }
+#content {
+    padding: 0 !important;
+    margin: 0 auto !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    max-width: 100% !important;
+}
 #content.type-code.no-content {
     padding: 0 !important;
     margin: 0 !important;
@@ -562,25 +570,18 @@ body {
 
 /* responsive */
 @media (max-width: 48em) {
-    .grid-4 .mod:nth-child(1) {
-        grid-column: span 12;
-        grid-row: span 1;
+    body {
+        padding-top: 100px;
+        background:
+            linear-gradient(rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.35)),
+            url("/share/bg-mobile.png") center / cover fixed;
     }
-    .grid-4 .mod:nth-child(2) {
-        grid-column: span 12;
-        grid-row: span 1;
+    [data-theme="light"] body {
+        background:
+            linear-gradient(rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.1)),
+            url("/share/bg-mobile.png") center / cover fixed;
     }
-    .grid-4 .mod:nth-child(3) {
-        grid-column: span 12;
-        grid-row: span 1;
-    }
-    .grid-4 .mod:nth-child(4) {
-        grid-column: span 12;
-        grid-row: span 1;
-    }
-}
 
-@media (max-width: 48em) {
     .top-bar {
         width: calc(100% - 32px);
         max-width: calc(1100px - 32px);
@@ -589,22 +590,6 @@ body {
         border-radius: var(--radius);
         padding: 12px 18px;
     }
-
-    .grid-4 {
-        grid-template-columns: 1fr;
-        gap: 16px;
-    }
-    .grid-4 .mod {
-        grid-column: span 12 !important;
-        grid-row: auto !important;
-    }
-    .page {
-        padding: 16px;
-    }
-    .mod {
-        padding: 24px 20px;
-    }
-
     .top-nav {
         display: none;
     }
@@ -612,38 +597,36 @@ body {
         display: flex;
     }
 
-    .site-footer {
-        gap: 8px 12px;
+    .page {
+        padding: 12px;
     }
 
-    body {
-        padding-top: 110px;
-        background:
-            linear-gradient(rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.35)),
-            url("/share/bg-moblie.png") center / cover fixed;
+    /* 移动端 grid 改用 flex column，确保从上到下顺序堆叠 */
+    .grid-4 {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        grid-template-columns: none;
+        grid-auto-rows: auto;
     }
-    [data-theme="light"] body {
-        background:
-            linear-gradient(rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.1)),
-            url("/share/bg-moblie.png") center / cover fixed;
+    .grid-4 .mod {
+        grid-column: auto;
+        grid-row: auto;
+    }
+    .mod {
+        padding: 24px 20px;
+    }
+
+    .note-content .mod {
+        padding: 20px 16px;
     }
 
     .category-panel {
         padding: 90px 24px 24px;
     }
-}
 
-@media (max-width: 48em) {
-    .page {
-        padding: 12px;
-    }
-    .grid-4 {
-        gap: 12px;
-    }
     .site-footer {
+        gap: 8px 12px;
         font-size: 0.72rem;
-    }
-    body {
-        padding-top: 100px;
     }
 }

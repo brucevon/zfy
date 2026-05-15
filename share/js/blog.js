@@ -1,4 +1,10 @@
 (function () {
+    // 动态注入 viewport meta（Trilium 默认不输出，缺少会导致移动端 media query 不触发）
+    var meta = document.createElement("meta");
+    meta.name = "viewport";
+    meta.content = "width=device-width, initial-scale=1";
+    document.head.appendChild(meta);
+
     var KEY = "bento-theme";
     var doc = document.documentElement;
     var themeBtn = document.getElementById("theme-toggle");

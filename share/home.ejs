@@ -1,0 +1,117 @@
+<link rel="stylesheet" href="/share/blog.css" />
+
+<% var HOME_ID = 's5augclsPgKT'; var isHome = note.noteId === HOME_ID; %>
+
+<header class="top-bar">
+    <div class="top-inner">
+        <img class="top-avatar" src="/share/logo.icon" alt="" />
+        <div class="top-info">
+            <span class="top-name">子非鱼</span>
+            <span class="top-subtitle">流水不腐，户枢不蠹。</span>
+        </div>
+        <nav class="top-nav">
+            <a
+                class="nav-item<% if (isHome) { %> active<% } %>"
+                href="<%= HOME_ID %>"
+                >首页</a
+            >
+            <a class="nav-item category-btn" id="category-btn" href="#">分类</a>
+            <a class="nav-item" href="#">关于</a>
+        </nav>
+        <button class="icon-btn" id="theme-toggle" aria-label="切换主题">
+            ☀
+        </button>
+        <button class="icon-btn menu-btn" id="menu-toggle" aria-label="菜单">
+            ☰
+        </button>
+    </div>
+</header>
+
+<div class="mobile-menu" id="mobile-menu">
+    <nav class="mobile-nav">
+        <a
+            class="nav-item<% if (isHome) { %> active<% } %>"
+            href="<%= HOME_ID %>"
+            >首页</a
+        >
+        <a class="nav-item" href="#">分类</a>
+        <a class="nav-item" href="#">关于</a>
+    </nav>
+</div>
+
+<div class="category-panel" id="category-panel">
+    <div class="category-tags" id="category-tags">
+        <ul class="tree-list" id="tree-list"></ul>
+    </div>
+</div>
+
+<div class="page">
+    <% if (isHome) { %>
+    <main class="grid-4">
+        <div class="mod">
+            <div class="mod-icon">📖</div>
+            <h3 class="mod-title">模块一</h3>
+            <p class="mod-desc">读书笔记</p>
+        </div>
+        <div class="mod">
+            <div class="mod-icon">💬</div>
+            <h3 class="mod-title">模块二</h3>
+            <p class="mod-desc">随笔杂谈</p>
+        </div>
+        <div class="mod">
+            <div class="mod-icon">📂</div>
+            <h3 class="mod-title">模块三</h3>
+            <p class="mod-desc">项目归档</p>
+        </div>
+        <div class="mod">
+            <div class="mod-icon">🔗</div>
+            <h3 class="mod-title">模块四</h3>
+            <p class="mod-desc">友链互换</p>
+        </div>
+        <div class="mod">
+            <div class="mod-icon">📌</div>
+            <h3 class="mod-title">模块五</h3>
+            <p class="mod-desc">近期动态 / 公告</p>
+        </div>
+    </main>
+    <% } else { %>
+    <main class="note-content">
+        <article class="mod">
+            <h1 class="mod-title"><%= note.title %></h1>
+            <div class="mod-desc" style="font-size: 1rem; line-height: 1.9">
+                <%- content %>
+            </div>
+        </article>
+    </main>
+    <% } %>
+
+    <footer class="site-footer">
+        <span>© 2026 brucevon.space</span>
+        <span>已运行 <strong id="run-days">--</strong> 天</span>
+        <a
+            class="beian-wrap"
+            href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=52230102000497"
+            target="_blank"
+            rel="noopener"
+        >
+            <img
+                class="beian-icon"
+                src="/share/beian.png"
+                alt=""
+                aria-hidden="true"
+            />
+            贵公网安备52230102000497号</a
+        >
+        <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener"
+            >黔ICP备2026006103号-1</a
+        >
+        <a
+            href="https://github.com/TriliumNext/Trilium"
+            target="_blank"
+            rel="noopener"
+            >Powered by TriliumNext</a
+        >
+    </footer>
+</div>
+
+<script src="/share/blog.js" defer></script>

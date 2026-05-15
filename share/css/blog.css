@@ -593,6 +593,9 @@ body {
         width: calc(100% - 32px);
         max-width: none;
     }
+    .top-bar--hidden {
+        transform: translateY(calc(-100% - 30px));
+    }
     .top-inner {
         border-radius: var(--radius);
         padding: 12px 18px;
@@ -634,8 +637,7 @@ body {
 
     .site-footer {
         gap: 8px 12px;
-        font-size: 0.72rem;
-    }
+    font-size: 0.72rem;
 }
 
 /* mobile-view fallback: when viewport meta doesn't fire @media */
@@ -656,6 +658,9 @@ html.mobile-view .top-bar {
     transform: none;
     width: 100%;
     max-width: calc(100vw - 32px);
+}
+html.mobile-view .top-bar--hidden {
+    transform: translateY(calc(-100% - 30px));
 }
 html.mobile-view .top-inner {
     border-radius: var(--radius);
@@ -697,93 +702,6 @@ html.mobile-view .site-footer {
 }
 
 /* note content overflow protection */
-.note-content .mod-desc {
-    overflow-wrap: break-word;
-    word-break: break-word;
-    overflow: hidden;
-}
-.note-content .mod-desc img {
-    max-width: 100%;
-    height: auto;
-}
-.note-content .mod-desc pre {
-    overflow-x: auto;
-    white-space: pre-wrap;
-    word-break: break-all;
-}
-.note-content .mod-desc code {
-    word-break: break-all;
-}
-.note-content .mod-desc table {
-    display: block;
-    max-width: 100%;
-    overflow-x: auto;
-}
-
-/* ================================ */
-/* 移动端 JS Fallback
-   当 viewport meta 动态注入未触发 media query 时兜底 */
-/* ================================ */
-html.mobile-view body {
-    padding-top: 100px;
-    overflow-x: hidden;
-    background:
-        linear-gradient(rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.35)),
-        url("/share/bg-mobile.png") center / cover fixed;
-}
-html.mobile-view [data-theme="light"] body {
-    background:
-        linear-gradient(rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.1)),
-        url("/share/bg-mobile.png") center / cover fixed;
-}
-html.mobile-view .top-bar {
-    left: 16px;
-    transform: none;
-    width: 100%;
-    max-width: calc(100vw - 32px);
-}
-html.mobile-view .top-inner {
-    border-radius: var(--radius);
-    padding: 12px 18px;
-}
-html.mobile-view .top-nav {
-    display: none;
-}
-html.mobile-view .menu-btn {
-    display: flex;
-}
-html.mobile-view .page {
-    padding: 12px;
-    overflow-x: hidden;
-}
-html.mobile-view .grid-4 {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    grid-template-columns: none;
-    grid-auto-rows: auto;
-}
-html.mobile-view .grid-4 .mod {
-    grid-column: auto;
-    grid-row: auto;
-}
-html.mobile-view .mod {
-    padding: 24px 20px;
-}
-html.mobile-view .note-content .mod {
-    padding: 20px 16px;
-}
-html.mobile-view .category-panel {
-    padding: 90px 24px 24px;
-}
-html.mobile-view .site-footer {
-    gap: 8px 12px;
-    font-size: 0.72rem;
-}
-
-/* ================================ */
-/* 笔记内容溢出控制 */
-/* ================================ */
 .note-content .mod-desc {
     overflow-wrap: break-word;
     word-break: break-word;

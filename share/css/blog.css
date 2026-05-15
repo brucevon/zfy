@@ -637,7 +637,8 @@ body {
 
     .site-footer {
         gap: 8px 12px;
-    font-size: 0.72rem;
+        font-size: 0.72rem;
+    }
 }
 
 /* mobile-view fallback: when viewport meta doesn't fire @media */

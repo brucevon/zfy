@@ -374,4 +374,165 @@
         toggle.textContent = open ? "▶" : "▼";
         toggle.classList.toggle("expanded", !open);
     }
+
+    /* ── 内容大纲 TOC ── */
+    function initToc() {
+        if (isHome) return;
+        var noteBody = document.querySelector(".note-body");
+        var tocBody = document.getElementById("toc-body");
+        if (!noteBody || !tocBody) return;
+
+        var headings = noteBody.querySelectorAll("h1, h2, h3");
+        if (headings.length < 2) return;
+
+        var tocId = 0;
+        var items = [];
+
+        headings.forEach(function (h) {
+            if (!h.id) {
+                h.id = "toc-" + (++tocId);
+            }
+            var tag = h.tagName.toLowerCase();
+            var level = tag === "h1" ? 1 : tag === "h2" ? 2 : 3;
+            items.push({
+                id: h.id,
+                text: h.textContent.trim(),
+                level: level,
+                el: h,
+            });
+        });
+
+        if (items.length === 0) return;
+
+        var html = "";
+        items.forEach(function (item) {
+            var cls = "toc-link";
+            if (item.level === 2) cls += " toc-link--h2";
+            else if (item.level === 3) cls += " toc-link--h3";
+            html +=
+                '<a class="' +
+                cls +
+                '" href="#' +
+                item.id +
+                '" data-toc-id="' +
+                item.id +
+                '">' +
+                escapeHtml(item.text) +
+                "</a>";
+        });
+        tocBody.innerHTML = html;
+
+        tocBody.addEventListener("click", function (e) {
+            var link = e.target.closest(".toc-link");
+            if (!link) return;
+            e.preventDefault();
+            var targetId = link.getAttribute("data-toc-id");
+            var targetEl = document.getElementById(targetId);
+            if (targetEl) {
+                targetEl.scrollIntoView({ behavior: "smooth", block: "start" });
+                history.replaceState(null, "", "#" + targetId);
+            }
+        });
+
+        function updateActive() {
+            var scrollY = window.scrollY || document.documentElement.scrollTop || 0;
+            var activeId = null;
+            var viewportMid = scrollY + window.innerHeight / 2;
+
+            for (var i = items.length - 1; i >= 0; i--) {
+                var el = items[i].el;
+                if (!el) continue;
+                var rect = el.getBoundingClientRect();
+                var elMid = rect.top + window.scrollY + rect.height / 2;
+                if (elMid < viewportMid) {
+                    activeId = items[i].id;
+                    break;
+                }
+            }
+
+            if (!activeId && items.length > 0) {
+                activeId = items[0].id;
+            }
+
+            tocBody.querySelectorAll(".toc-link.active").forEach(function (a) {
+                a.classList.remove("active");
+            });
+            if (activeId) {
+                var activeLink = tocBody.querySelector(
+                    '[data-toc-id="' + activeId + '"]',
+                );
+                if (activeLink) activeLink.classList.add("active");
+            }
+        }
+
+        updateActive();
+        document.addEventListener(
+            "scroll",
+            function () {
+                requestAnimationFrame(updateActive);
+            },
+            { passive: true },
+        );
+    }
+
+    /* ── TOC 移动端浮层 ── */
+    function initTocMobile() {
+        if (isHome) return;
+        var toc = document.getElementById("toc");
+        if (!toc) return;
+
+        var btn = document.createElement("button");
+        btn.className = "toc-mobile-btn";
+        btn.id = "toc-mobile-btn";
+        btn.textContent = "☰";
+        btn.setAttribute("aria-label", "打开目录");
+        document.body.appendChild(btn);
+
+        var overlay = document.createElement("div");
+        overlay.className = "toc-overlay";
+        overlay.id = "toc-overlay";
+        document.body.appendChild(overlay);
+
+        function openTocMobile() {
+            toc.classList.add("open");
+            overlay.classList.add("open");
+        }
+
+        function closeTocMobile() {
+            toc.classList.remove("open");
+            overlay.classList.remove("open");
+        }
+
+        btn.addEventListener("click", function (e) {
+            e.stopPropagation();
+            if (toc.classList.contains("open")) {
+                closeTocMobile();
+            } else {
+                openTocMobile();
+            }
+        });
+
+        overlay.addEventListener("click", closeTocMobile);
+
+        toc.querySelectorAll(".toc-link").forEach(function (link) {
+            link.addEventListener("click", closeTocMobile);
+        });
+    }
+
+    function escapeHtml(str) {
+        var div = document.createElement("div");
+        div.appendChild(document.createTextNode(str));
+        return div.innerHTML;
+    }
+
+    /* ── 初始化 TOC ── */
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", function () {
+            initToc();
+            initTocMobile();
+        });
+    } else {
+        initToc();
+        initTocMobile();
+    }
 })();

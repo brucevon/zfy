@@ -695,29 +695,52 @@ body {
 }
 .hm-tip {
     position: fixed;
-    z-index: 999;
+    z-index: 9999;
     pointer-events: none;
-    padding: 4px 8px;
-    border-radius: 6px;
+    padding: 6px 10px;
+    border-radius: 8px;
     font-size: 12px;
+    font-family: var(--mono);
     white-space: nowrap;
-    background: var(--card-bg);
+    background: var(--glass-bg);
     color: var(--text);
-    border: 1px solid var(--border);
-    box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
     transform: translate(-50%, -100%);
 }
-.hm-l0 { background: var(--ink-start); }
-.hm-l1 { background: #0e4429; }
-.hm-l2 { background: #006d32; }
-.hm-l3 { background: #26a641; }
-.hm-l4 { background: #39d353; }
+.hm-l0 {
+    background: var(--ink-start);
+}
+.hm-l1 {
+    background: #0e4429;
+}
+.hm-l2 {
+    background: #006d32;
+}
+.hm-l3 {
+    background: #26a641;
+}
+.hm-l4 {
+    background: #39d353;
+}
 
-[data-theme="light"] .hm-l0 { background: #ebedf0; }
-[data-theme="light"] .hm-l1 { background: #9be9a8; }
-[data-theme="light"] .hm-l2 { background: #40c463; }
-[data-theme="light"] .hm-l3 { background: #30a14e; }
-[data-theme="light"] .hm-l4 { background: #216e39; }
+[data-theme="light"] .hm-l0 {
+    background: #ebedf0;
+}
+[data-theme="light"] .hm-l1 {
+    background: #9be9a8;
+}
+[data-theme="light"] .hm-l2 {
+    background: #40c463;
+}
+[data-theme="light"] .hm-l3 {
+    background: #30a14e;
+}
+[data-theme="light"] .hm-l4 {
+    background: #216e39;
+}
 
 .mono {
     font-family: var(--mono);
@@ -1315,7 +1338,9 @@ html.mobile-view .site-footer {
     cursor: pointer;
     align-items: center;
     justify-content: center;
-    transition: transform 0.2s, opacity 0.2s;
+    transition:
+        transform 0.2s,
+        opacity 0.2s;
     line-height: 1;
 }
 
@@ -1399,4 +1424,112 @@ html.mobile-view .site-footer {
 html.mobile-view .note-content .mod {
     padding: 24px 20px;
     max-width: 100%;
+}
+
+/* ================================ */
+/* 手机端热力图适配                   */
+/* ================================ */
+@media (max-width: 48em) {
+    .hm-wrap {
+        justify-content: flex-start;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 8px;
+        width: 100%;
+    }
+    .hm-cell {
+        width: 11px;
+        height: 11px;
+    }
+    .hm-wday {
+        font-size: 0.62rem;
+        line-height: 11px;
+    }
+    .hm-month {
+        font-size: 0.62rem;
+    }
+    .mod-stats {
+        align-items: flex-start;
+    }
+    .stats-row {
+        justify-content: flex-start;
+    }
+}
+html.mobile-view .hm-wrap {
+    justify-content: flex-start;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 8px;
+    width: 100%;
+}
+html.mobile-view .hm-cell {
+    width: 11px;
+    height: 11px;
+}
+html.mobile-view .mod-stats {
+    align-items: flex-start;
+}
+html.mobile-view .stats-row {
+    justify-content: flex-start;
+}
+
+/* ================================ */
+/* Twikoo 评论区                      */
+/* ================================ */
+#twikoo {
+    max-width: 1060px;
+    margin: 24px 0 0 55px;
+    background: var(--glass-bg);
+    backdrop-filter: blur(40px) saturate(150%);
+    -webkit-backdrop-filter: blur(40px) saturate(150%);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius);
+    padding: 32px 40px;
+    box-shadow: var(--glass-shadow);
+}
+
+/* 覆盖 twikoo 内部颜色以适配主题 */
+#twikoo .tk-input,
+#twikoo .tk-content,
+#twikoo textarea {
+    background: rgba(255, 255, 255, 0.05) !important;
+    color: var(--text) !important;
+    border-color: var(--glass-border) !important;
+    border-radius: 8px !important;
+}
+[data-theme="light"] #twikoo .tk-input,
+[data-theme="light"] #twikoo .tk-content,
+[data-theme="light"] #twikoo textarea {
+    background: rgba(0, 0, 0, 0.03) !important;
+}
+#twikoo .tk-btn {
+    background: var(--accent) !important;
+    color: #fff !important;
+    border-radius: 8px !important;
+    border: none !important;
+}
+#twikoo .tk-comment {
+    border-color: var(--glass-border) !important;
+}
+#twikoo .tk-nick,
+#twikoo .tk-time {
+    color: var(--muted) !important;
+}
+#twikoo .tk-content p {
+    color: var(--text) !important;
+}
+/* 分割线 */
+#twikoo .tk-comments-title {
+    color: var(--text) !important;
+    font-family: var(--serif) !important;
+}
+
+@media (max-width: 48em) {
+    #twikoo {
+        padding: 20px 16px;
+        margin: 24px 0 0 0;
+    }
+}
+html.mobile-view #twikoo {
+    padding: 20px 16px;
 }

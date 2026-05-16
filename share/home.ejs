@@ -331,7 +331,7 @@ try {
                             var level = 0;
                             if (cell.count > 0) { level = Math.ceil((cell.count / hmMax) * 4); if (level < 1) level = 1; if (level > 4) level = 4; }
                         %>
-                            <div class="hm-cell hm-l<%= level %>" style="grid-column: <%= wi + 2 %>; grid-row: <%= di + 2 %>" data-date="<%= cell.date %>" data-count="<%= cell.count %>" title="<%= cell.date %>: <%= cell.count > 0 ? '更新了 ' + cell.count + ' 个文件' : '无更新' %>" onclick="hmClick(this)"></div>
+                            <div class="hm-cell hm-l<%= level %>" style="grid-column: <%= wi + 2 %>; grid-row: <%= di + 2 %>" data-date="<%= cell.date %>" data-count="<%= cell.count %>" title="<%= cell.date %>: <%= cell.count > 0 ? '更新了 ' + cell.count + ' 个文件' : '无更新' %>"></div>
                         <% } %>
                     <% } %>
                 </div>
@@ -355,6 +355,17 @@ try {
             </aside>
         </div>
     </main>
+    <% } %>
+
+    <%
+    var _enableTwikoo = false;
+    try {
+        if (!isHome && note.hasLabel && note.hasLabel('enableTwikoo')) {
+            _enableTwikoo = (note.getLabelValue('enableTwikoo') === 'true');
+        }
+    } catch(_e) {}
+    if (_enableTwikoo) { %>
+    <div id="tcomment"></div>
     <% } %>
 
     <footer class="site-footer">
@@ -388,35 +399,94 @@ try {
 </script>
 
 <script>
-(function() {
+(function () {
     var hmTip = null;
+    var hmActiveCell = null;
+    var isMobile = ('ontouchstart' in window) || (window.innerWidth <= 768);
+
     function hmDismiss() {
         if (hmTip) { hmTip.remove(); hmTip = null; }
-        var act = document.querySelector('.hm-cell.active');
-        if (act) act.classList.remove('active');
+        if (hmActiveCell) { hmActiveCell.classList.remove('active'); hmActiveCell = null; }
     }
-    window.hmClick = function(cell) {
-        if (hmTip) {
-            hmDismiss();
-            if (cell.classList.contains('active')) return;
-        }
+
+    function showTip(cell) {
+        if (hmTip) hmDismiss();
         var date = cell.getAttribute('data-date');
         var count = parseInt(cell.getAttribute('data-count')) || 0;
-        var text = date + ': ' + (count > 0 ? '更新了 ' + count + ' 个文件' : '无更新');
-        var rect = cell.getBoundingClientRect();
+        var text = date + (count > 0 ? '：更新了 ' + count + ' 个笔记' : '：无更新');
         var tip = document.createElement('div');
         tip.className = 'hm-tip';
         tip.textContent = text;
         document.body.appendChild(tip);
-        tip.style.left = (rect.left + rect.width / 2) + 'px';
-        tip.style.top = (rect.top - 8) + 'px';
+        var rect = cell.getBoundingClientRect();
+        var tipW = tip.offsetWidth;
+        var tipH = tip.offsetHeight;
+        var margin = 8;
+        var left = rect.left + rect.width / 2;
+        var top = rect.top - margin;
+        if (left - tipW / 2 < margin) left = tipW / 2 + margin;
+        if (left + tipW / 2 > window.innerWidth - margin) left = window.innerWidth - tipW / 2 - margin;
+        if (top - tipH < margin) {
+            top = rect.bottom + margin;
+            tip.style.transform = 'translate(-50%, 0)';
+        }
+        tip.style.left = left + 'px';
+        tip.style.top = top + 'px';
         hmTip = tip;
+        hmActiveCell = cell;
         cell.classList.add('active');
-    };
-    document.addEventListener('click', function(e) {
-        if (!e.target.closest('.hm-cell') && hmTip) hmDismiss();
-    });
+    }
+
+    var hmGrid = document.querySelector('.hm-grid');
+    if (!hmGrid) return;
+
+    if (!isMobile) {
+        hmGrid.addEventListener('mouseover', function (e) {
+            var cell = e.target.closest('.hm-cell');
+            if (cell) showTip(cell);
+        });
+        hmGrid.addEventListener('mouseleave', function () { hmDismiss(); });
+    } else {
+        hmGrid.addEventListener('click', function (e) {
+            var cell = e.target.closest('.hm-cell');
+            if (!cell) return;
+            if (hmActiveCell === cell) { hmDismiss(); return; }
+            showTip(cell);
+        });
+    }
+
+    document.addEventListener('click', function (e) {
+        if (hmTip && !e.target.closest('.hm-grid')) hmDismiss();
+    }, true);
+    document.addEventListener('scroll', function () { hmDismiss(); }, { capture: true, passive: true });
 })();
 </script>
+
+<% if (_enableTwikoo) { %>
+<script src="/share/twikoo.min.js"></script>
+<script>
+(function () {
+    var noteId = '<%= note.noteId %>';
+    function initTwikoo() {
+        if (!window.twikoo) return;
+        twikoo.init({
+            envId: 'https://twikoo.brucevon.space/',
+            el: '#tcomment',
+            path: noteId,
+            lang: 'zh-CN'
+        });
+    }
+    function syncTheme() {
+        var c = document.getElementById('twikoo-container');
+        if (!c) return;
+        c.setAttribute('data-theme', document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light');
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function () { initTwikoo(); syncTheme(); });
+    } else { initTwikoo(); syncTheme(); }
+    new MutationObserver(syncTheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+})();
+</script>
+<% } %>
 
 <script src="/share/blog.js" defer></script>

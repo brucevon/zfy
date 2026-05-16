@@ -390,7 +390,7 @@
 
         headings.forEach(function (h) {
             if (!h.id) {
-                h.id = "toc-" + (++tocId);
+                h.id = "toc-" + ++tocId;
             }
             var tag = h.tagName.toLowerCase();
             var level = tag === "h1" ? 1 : tag === "h2" ? 2 : 3;
@@ -435,7 +435,8 @@
         });
 
         function updateActive() {
-            var scrollY = window.scrollY || document.documentElement.scrollTop || 0;
+            var scrollY =
+                window.scrollY || document.documentElement.scrollTop || 0;
             var activeId = null;
             var viewportMid = scrollY + window.innerHeight / 2;
 
@@ -535,5 +536,4 @@
         initToc();
         initTocMobile();
     }
-
 })();

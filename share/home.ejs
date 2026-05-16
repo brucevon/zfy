@@ -14,7 +14,62 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/sql.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/dockerfile.min.js"></script>
 
-<% var HOME_ID = 's5augclsPgKT'; var isHome = note.noteId === HOME_ID; %>
+<% var HOME_ID = 's5augclsPgKT'; var isHome = note.noteId === HOME_ID;
+
+function collectRecommendNotes(parentNote, arr) {
+    var children;
+    try { children = parentNote.getChildNotes(); } catch(e) { return; }
+    if (!children || !children.length) return;
+    for (var i = 0; i < children.length; i++) {
+        var child = children[i];
+        if (child.type === 'text' && child.hasLabel && child.hasLabel('recommend') && child.getLabelValue('recommend') === 'true') {
+            arr.push(child);
+        }
+        if (child.hasVisibleChildren && child.hasVisibleChildren()) {
+            collectRecommendNotes(child, arr);
+        }
+    }
+}
+
+var articleNote = null;
+var articleDate = '';
+var articleSummary = '';
+try {
+    var articleNotes = [];
+    if (isHome) { collectRecommendNotes(note, articleNotes); }
+    if (articleNotes.length > 0) {
+        articleNote = articleNotes[Math.floor(Math.random() * articleNotes.length)];
+        /* 内容摘要 */
+        try {
+            var raw = '';
+            if (typeof articleNote.getContent === 'function') { raw = articleNote.getContent(); }
+            else if (articleNote.content) { raw = articleNote.content; }
+            if (typeof raw === 'string' && raw) {
+                var txt = raw.replace(/<[^>]*>/g, '').replace(/&[^;]+;/g, ' ').replace(/\s+/g, ' ').trim();
+                articleSummary = txt.substring(0, 80);
+                if (txt.length > 80) articleSummary += '…';
+            }
+        } catch(e) {}
+        /* 创建时间 */
+        try {
+            var dateStr = articleNote.utcDateCreated || articleNote.dateCreated || articleNote.utcDateModified || articleNote.dateModified || '';
+            if (dateStr) {
+                var d = new Date(dateStr);
+                if (!isNaN(d.getTime())) {
+                    articleDate = d.getFullYear() + '-' +
+                        String(d.getMonth() + 1).padStart(2, '0') + '-' +
+                        String(d.getDate()).padStart(2, '0') + ' ' +
+                        String(d.getHours()).padStart(2, '0') + ':' +
+                        String(d.getMinutes()).padStart(2, '0') + ':' +
+                        String(d.getSeconds()).padStart(2, '0');
+                }
+            }
+        } catch(e) {}
+    }
+} catch(e) {
+    articleNote = null;
+}
+%>
 
 <header class="top-bar">
     <div class="top-inner">
@@ -50,10 +105,20 @@
 <div class="page">
     <% if (isHome) { %>
     <main class="grid-4">
-        <div class="mod">
-            <div class="mod-icon">📖</div>
-            <h3 class="mod-title">模块一</h3>
-            <p class="mod-desc">读书笔记</p>
+        <div class="mod mod-rec">
+            <div class="mod-header-rec">
+                <div class="mod-icon mod-icon--rec">📕</div>
+                <h3 class="mod-title mod-title--rec">推荐阅读</h3>
+            </div>
+            <div class="rec-card" id="rec-card">
+                <% if (articleNote) { %>
+                    <% if (articleDate) { %><time class="rec-date"><%= articleDate %></time><% } %>
+                    <h4 class="rec-title"><a href="/share/<%= articleNote.noteId %>"><%= articleNote.title %></a></h4>
+                    <% if (articleSummary) { %><p class="rec-summary"><%= articleSummary %></p><% } %>
+                <% } else { %>
+                    <div class="rec-empty">暂无推荐</div>
+                <% } %>
+            </div>
         </div>
         <div class="mod">
             <div class="mod-icon">💬</div>
@@ -79,7 +144,7 @@
     <% } else { %>
     <main class="note-content">
         <div class="note-layout">
-            <article class="mod">
+            <article class="mod" data-created="<%= note.dateCreated %>" data-modified="<%= note.dateModified %>">
                 <h1 class="note-title"><%= note.title %></h1>
                 <div class="note-body">
                     <%- content %>

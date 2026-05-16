@@ -535,6 +535,72 @@ body {
     text-align: left;
 }
 
+/* ================================ */
+/* 推荐阅读模块                       */
+/* ================================ */
+.mod-rec {
+    cursor: default;
+}
+.mod-header-rec {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 18px;
+}
+.mod-icon--rec {
+    width: 36px;
+    height: 36px;
+    font-size: 1rem;
+    margin-bottom: 0;
+    flex-shrink: 0;
+}
+.mod-title--rec {
+    margin-bottom: 0;
+    font-size: 1.1rem;
+}
+
+.rec-card {
+    min-height: 60px;
+}
+.rec-loading {
+    font-size: 0.85rem;
+    color: var(--muted);
+    font-family: var(--mono);
+    padding: 8px 0;
+}
+.rec-empty {
+    font-size: 0.85rem;
+    color: var(--muted);
+    font-family: var(--mono);
+    padding: 8px 0;
+}
+.rec-date {
+    display: inline-block;
+    font-size: 0.78rem;
+    font-family: var(--mono);
+    color: var(--muted);
+    margin-bottom: 6px;
+}
+.rec-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin-bottom: 8px;
+    line-height: 1.5;
+}
+.rec-title a {
+    color: inherit;
+    text-decoration: none;
+    transition: color 0.2s;
+}
+.rec-title a:hover {
+    color: var(--accent);
+}
+.rec-summary {
+    font-size: 0.82rem;
+    color: var(--muted);
+    line-height: 1.7;
+}
+
 .mono {
     font-family: var(--mono);
 }

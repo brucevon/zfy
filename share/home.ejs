@@ -128,6 +128,23 @@ try {
         }
     }
 } catch(e) {}
+
+var annNote = null;
+var annDate = '';
+try {
+    var annNotes = [];
+    if (isHome) { collectLatestByLabel(note, 'announcement', annNotes); }
+    if (annNotes.length > 0) {
+        annNotes.sort(function (a, b) {
+            var da = a.dateCreated || a.utcDateCreated || a.utcDateModified || a.dateModified || '';
+            var db = b.dateCreated || b.utcDateCreated || b.utcDateModified || b.dateModified || '';
+            return da > db ? -1 : da < db ? 1 : 0;
+        });
+        annNote = annNotes[0];
+        var ad = extractNoteContent(annNote);
+        annDate = ad.date;
+    }
+} catch(e) { annNote = null; }
 %>
 
 <header class="top-bar">
@@ -213,15 +230,19 @@ try {
                 <% } %>
             </div>
         </div>
-        <div class="mod">
-            <div class="mod-icon">🔗</div>
-            <h3 class="mod-title">模块四</h3>
-            <p class="mod-desc">友链互换</p>
-        </div>
-        <div class="mod">
-            <div class="mod-icon">📌</div>
-            <h3 class="mod-title">模块五</h3>
-            <p class="mod-desc">近期动态 / 公告</p>
+        <div class="mod mod-rec">
+            <div class="mod-header-rec">
+                <div class="mod-icon mod-icon--rec">📣</div>
+                <h3 class="mod-title mod-title--rec">公告</h3>
+            </div>
+            <div class="rec-card">
+                <% if (annNote) { %>
+                    <time class="rec-date"><%= annDate %></time>
+                    <h4 class="rec-title"><a href="/share/<%= annNote.noteId %>"><%= annNote.title %></a></h4>
+                <% } else { %>
+                    <div class="rec-empty">暂无公告</div>
+                <% } %>
+            </div>
         </div>
     </main>
     <% } else { %>

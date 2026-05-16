@@ -636,6 +636,11 @@ body {
         padding: var(--topbar-bottom) 24px 24px;
     }
 
+    /* 首页模块纵向堆叠，不占满空间 */
+    .grid-4 {
+        flex: none;
+    }
+
     /* 移动端页脚自适应 */
     .site-footer {
         margin-top: auto !important;
@@ -707,6 +712,7 @@ html.mobile-view .grid-4 {
     gap: 12px;
     grid-template-columns: none;
     grid-auto-rows: auto;
+    flex: none;
 }
 html.mobile-view .grid-4 .mod {
     grid-column: auto;

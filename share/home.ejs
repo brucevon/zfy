@@ -1,4 +1,18 @@
 <link rel="stylesheet" href="/share/blog.css" />
+<!-- highlight.js 代码高亮 -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" id="hljs-theme-dark" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css" id="hljs-theme-light" disabled />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/bash.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/typescript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/go.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/rust.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/yaml.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/json.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/sql.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/dockerfile.min.js"></script>
 
 <% var HOME_ID = 's5augclsPgKT'; var isHome = note.noteId === HOME_ID; %>
 
@@ -10,30 +24,18 @@
             <span class="top-subtitle">流水不腐，户枢不蠹。</span>
         </div>
         <nav class="top-nav">
-            <a
-                class="nav-item<% if (isHome) { %> active<% } %>"
-                href="<%= HOME_ID %>"
-                >首页</a
-            >
+            <a class="nav-item<% if (isHome) { %> active<% } %>" href="<%= HOME_ID %>">首页</a>
             <a class="nav-item category-btn" id="category-btn" href="#">分类</a>
             <a class="nav-item" href="#">关于</a>
         </nav>
-        <button class="icon-btn" id="theme-toggle" aria-label="切换主题">
-            ☀
-        </button>
-        <button class="icon-btn menu-btn" id="menu-toggle" aria-label="菜单">
-            ☰
-        </button>
+        <button class="icon-btn" id="theme-toggle" aria-label="切换主题">☀</button>
+        <button class="icon-btn menu-btn" id="menu-toggle" aria-label="菜单">☰</button>
     </div>
 </header>
 
 <div class="mobile-menu" id="mobile-menu">
     <nav class="mobile-nav">
-        <a
-            class="nav-item<% if (isHome) { %> active<% } %>"
-            href="<%= HOME_ID %>"
-            >首页</a
-        >
+        <a class="nav-item<% if (isHome) { %> active<% } %>" href="<%= HOME_ID %>">首页</a>
         <a class="nav-item" id="category-btn-mobile" href="#">分类</a>
         <a class="nav-item" href="#">关于</a>
     </nav>
@@ -77,8 +79,8 @@
     <% } else { %>
     <main class="note-content">
         <article class="mod">
-            <h1 class="mod-title"><%= note.title %></h1>
-            <div class="mod-desc" style="font-size: 1rem; line-height: 1.9">
+            <h1 class="note-title"><%= note.title %></h1>
+            <div class="note-body">
                 <%- content %>
             </div>
         </article>
@@ -88,30 +90,31 @@
     <footer class="site-footer">
         <span>© 2026 brucevon.space</span>
         <span>已运行 <strong id="run-days">--</strong> 天</span>
-        <a
-            class="beian-wrap"
+        <a class="beian-wrap"
             href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=52230102000497"
-            target="_blank"
-            rel="noopener"
-        >
-            <img
-                class="beian-icon"
-                src="/share/beian.png"
-                alt=""
-                aria-hidden="true"
-            />
-            贵公网安备52230102000497号</a
-        >
-        <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener"
-            >黔ICP备2026006103号-1</a
-        >
-        <a
-            href="https://github.com/TriliumNext/Trilium"
-            target="_blank"
-            rel="noopener"
-            >Powered by TriliumNext</a
-        >
+            target="_blank" rel="noopener">
+            <img class="beian-icon" src="/share/beian.png" alt="" aria-hidden="true" />
+            贵公网安备52230102000497号</a>
+        <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">黔ICP备2026006103号-1</a>
+        <a href="https://github.com/TriliumNext/Trilium" target="_blank" rel="noopener">Powered by TriliumNext</a>
     </footer>
 </div>
+
+<script>
+// 主题切换同步 highlight.js 样式
+(function () {
+    function syncHljsTheme() {
+        var isDark = document.documentElement.getAttribute("data-theme") === "dark";
+        var darkLink  = document.getElementById("hljs-theme-dark");
+        var lightLink = document.getElementById("hljs-theme-light");
+        if (darkLink)  darkLink.disabled  = !isDark;
+        if (lightLink) lightLink.disabled = isDark;
+    }
+    syncHljsTheme();
+    // 观察主题属性变化
+    var observer = new MutationObserver(syncHljsTheme);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+})();
+</script>
 
 <script src="/share/blog.js" defer></script>

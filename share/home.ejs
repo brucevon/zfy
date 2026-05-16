@@ -78,12 +78,20 @@
     </main>
     <% } else { %>
     <main class="note-content">
-        <article class="mod">
-            <h1 class="note-title"><%= note.title %></h1>
-            <div class="note-body">
-                <%- content %>
-            </div>
-        </article>
+        <div class="note-layout">
+            <article class="mod">
+                <h1 class="note-title"><%= note.title %></h1>
+                <div class="note-body">
+                    <%- content %>
+                </div>
+            </article>
+            <aside class="toc" id="toc">
+                <div class="toc-header">
+                    <span class="toc-title">目录</span>
+                </div>
+                <nav class="toc-body" id="toc-body"></nav>
+            </aside>
+        </div>
     </main>
     <% } %>
 

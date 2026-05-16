@@ -48,7 +48,7 @@ body {
     font-family: var(--sans);
     background:
         linear-gradient(rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.35)),
-        url("/share/bg-pc.png") center / cover fixed;
+        url("/bg-pc.png") center / cover fixed;
     color: var(--text);
     line-height: 1.7;
     min-height: 100vh;
@@ -63,7 +63,7 @@ body {
 [data-theme="light"] body {
     background:
         linear-gradient(rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.1)),
-        url("/share/bg-pc.png") center / cover fixed;
+        url("/bg-pc.png") center / cover fixed;
 }
 
 /* hide trilium chrome */
@@ -801,12 +801,12 @@ body {
 
     /* 关键修改：移动端 body 无顶部留白，内容全屏 */
     body {
-        background: url("/share/bg-mobile.png") center / cover fixed !important;
+        background: url("/bg-mobile.png") center / cover fixed !important;
         padding-top: 0 !important;
         overflow-x: hidden;
     }
     [data-theme="light"] body {
-        background: url("/share/bg-mobile.png") center / cover fixed !important;
+        background: url("/bg-mobile.png") center / cover fixed !important;
     }
 
     /* 让 .page 从顶部开始，padding-top 等于胶囊底部高度，避免内容被遮 */
@@ -880,12 +880,12 @@ body {
 /* mobile-view JS 兜底               */
 /* ================================ */
 html.mobile-view body {
-    background: url("/share/bg-mobile.png") center / cover fixed !important;
+    background: url("/bg-mobile.png") center / cover fixed !important;
     padding-top: 0 !important;
     overflow-x: hidden;
 }
 html.mobile-view [data-theme="light"] body {
-    background: url("/share/bg-mobile.png") center / cover fixed !important;
+    background: url("/bg-mobile.png") center / cover fixed !important;
 }
 html.mobile-view .page {
     background: transparent !important;

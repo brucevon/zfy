@@ -1,4 +1,4 @@
-<link rel="stylesheet" href="/share/blog.css" />
+<link rel="stylesheet" href="/blog.css" />
 <!-- highlight.js 代码高亮 -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" id="hljs-theme-dark" />
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css" id="hljs-theme-light" disabled />
@@ -14,7 +14,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/sql.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/dockerfile.min.js"></script>
 
-<% var HOME_ID = 's5augclsPgKT'; var isHome = note.noteId === HOME_ID;
+<% var HOME_ID = 'rNdtx5Rm6dHE'; var isHome = note.noteId === HOME_ID;
 
 function collectRecommendNotes(parentNote, arr) {
     var children;
@@ -212,7 +212,7 @@ try {
 
 <header class="top-bar">
     <div class="top-inner">
-        <img class="top-avatar" src="/share/logo.icon" alt="" />
+        <img class="top-avatar" src="/logo.icon" alt="" />
         <div class="top-info">
             <span class="top-name">子非鱼</span>
             <span class="top-subtitle">流水不腐，户枢不蠹。</span>
@@ -252,7 +252,7 @@ try {
             <div class="rec-card" id="rec-card">
                 <% if (articleNote) { %>
                     <% if (articleDate) { %><time class="rec-date"><%= articleDate %></time><% } %>
-                    <h4 class="rec-title"><a href="/share/<%= articleNote.noteId %>"><%= articleNote.title %></a></h4>
+                    <h4 class="rec-title"><a href="/<%= articleNote.noteId %>"><%= articleNote.title %></a></h4>
                     <% if (articleSummary) { %><p class="rec-summary"><%= articleSummary %></p><% } %>
                 <% } else { %>
                     <div class="rec-empty">暂无推荐</div>
@@ -268,7 +268,7 @@ try {
             <div class="rec-card">
                 <% if (latestNote) { %>
                     <% if (latestDate) { %><time class="rec-date"><%= latestDate %></time><% } %>
-                    <h4 class="rec-title"><a href="/share/<%= latestNote.noteId %>"><%= latestNote.title %></a></h4>
+                    <h4 class="rec-title"><a href="/<%= latestNote.noteId %>"><%= latestNote.title %></a></h4>
                     <% if (latestSummary) { %><p class="rec-summary"><%= latestSummary %></p><% } %>
                 <% } else { %>
                     <div class="rec-empty">暂无文章</div>
@@ -286,7 +286,7 @@ try {
                         var u = updates[ui]; %>
                     <div class="rec-upd-item">
                         <time class="rec-date"><%= u.date %></time>
-                        <h4 class="rec-title"><a href="/share/<%= u.note.noteId %>"><%= u.note.title %></a></h4>
+                        <h4 class="rec-title"><a href="/<%= u.note.noteId %>"><%= u.note.title %></a></h4>
                     </div>
                 <% } } else { %>
                     <div class="rec-empty">暂无动态</div>
@@ -301,7 +301,7 @@ try {
             <div class="rec-card">
                 <% if (annNote) { %>
                     <time class="rec-date"><%= annDate %></time>
-                    <h4 class="rec-title"><a href="/share/<%= annNote.noteId %>"><%= annNote.title %></a></h4>
+                    <h4 class="rec-title"><a href="/<%= annNote.noteId %>"><%= annNote.title %></a></h4>
                 <% } else { %>
                     <div class="rec-empty">暂无公告</div>
                 <% } %>
@@ -374,7 +374,7 @@ try {
         <a class="beian-wrap"
             href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=52230102000497"
             target="_blank" rel="noopener">
-            <img class="beian-icon" src="/share/beian.png" alt="" aria-hidden="true" />
+            <img class="beian-icon" src="/beian.png" alt="" aria-hidden="true" />
             贵公网安备52230102000497号</a>
         <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">黔ICP备2026006103号-1</a>
         <a href="https://github.com/TriliumNext/Trilium" target="_blank" rel="noopener">Powered by TriliumNext</a>
@@ -463,7 +463,7 @@ try {
 </script>
 
 <% if (_enableTwikoo) { %>
-<script src="/share/twikoo.min.js"></script>
+<script src="/twikoo.min.js"></script>
 <script>
 (function () {
     var noteId = '<%= note.noteId %>';
@@ -489,4 +489,4 @@ try {
 </script>
 <% } %>
 
-<script src="/share/blog.js" defer></script>
+<script src="/blog.js" defer></script>

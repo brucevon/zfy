@@ -132,7 +132,7 @@
     );
 
     /* ── 分类面板 ── */
-    var TREE_JSON_URL = "/share/blog-tree";
+    var TREE_JSON_URL = "/blog-tree";
     var treeData = null;
 
     function openCategoryPanel(e) {

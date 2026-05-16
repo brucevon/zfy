@@ -31,44 +31,82 @@ function collectRecommendNotes(parentNote, arr) {
     }
 }
 
+function collectLatestByLabel(parentNote, labelName, arr) {
+    var children;
+    try { children = parentNote.getChildNotes(); } catch(e) { return; }
+    if (!children || !children.length) return;
+    for (var i = 0; i < children.length; i++) {
+        var child = children[i];
+        if (child.type === 'text' && child.hasLabel && child.hasLabel(labelName) && child.getLabelValue(labelName) === 'true') {
+            arr.push(child);
+        }
+        if (child.hasVisibleChildren && child.hasVisibleChildren()) {
+            collectLatestByLabel(child, labelName, arr);
+        }
+    }
+}
+
+function extractNoteContent(n) {
+    var data = { date: '', summary: '' };
+    try {
+        var raw = '';
+        if (typeof n.getContent === 'function') { raw = n.getContent(); }
+        else if (n.content) { raw = n.content; }
+        if (typeof raw === 'string' && raw) {
+            var txt = raw.replace(/<[^>]*>/g, '').replace(/&[^;]+;/g, ' ').replace(/\s+/g, ' ').trim();
+            data.summary = txt.substring(0, 80);
+            if (txt.length > 80) data.summary += '…';
+        }
+    } catch(e) {}
+    try {
+        var dateSrc = n.dateCreated || n.utcDateCreated || n.utcDateModified || n.dateModified;
+        if (dateSrc) {
+            var d = typeof dateSrc.getTime === 'function' ? dateSrc : new Date(dateSrc);
+            if (!isNaN(d.getTime())) {
+                data.date = d.getFullYear() + '-' +
+                    String(d.getMonth() + 1).padStart(2, '0') + '-' +
+                    String(d.getDate()).padStart(2, '0') + ' ' +
+                    String(d.getHours()).padStart(2, '0') + ':' +
+                    String(d.getMinutes()).padStart(2, '0') + ':' +
+                    String(d.getSeconds()).padStart(2, '0');
+            }
+        }
+    } catch(e) {}
+    return data;
+}
+
 var articleNote = null;
 var articleDate = '';
 var articleSummary = '';
 try {
-    var articleNotes = [];
-    if (isHome) { collectRecommendNotes(note, articleNotes); }
-    if (articleNotes.length > 0) {
-        articleNote = articleNotes[Math.floor(Math.random() * articleNotes.length)];
-        /* 内容摘要 */
-        try {
-            var raw = '';
-            if (typeof articleNote.getContent === 'function') { raw = articleNote.getContent(); }
-            else if (articleNote.content) { raw = articleNote.content; }
-            if (typeof raw === 'string' && raw) {
-                var txt = raw.replace(/<[^>]*>/g, '').replace(/&[^;]+;/g, ' ').replace(/\s+/g, ' ').trim();
-                articleSummary = txt.substring(0, 80);
-                if (txt.length > 80) articleSummary += '…';
-            }
-        } catch(e) {}
-        /* 创建时间 */
-        try {
-            var dateStr = articleNote.utcDateCreated || articleNote.dateCreated || articleNote.utcDateModified || articleNote.dateModified || '';
-            if (dateStr) {
-                var d = new Date(dateStr);
-                if (!isNaN(d.getTime())) {
-                    articleDate = d.getFullYear() + '-' +
-                        String(d.getMonth() + 1).padStart(2, '0') + '-' +
-                        String(d.getDate()).padStart(2, '0') + ' ' +
-                        String(d.getHours()).padStart(2, '0') + ':' +
-                        String(d.getMinutes()).padStart(2, '0') + ':' +
-                        String(d.getSeconds()).padStart(2, '0');
-                }
-            }
-        } catch(e) {}
+    var recNotes = [];
+    if (isHome) { collectRecommendNotes(note, recNotes); }
+    if (recNotes.length > 0) {
+        articleNote = recNotes[Math.floor(Math.random() * recNotes.length)];
+        var ad = extractNoteContent(articleNote);
+        articleDate = ad.date;
+        articleSummary = ad.summary;
     }
-} catch(e) {
-    articleNote = null;
-}
+} catch(e) { articleNote = null; }
+
+var latestNote = null;
+var latestDate = '';
+var latestSummary = '';
+try {
+    var artNotes = [];
+    if (isHome) { collectLatestByLabel(note, 'article', artNotes); }
+    if (artNotes.length > 0) {
+        artNotes.sort(function (a, b) {
+            var da = a.dateCreated || a.utcDateCreated || a.utcDateModified || a.dateModified || '';
+            var db = b.dateCreated || b.utcDateCreated || b.utcDateModified || b.dateModified || '';
+            return da > db ? -1 : da < db ? 1 : 0;
+        });
+        latestNote = artNotes[0];
+        var ld = extractNoteContent(latestNote);
+        latestDate = ld.date;
+        latestSummary = ld.summary;
+    }
+} catch(e) { latestNote = null; }
 %>
 
 <header class="top-bar">
@@ -120,10 +158,21 @@ try {
                 <% } %>
             </div>
         </div>
-        <div class="mod">
-            <div class="mod-icon">💬</div>
-            <h3 class="mod-title">模块二</h3>
-            <p class="mod-desc">随笔杂谈</p>
+        <div class="mod mod-rec">
+            <div class="mod-header-rec">
+                <div class="mod-icon mod-icon--rec">📰</div>
+                <h3 class="mod-title mod-title--rec">最近发布</h3>
+            </div>
+
+            <div class="rec-card">
+                <% if (latestNote) { %>
+                    <% if (latestDate) { %><time class="rec-date"><%= latestDate %></time><% } %>
+                    <h4 class="rec-title"><a href="/share/<%= latestNote.noteId %>"><%= latestNote.title %></a></h4>
+                    <% if (latestSummary) { %><p class="rec-summary"><%= latestSummary %></p><% } %>
+                <% } else { %>
+                    <div class="rec-empty">暂无文章</div>
+                <% } %>
+            </div>
         </div>
         <div class="mod">
             <div class="mod-icon">📂</div>

@@ -107,6 +107,27 @@ try {
         latestSummary = ld.summary;
     }
 } catch(e) { latestNote = null; }
+
+var updates = [];
+try {
+    var updNotes = [];
+    if (isHome) { collectLatestByLabel(note, 'recentUpdate', updNotes); }
+    if (updNotes.length > 0) {
+        updNotes.sort(function (a, b) {
+            var da = '', db = '';
+            try { da = a.getLabelValue('dateNote') || a.utcDateModified || a.dateModified || ''; } catch(e) { da = a.utcDateModified || a.dateModified || ''; }
+            try { db = b.getLabelValue('dateNote') || b.utcDateModified || b.dateModified || ''; } catch(e) { db = b.utcDateModified || b.dateModified || ''; }
+            return da > db ? -1 : da < db ? 1 : 0;
+        });
+        for (var ui = 0; ui < updNotes.length && updates.length < 3; ui++) {
+            var n = updNotes[ui];
+            var ud = extractNoteContent(n);
+            var dnote = '';
+            try { dnote = n.getLabelValue('dateNote') || ''; } catch(e) {}
+            updates.push({ note: n, date: dnote || ud.date, summary: ud.summary });
+        }
+    }
+} catch(e) {}
 %>
 
 <header class="top-bar">
@@ -174,10 +195,23 @@ try {
                 <% } %>
             </div>
         </div>
-        <div class="mod">
-            <div class="mod-icon">📂</div>
-            <h3 class="mod-title">模块三</h3>
-            <p class="mod-desc">项目归档</p>
+        <div class="mod mod-rec">
+            <div class="mod-header-rec">
+                <div class="mod-icon mod-icon--rec">⚡</div>
+                <h3 class="mod-title mod-title--rec">最近动态</h3>
+            </div>
+            <div class="rec-card">
+                <% if (updates.length > 0) {
+                    for (var ui = 0; ui < updates.length; ui++) {
+                        var u = updates[ui]; %>
+                    <div class="rec-upd-item">
+                        <time class="rec-date"><%= u.date %></time>
+                        <h4 class="rec-title"><a href="/share/<%= u.note.noteId %>"><%= u.note.title %></a></h4>
+                    </div>
+                <% } } else { %>
+                    <div class="rec-empty">暂无动态</div>
+                <% } %>
+            </div>
         </div>
         <div class="mod">
             <div class="mod-icon">🔗</div>

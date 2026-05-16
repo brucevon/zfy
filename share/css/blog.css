@@ -612,6 +612,113 @@ body {
     line-height: 1.7;
 }
 
+/* ── 统计摘要模块 ── */
+.mod-stats {
+    grid-column: span 12;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+}
+.mod-header-stats {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.mod-header-stats .mod-icon {
+    font-size: 1.3rem;
+    line-height: 1;
+}
+.mod-header-stats .mod-title {
+    font-size: 1rem;
+    font-weight: 600;
+}
+.stats-row {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+.stats-item {
+    font-size: 0.85rem;
+    color: var(--muted);
+    font-family: var(--mono);
+}
+.stats-item em {
+    font-style: normal;
+    color: var(--text);
+    font-weight: 600;
+}
+
+/* ── 热力图 ── */
+.hm-wrap {
+    overflow-x: auto;
+    padding-top: 4px;
+    display: flex;
+    justify-content: center;
+}
+.hm-grid {
+    display: inline-grid;
+    gap: 2px;
+}
+.hm-month {
+    font-size: 0.72rem;
+    color: var(--muted);
+    text-align: left;
+    padding-left: 2px;
+    align-self: end;
+}
+.hm-wday {
+    font-size: 0.68rem;
+    color: var(--muted);
+    text-align: center;
+    line-height: 13px;
+}
+.hm-cell {
+    width: 13px;
+    height: 13px;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: opacity 0.15s;
+}
+.hm-cell:hover {
+    opacity: 0.7;
+}
+.hm-cell:active {
+    opacity: 1;
+}
+.hm-cell.active {
+    opacity: 1;
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+    border-radius: 4px;
+}
+.hm-tip {
+    position: fixed;
+    z-index: 999;
+    pointer-events: none;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 12px;
+    white-space: nowrap;
+    background: var(--card-bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+    transform: translate(-50%, -100%);
+}
+.hm-l0 { background: var(--ink-start); }
+.hm-l1 { background: #0e4429; }
+.hm-l2 { background: #006d32; }
+.hm-l3 { background: #26a641; }
+.hm-l4 { background: #39d353; }
+
+[data-theme="light"] .hm-l0 { background: #ebedf0; }
+[data-theme="light"] .hm-l1 { background: #9be9a8; }
+[data-theme="light"] .hm-l2 { background: #40c463; }
+[data-theme="light"] .hm-l3 { background: #30a14e; }
+[data-theme="light"] .hm-l4 { background: #216e39; }
+
 .mono {
     font-family: var(--mono);
 }
@@ -636,7 +743,7 @@ body {
     font-size: 0.78rem;
     font-family: var(--mono);
     color: var(--muted);
-    margin-top: 90px;
+    margin-top: 40px;
     padding: 8px 0 0;
 }
 .beian-wrap {

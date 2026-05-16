@@ -145,6 +145,69 @@ try {
         annDate = ad.date;
     }
 } catch(e) { annNote = null; }
+
+// ── 热力图数据：统计所有 text 笔记的修改日期 ──
+var dateFreq = {};
+var hmWeeks = [];
+var hmMonths = [];
+var hmMax = 1;
+try {
+    (function collectDates(n) {
+        var kids;
+        try { kids = n.getChildNotes(); } catch(e) { return; }
+        if (!kids || !kids.length) return;
+        for (var i = 0; i < kids.length; i++) {
+            var c = kids[i];
+            if (c.type === 'text') {
+                var ds = c.utcDateModified || c.dateModified || '';
+                if (ds) {
+                    var d = new Date(ds);
+                    if (!isNaN(d.getTime())) {
+                        var key = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+                        dateFreq[key] = (dateFreq[key] || 0) + 1;
+                    }
+                }
+            }
+            if (c.hasVisibleChildren && c.hasVisibleChildren()) collectDates(c);
+        }
+    })(note);
+
+    var now = new Date();
+    now.setHours(0, 0, 0, 0);
+    var start = new Date(now);
+    start.setDate(start.getDate() - 363);
+    while (start.getDay() !== 1) { start.setDate(start.getDate() - 1); }
+
+    var cur = new Date(start);
+    var prevMonth = -1;
+    var monthStart = -1;
+
+    while (cur <= now) {
+        if (cur.getMonth() !== prevMonth) {
+            if (prevMonth !== -1) {
+                hmMonths.push({ label: (prevMonth + 1) + '月', start: monthStart, span: hmWeeks.length - monthStart });
+            }
+            prevMonth = cur.getMonth();
+            monthStart = hmWeeks.length;
+        }
+        var week = [];
+        for (var d = 0; d < 7; d++) {
+            var key = cur.getFullYear() + '-' + String(cur.getMonth()+1).padStart(2,'0') + '-' + String(cur.getDate()).padStart(2,'0');
+            week.push({ date: key, count: dateFreq[key] || 0 });
+            cur.setDate(cur.getDate() + 1);
+        }
+        hmWeeks.push(week);
+    }
+    if (prevMonth !== -1) {
+        hmMonths.push({ label: (prevMonth + 1) + '月', start: monthStart, span: hmWeeks.length - monthStart });
+    }
+
+    for (var wi = 0; wi < hmWeeks.length; wi++) {
+        for (var di = 0; di < 7; di++) {
+            if (hmWeeks[wi][di].count > hmMax) hmMax = hmWeeks[wi][di].count;
+        }
+    }
+} catch(e) {}
 %>
 
 <header class="top-bar">
@@ -244,6 +307,36 @@ try {
                 <% } %>
             </div>
         </div>
+        <div class="mod mod-stats">
+            <div class="mod-header-stats">
+                <div class="mod-icon">📊</div>
+                <h3 class="mod-title">统计摘要</h3>
+            </div>
+            <div class="stats-row">
+                <span class="stats-item">推荐阅读 <em><%= (typeof recNotes !== 'undefined' ? recNotes : [null]).length %></em></span>
+                <span class="stats-item">最近发布 <em><%= (typeof artNotes !== 'undefined' ? artNotes : [null]).length %></em></span>
+                <span class="stats-item">最近动态 <em><%= (typeof updNotes !== 'undefined' ? updNotes : [null]).length %></em></span>
+                <span class="stats-item">公告 <em><%= (typeof annNotes !== 'undefined' ? annNotes : [null]).length %></em></span>
+            </div>
+            <div class="hm-wrap">
+                <div class="hm-grid" style="grid-template-columns: 28px repeat(<%= hmWeeks.length %>, 13px); grid-template-rows: 18px repeat(7, 13px);">
+                    <% for (var mi = 0; mi < hmMonths.length; mi++) { var m = hmMonths[mi]; %>
+                        <div class="hm-month" style="grid-column: <%= 2 + m.start %> / span <%= m.span %>; grid-row: 1"><%= m.label %></div>
+                    <% } %>
+                    <% var wdays = ['一','二','三','四','五','六','日']; %>
+                    <% for (var di = 0; di < 7; di++) { %>
+                        <div class="hm-wday" style="grid-column: 1; grid-row: <%= di + 2 %>"><%= wdays[di] %></div>
+                        <% for (var wi = 0; wi < hmWeeks.length; wi++) {
+                            var cell = hmWeeks[wi][di];
+                            var level = 0;
+                            if (cell.count > 0) { level = Math.ceil((cell.count / hmMax) * 4); if (level < 1) level = 1; if (level > 4) level = 4; }
+                        %>
+                            <div class="hm-cell hm-l<%= level %>" style="grid-column: <%= wi + 2 %>; grid-row: <%= di + 2 %>" data-date="<%= cell.date %>" data-count="<%= cell.count %>" title="<%= cell.date %>: <%= cell.count > 0 ? '更新了 ' + cell.count + ' 个文件' : '无更新' %>" onclick="hmClick(this)"></div>
+                        <% } %>
+                    <% } %>
+                </div>
+            </div>
+        </div>
     </main>
     <% } else { %>
     <main class="note-content">
@@ -291,6 +384,38 @@ try {
     // 观察主题属性变化
     var observer = new MutationObserver(syncHljsTheme);
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+})();
+</script>
+
+<script>
+(function() {
+    var hmTip = null;
+    function hmDismiss() {
+        if (hmTip) { hmTip.remove(); hmTip = null; }
+        var act = document.querySelector('.hm-cell.active');
+        if (act) act.classList.remove('active');
+    }
+    window.hmClick = function(cell) {
+        if (hmTip) {
+            hmDismiss();
+            if (cell.classList.contains('active')) return;
+        }
+        var date = cell.getAttribute('data-date');
+        var count = parseInt(cell.getAttribute('data-count')) || 0;
+        var text = date + ': ' + (count > 0 ? '更新了 ' + count + ' 个文件' : '无更新');
+        var rect = cell.getBoundingClientRect();
+        var tip = document.createElement('div');
+        tip.className = 'hm-tip';
+        tip.textContent = text;
+        document.body.appendChild(tip);
+        tip.style.left = (rect.left + rect.width / 2) + 'px';
+        tip.style.top = (rect.top - 8) + 'px';
+        hmTip = tip;
+        cell.classList.add('active');
+    };
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.hm-cell') && hmTip) hmDismiss();
+    });
 })();
 </script>
 

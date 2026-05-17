@@ -38,13 +38,22 @@ function collectLatestByLabel(parentNote, labelName, arr) {
     if (!children || !children.length) return;
     for (var i = 0; i < children.length; i++) {
         var child = children[i];
-        if (child.type === 'text' && child.hasLabel && child.hasLabel(labelName)) {
-            var lv = child.getLabelValue(labelName);
-            if (lv !== 'false') { arr.push(child); }
-        }
-        if (child.hasVisibleChildren && child.hasVisibleChildren()) {
-            collectLatestByLabel(child, labelName, arr);
-        }
+        try {
+            var hasIt = false;
+            if (child.hasLabel && child.hasLabel(labelName)) { hasIt = true; }
+            else if (child.getLabelValue) {
+                try { var _v = child.getLabelValue(labelName); hasIt = (_v !== null && _v !== undefined); } catch(_){}
+            }
+            if (hasIt) {
+                var lv = child.getLabelValue ? child.getLabelValue(labelName) : '';
+                if (lv !== 'false') { arr.push(child); }
+            }
+        } catch(e) {}
+        try {
+            if (child.hasVisibleChildren && child.hasVisibleChildren()) {
+                collectLatestByLabel(child, labelName, arr);
+            }
+        } catch(e) {}
     }
 }
 
@@ -113,7 +122,7 @@ try {
 var updates = [];
 try {
     var updNotes = [];
-    if (isHome) { collectLatestByLabel(note, 'recentUpdate', updNotes); }
+    try { collectLatestByLabel(note, 'recentUpdate', updNotes); } catch(e) {}
     if (updNotes.length > 0) {
         updNotes.sort(function (a, b) {
             var da = '', db = '';

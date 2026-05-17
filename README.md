@@ -1,4 +1,4 @@
-# Bento Blog — TriliumNext 博客主题
+# zfy — TriliumNext 博客主题
 
 基于 TriliumNext 的博客系统，使用 `home.ejs` 模板渲染，风格参考 bento 布局。
 
@@ -158,5 +158,3 @@ share/
 ```
 
 > 所有 CSS/JS 资源文件导入 Trilium 后需要用 `#shareAlias` + `#shareRaw` + 开启分享来提供访问。nginx 隐藏 `/share/` 后路径为 `/blog.css`、`/blog.js` 等根路径，无需前缀。
-
-

@@ -50,9 +50,8 @@ function collectLatestByLabel(parentNote, labelName, arr) {
             }
         } catch(e) {}
         try {
-            if (child.hasVisibleChildren && child.hasVisibleChildren()) {
-                collectLatestByLabel(child, labelName, arr);
-            }
+            var gc = child.getChildNotes ? child.getChildNotes() : null;
+            if (gc && gc.length) { collectLatestByLabel(child, labelName, arr); }
         } catch(e) {}
     }
 }

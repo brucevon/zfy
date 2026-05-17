@@ -1518,92 +1518,63 @@ html.mobile-view .hm-grid {
 
 /* ================================ */
 /* Trilium Admonition (提示块)        */
-/* 匹配多种可能的 HTML 结构：
-   - &lt;div class="admonition admonition-xxx"&gt;
-   - &lt;blockquote class="admonition info"&gt;
-   - &lt;div class="admonition"&gt; (直接)
-   图标来自 .admonition-title 内的 &lt;i class="bx"&gt;
+/* 匹配 Trilium 分享页实际 HTML 结构：
+   <aside class="admonition TYPE"><p>...</p></aside>
+   TYPE: note / tip / important / caution / warning
    ================================ */
 .admonition {
-    margin: 1.5em 0;
-    padding: 16px 20px;
-    border-radius: 8px;
-    border-left: 4px solid #6b7280;
-    background: rgba(107, 114, 128, 0.08);
+    --accent-color: #6b7280;
+    border: 1px solid var(--accent-color);
+    border-radius: 0.5em;
+    padding: 1em;
+    padding-inline-start: 2.5em;
+    margin: 1.25em 0;
+    position: relative;
     overflow: hidden;
 }
-.admonition-title {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-family: var(--sans);
-    font-weight: 700;
-    font-size: 0.92rem;
-    margin-bottom: 10px;
-    color: #6b7280;
+.admonition p {
+    margin-top: 0;
 }
-.admonition-title .bx {
-    font-size: 1.15em;
-}
-.admonition-content {
-    font-size: 0.92rem;
-    line-height: 1.7;
-    color: var(--text);
-}
-.admonition-content p:last-child {
+.admonition p:last-child {
     margin-bottom: 0;
 }
 
+/* Boxicons 图标 (和 Trilium 原生一致的字符编码) */
+.admonition::before {
+    color: var(--accent-color);
+    font-family: boxicons !important;
+    position: absolute;
+    top: 1em;
+    inset-inline-start: 1em;
+}
+
 /* 各类型颜色 */
-.admonition.admonition-info,
-.admonition.info {
-    border-color: #3b82f6;
-    background: rgba(59, 130, 246, 0.08);
-}
-.admonition.admonition-info .admonition-title,
-.admonition.info .admonition-title { color: #3b82f6; }
+.admonition.note { --accent-color: #69c7ff; }
+.admonition.note::before { content: "\eb21"; }
 
-.admonition.admonition-success,
-.admonition.success {
-    border-color: #22c55e;
-    background: rgba(34, 197, 94, 0.08);
-}
-.admonition.admonition-success .admonition-title,
-.admonition.success .admonition-title { color: #22c55e; }
+.admonition.tip { --accent-color: #40c025; }
+.admonition.tip::before { content: "\ea0d"; }
 
-.admonition.admonition-tip,
-.admonition.tip {
-    border-color: #06b6d4;
-    background: rgba(6, 182, 212, 0.08);
-}
-.admonition.admonition-tip .admonition-title,
-.admonition.tip .admonition-title { color: #06b6d4; }
+.admonition.important { --accent-color: #9839f7; }
+.admonition.important::before { content: "\ea7c"; }
 
-.admonition.admonition-warning,
-.admonition.warning {
-    border-color: #f59e0b;
-    background: rgba(245, 158, 11, 0.08);
-}
-.admonition.admonition-warning .admonition-title,
-.admonition.warning .admonition-title { color: #f59e0b; }
+.admonition.caution { --accent-color: #ff2e2e; }
+.admonition.caution::before { content: "\eac7"; }
 
-.admonition.admonition-danger,
-.admonition.danger {
-    border-color: #ef4444;
-    background: rgba(239, 68, 68, 0.08);
-}
-.admonition.admonition-danger .admonition-title,
-.admonition.danger .admonition-title { color: #ef4444; }
+.admonition.warning { --accent-color: #e2aa03; }
+.admonition.warning::before { content: "\eac5"; }
 
 /* 移动端 */
 @media (max-width: 48em) {
     .admonition {
-        padding: 14px 16px;
+        padding: 0.8em;
+        padding-inline-start: 2.2em;
         margin: 1em 0;
     }
 }
 html.mobile-view .admonition {
-    padding: 14px 16px;
+    padding: 0.8em;
+    padding-inline-start: 2.2em;
     margin: 1em 0;
 }
 
@@ -1621,15 +1592,12 @@ html.mobile-view .admonition {
     text-decoration: none;
     font-family: inherit;
     font-size: inherit;
-    color: inherit;
+    color: var(--md-link, #3b82f6);
     cursor: pointer;
-    white-space: nowrap;
 }
 .note-body a.trilium-ref-link:hover,
 .note-body a.reference-link:hover {
-    background: none;
-    border-color: transparent;
-    text-decoration: none;
+    text-decoration: underline;
 }
 
 /* ================================ */

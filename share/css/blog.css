@@ -238,6 +238,96 @@ body {
     color: var(--text);
 }
 
+/* 关于下拉菜单 */
+.nav-item-wrap {
+    position: relative;
+}
+.about-dropdown {
+    display: none;
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 210;
+    min-width: 200px;
+    max-width: 320px;
+    max-height: 60vh;
+    overflow-y: auto;
+    background: var(--glass-bg, rgba(255,255,255,0.85));
+    backdrop-filter: blur(50px);
+    -webkit-backdrop-filter: blur(50px);
+    border: 1px solid var(--glass-border, rgba(0,0,0,0.08));
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+    padding: 8px;
+}
+[data-theme="dark"] .about-dropdown {
+    background: rgba(20, 22, 28, 0.9);
+    border-color: rgba(255,255,255,0.1);
+}
+.about-dropdown.open {
+    display: block;
+}
+.about-menu {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.about-menu .tree-item {
+    margin: 0;
+}
+.about-menu .tree-node {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 0;
+}
+.about-menu .tree-toggle {
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.65rem;
+    color: var(--muted);
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background 0.15s;
+    user-select: none;
+}
+.about-menu .tree-toggle:hover {
+    background: rgba(128,128,128,0.12);
+}
+.about-menu .tree-toggle--empty {
+    visibility: hidden;
+    pointer-events: none;
+}
+.about-menu .tag-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.82rem;
+    font-family: var(--sans);
+    color: var(--text);
+    text-decoration: none;
+    cursor: pointer;
+    transition: background 0.15s;
+    white-space: nowrap;
+    line-height: 1.4;
+}
+.about-menu .tag-chip:hover {
+    background: rgba(128,128,128,0.1);
+}
+.about-menu .tag-chip--category {
+    cursor: pointer;
+}
+.about-menu .tree-children {
+    padding-left: 16px;
+}
+
 .icon-btn {
     background: transparent;
     border: none;
@@ -376,15 +466,8 @@ body {
 .category-panel-header {
     display: flex;
     align-items: center;
+    justify-content: flex-end;
     padding: 20px 24px 8px;
-    gap: 8px;
-}
-.category-panel-title {
-    font-family: var(--sans);
-    font-size: 1rem;
-    font-weight: 600;
-    color: var(--text);
-    flex: 1;
 }
 .category-panel-close {
     background: transparent;

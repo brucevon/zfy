@@ -170,30 +170,30 @@ var hmMonths = [];
 var hmMax = 1;
 try {
     (function collectDates(n) {
+        // 统计当前笔记自身（对应 SQL 的 notes/Revisions 表）
+        var dsMod = n.utcDateModified || n.dateModified || '';
+        if (dsMod) {
+            var d = new Date(dsMod);
+            if (!isNaN(d.getTime())) {
+                var key = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+                dateFreq[key] = (dateFreq[key] || 0) + 1;
+            }
+        }
+        var dsCre = n.utcDateCreated || n.dateCreated || '';
+        // SQL 中对应 revisions 的 DISTINCT noteId + dateCreated，无 revisions 表时全部统计
+        if (dsCre) {
+            var dc = new Date(dsCre);
+            if (!isNaN(dc.getTime())) {
+                var key = dc.getFullYear() + '-' + String(dc.getMonth()+1).padStart(2,'0') + '-' + String(dc.getDate()).padStart(2,'0');
+                dateFreq[key] = (dateFreq[key] || 0) + 1;
+            }
+        }
+        // 递归遍历所有子笔记（不使用 hasVisibleChildren 避免遗漏隐藏子树）
         var kids;
         try { kids = n.getChildNotes(); } catch(e) { return; }
         if (!kids || !kids.length) return;
         for (var i = 0; i < kids.length; i++) {
-            var c = kids[i];
-            // dateModified (对应 SQL 的 notes.dateModified)
-            var dsMod = c.utcDateModified || c.dateModified || '';
-            if (dsMod) {
-                var d = new Date(dsMod);
-                if (!isNaN(d.getTime())) {
-                    var key = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
-                    dateFreq[key] = (dateFreq[key] || 0) + 1;
-                }
-            }
-            // dateCreated (对应 SQL 的 revisions.dateCreated)
-            var dsCre = c.utcDateCreated || c.dateCreated || '';
-            if (dsCre && dsCre !== dsMod) {
-                var dc = new Date(dsCre);
-                if (!isNaN(dc.getTime())) {
-                    var key = dc.getFullYear() + '-' + String(dc.getMonth()+1).padStart(2,'0') + '-' + String(dc.getDate()).padStart(2,'0');
-                    dateFreq[key] = (dateFreq[key] || 0) + 1;
-                }
-            }
-            if (c.hasVisibleChildren && c.hasVisibleChildren()) collectDates(c);
+            collectDates(kids[i]);
         }
     })(note);
 
@@ -245,7 +245,12 @@ try {
         <nav class="top-nav">
             <a class="nav-item active" href="./">首页</a>
             <a class="nav-item category-btn" id="category-btn" href="#">分类</a>
-            <a class="nav-item" href="#">关于</a>
+            <div class="nav-item-wrap" id="about-wrap">
+                <a class="nav-item" href="#" id="about-btn">关于</a>
+                <div class="about-dropdown" id="about-dropdown">
+                    <ul class="about-menu" id="about-menu"></ul>
+                </div>
+            </div>
         </nav>
         <button class="icon-btn" id="theme-toggle" aria-label="切换主题">☀</button>
         <button class="icon-btn menu-btn" id="menu-toggle" aria-label="菜单">☰</button>
@@ -263,7 +268,6 @@ try {
 <div class="category-panel" id="category-panel">
     <div class="category-tags" id="category-tags">
         <div class="category-panel-header">
-            <span class="category-panel-title">分类目录</span>
             <button class="category-panel-close" id="category-panel-close" aria-label="关闭">✕</button>
         </div>
         <ul class="tree-list" id="tree-list"></ul>
@@ -281,7 +285,7 @@ function buildCategoryTree(parentNote) {
         // 跳过 shareHiddenFromTree 标签的笔记
         try { if (kid.hasLabel && kid.hasLabel('shareHiddenFromTree')) continue; } catch(e) {}
         var isCat = false;
-        try { isCat = !!(kid.hasLabel && kid.hasLabel('category')); } catch(e) {}
+        try { isCat = !!(kid.getLabelValue && kid.getLabelValue('category') === 'true'); } catch(e) {}
         var icon = '';
         try {
             icon = kid.getLabelValue ? kid.getLabelValue('iconClass') || '' : '';
@@ -316,6 +320,26 @@ try {
 } catch(e) { _catTree = []; }
 %>
 <script>window.__CATEGORY_TREE__ = <%- JSON.stringify(_catTree) %>;</script>
+
+<%
+// 服务端查找"关于"笔记，构建下拉菜单树
+var _aboutTree = [];
+try {
+    (function findAbout(n) {
+        if (n.title === '关于') {
+            _aboutTree = buildCategoryTree(n);
+        } else {
+            var ks;
+            try { ks = n.getChildNotes(); } catch(e) { ks = []; }
+            for (var fi = 0; fi < ks.length; fi++) {
+                if (_aboutTree.length) break;
+                findAbout(ks[fi]);
+            }
+        }
+    })(rootNote || note);
+} catch(e) {}
+%>
+<script>window.__ABOUT_MENU__ = <%- JSON.stringify(_aboutTree) %>;</script>
 
 <div class="page">
     <% if (isHome) { %>
@@ -490,7 +514,7 @@ try {
         if (hmTip) hmDismiss();
         var date = cell.getAttribute('data-date');
         var count = parseInt(cell.getAttribute('data-count')) || 0;
-        var text = date + (count > 0 ? '：更新了 ' + count + ' 个笔记' : '：无更新');
+        var text = date + (count > 0 ? '：更新了 ' + count + ' 个文件' : '：无更新');
         var tip = document.createElement('div');
         tip.className = 'hm-tip';
         tip.textContent = text;

@@ -377,6 +377,127 @@
         toggle.classList.toggle("expanded", !open);
     }
 
+    /* ── "关于"下拉菜单 ── */
+    var aboutBtn = document.getElementById("about-btn");
+    var aboutDropdown = document.getElementById("about-dropdown");
+    var aboutMenu = document.getElementById("about-menu");
+    var aboutData = window.__ABOUT_MENU__;
+
+    function renderAboutMenu(items, container) {
+        if (!items || !items.length) {
+            container.innerHTML =
+                '<li class="tree-item"><span class="tag-chip">暂无内容</span></li>';
+            return;
+        }
+        items.forEach(function (item) {
+            var li = document.createElement("li");
+            li.className = "tree-item";
+            var node = document.createElement("div");
+            node.className = "tree-node";
+            var hasKids = item.children && item.children.length > 0;
+
+            var toggle = document.createElement("span");
+            toggle.className =
+                "tree-toggle" + (hasKids ? "" : " tree-toggle--empty");
+            toggle.textContent = "▶";
+            if (hasKids)
+                toggle.addEventListener("click", toggleAboutSub);
+
+            var titleEl;
+            var iconCls = item.icon || "";
+            if (item.category === true) {
+                titleEl = document.createElement("span");
+                titleEl.className = "tag-chip tag-chip--category";
+                titleEl.style.cursor = "pointer";
+                titleEl.addEventListener("click", function (e) {
+                    e.stopPropagation();
+                    toggleAboutSub({
+                        currentTarget: toggle,
+                        preventDefault: function () {},
+                        stopPropagation: function () {},
+                    });
+                });
+            } else {
+                titleEl = document.createElement("a");
+                titleEl.href = "/" + item.noteId;
+                titleEl.className = "tag-chip";
+            }
+            if (iconCls) {
+                var iconEl = document.createElement("i");
+                iconEl.className = iconCls;
+                titleEl.appendChild(iconEl);
+                titleEl.appendChild(
+                    document.createTextNode(" " + item.title)
+                );
+            } else {
+                titleEl.textContent = item.title;
+            }
+
+            node.appendChild(toggle);
+            node.appendChild(titleEl);
+            li.appendChild(node);
+
+            if (hasKids) {
+                var ul = document.createElement("ul");
+                ul.className = "tree-children";
+                ul.style.display = "none";
+                renderAboutMenu(item.children, ul);
+                li.appendChild(ul);
+            }
+            container.appendChild(li);
+        });
+    }
+
+    function toggleAboutSub(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var toggle = e.currentTarget;
+        var item = toggle.closest(".tree-item");
+        var kids = item.querySelector(":scope > .tree-children");
+        if (!kids) return;
+        var open =
+            kids.style.display !== "none" && kids.style.display !== "";
+        kids.style.display = open ? "none" : "block";
+        toggle.textContent = open ? "▶" : "▼";
+        toggle.classList.toggle("expanded", !open);
+    }
+
+    function closeAboutDropdown() {
+        if (aboutDropdown) aboutDropdown.classList.remove("open");
+    }
+
+    function toggleAboutDropdown(e) {
+        if (e) e.preventDefault();
+        if (!aboutDropdown) return;
+        var open = aboutDropdown.classList.contains("open");
+        if (open) {
+            closeAboutDropdown();
+        } else {
+            if (aboutMenu) {
+                aboutMenu.innerHTML = "";
+                renderAboutMenu(aboutData, aboutMenu);
+            }
+            aboutDropdown.classList.add("open");
+        }
+    }
+
+    if (aboutBtn) aboutBtn.addEventListener("click", toggleAboutDropdown);
+    document.addEventListener(
+        "click",
+        function (e) {
+            var wrap = document.getElementById("about-wrap");
+            if (
+                aboutDropdown &&
+                aboutDropdown.classList.contains("open") &&
+                wrap &&
+                !wrap.contains(e.target)
+            ) {
+                closeAboutDropdown();
+            }
+        },
+        true,
+    );
+
     /* ── 内容大纲 TOC ── */
     function initToc() {
         if (isHome) return;

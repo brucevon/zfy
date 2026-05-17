@@ -156,46 +156,55 @@ try {
     }
 } catch(e) { annNote = null; }
 
-// ── 热力图数据：模拟 SQL 逻辑 ──
-// 对应 SQL：
-//   SELECT date, COUNT(*) AS total FROM (
-//     SELECT noteId, SUBSTR(dateModified,0,11) AS date FROM notes
-//     UNION
-//     SELECT DISTINCT noteId, SUBSTR(dateCreated,0,11) AS date FROM revisions
-//   ) GROUP BY date
-// EJS 中无 revisions 表，用 dateCreated 近似
+// ── 热力图数据 ──
+// SQL: SELECT date, COUNT(*) AS total FROM (
+//   SELECT noteId, SUBSTR(dateModified,0,11) AS date FROM notes
+//   UNION
+//   SELECT DISTINCT noteId, SUBSTR(dateCreated,0,11) AS date FROM revisions
+// ) GROUP BY date
+// 优先使用 api.sql 查询整个服务端，回退到子树遍历
 var dateFreq = {};
 var hmWeeks = [];
 var hmMonths = [];
 var hmMax = 1;
 try {
-    (function collectDates(n) {
-        // 统计当前笔记自身（对应 SQL 的 notes/Revisions 表）
-        var dsMod = n.utcDateModified || n.dateModified || '';
-        if (dsMod) {
-            var d = new Date(dsMod);
-            if (!isNaN(d.getTime())) {
-                var key = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
-                dateFreq[key] = (dateFreq[key] || 0) + 1;
+    if (typeof api !== 'undefined' && api.sql) {
+        var sqlRows = api.sql.execute("SELECT date, COUNT(*) AS total FROM (SELECT noteId, SUBSTR(dateModified,0,11) AS date FROM notes UNION SELECT DISTINCT noteId, SUBSTR(dateCreated,0,11) AS date FROM revisions) GROUP BY date");
+        if (sqlRows && sqlRows.length) {
+            for (var ri = 0; ri < sqlRows.length; ri++) {
+                dateFreq[sqlRows[ri].date] = parseInt(sqlRows[ri].total, 10);
             }
         }
-        var dsCre = n.utcDateCreated || n.dateCreated || '';
-        // SQL 中对应 revisions 的 DISTINCT noteId + dateCreated，无 revisions 表时全部统计
-        if (dsCre) {
-            var dc = new Date(dsCre);
-            if (!isNaN(dc.getTime())) {
-                var key = dc.getFullYear() + '-' + String(dc.getMonth()+1).padStart(2,'0') + '-' + String(dc.getDate()).padStart(2,'0');
-                dateFreq[key] = (dateFreq[key] || 0) + 1;
+    } else {
+        (function collectDates(n) {
+            var dsMod = n.utcDateModified || n.dateModified || '';
+            if (dsMod) {
+                var d = new Date(dsMod);
+                if (!isNaN(d.getTime())) {
+                    var key = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+                    dateFreq[key] = (dateFreq[key] || 0) + 1;
+                }
             }
-        }
-        // 递归遍历所有子笔记（不使用 hasVisibleChildren 避免遗漏隐藏子树）
-        var kids;
-        try { kids = n.getChildNotes(); } catch(e) { return; }
-        if (!kids || !kids.length) return;
-        for (var i = 0; i < kids.length; i++) {
-            collectDates(kids[i]);
-        }
-    })(note);
+            var dsCre = n.utcDateCreated || n.dateCreated || '';
+            if (dsCre) {
+                var dc = new Date(dsCre);
+                if (!isNaN(dc.getTime())) {
+                    var key = dc.getFullYear() + '-' + String(dc.getMonth()+1).padStart(2,'0') + '-' + String(dc.getDate()).padStart(2,'0');
+                    dateFreq[key] = (dateFreq[key] || 0) + 1;
+                }
+            }
+            var kids;
+            try { kids = n.getChildNotes(); } catch(e) { return; }
+            if (!kids || !kids.length) return;
+            for (var i = 0; i < kids.length; i++) {
+                collectDates(kids[i]);
+            }
+        })(note);
+    }
+    // 计算 hmMax
+    for (var dk in dateFreq) {
+        if (dateFreq[dk] > hmMax) hmMax = dateFreq[dk];
+    }
 
     var now = new Date();
     now.setHours(0, 0, 0, 0);

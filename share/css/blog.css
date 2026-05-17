@@ -44,6 +44,29 @@ html {
     background: var(--bg);
 }
 
+/* ── Custom scrollbar (PC) ── */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    background: var(--accent2);
+    border-radius: 3px;
+    opacity: 0.6;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: var(--accent);
+}
+@supports (scrollbar-width: thin) {
+    * {
+        scrollbar-width: thin;
+        scrollbar-color: var(--accent2) transparent;
+    }
+}
+
 body {
     font-family: var(--sans);
     background:

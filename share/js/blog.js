@@ -32,6 +32,128 @@
     var bar = document.querySelector(".top-bar");
     var pageEl = document.querySelector(".page");
 
+    /* ── 搜索 ── */
+    var searchToggle = document.getElementById("search-toggle");
+    var searchDropdown = document.getElementById("search-dropdown");
+    var searchInput = document.getElementById("search-input");
+    var searchResults = document.getElementById("search-results");
+    var searchData = window.__SEARCH_DATA__ || [];
+    var searchOpen = false;
+
+    function openSearch() {
+        if (!searchDropdown || !searchInput) return;
+        searchDropdown.classList.add("open");
+        searchOpen = true;
+        setTimeout(function () { searchInput.focus(); }, 100);
+        renderResults("");
+    }
+
+    function closeSearch() {
+        if (!searchDropdown || !searchInput) return;
+        searchDropdown.classList.remove("open");
+        searchOpen = false;
+        searchInput.value = "";
+        renderResults("");
+    }
+
+    function filterSearchData(q) {
+        if (!q) return [];
+        q = q.toLowerCase();
+        var out = [];
+        for (var i = 0; i < searchData.length; i++) {
+            var item = searchData[i];
+            if (
+                item.title.toLowerCase().indexOf(q) !== -1 ||
+                item.content.toLowerCase().indexOf(q) !== -1
+            ) {
+                out.push(item);
+                if (out.length >= 30) break;
+            }
+        }
+        return out;
+    }
+
+    function renderResults(q) {
+        if (!searchResults) return;
+        var items = q ? filterSearchData(q) : [];
+        if (!q || items.length === 0) {
+            searchResults.innerHTML =
+                q
+                    ? '<div class="search-no-results">未找到匹配的笔记</div>'
+                    : '<div class="search-no-results">输入关键词搜索笔记</div>';
+            return;
+        }
+        var html = "";
+        for (var i = 0; i < items.length; i++) {
+            var item = items[i];
+            var snippet = item.content
+                ? item.content.substring(0, 120).replace(/</g, "&lt;").replace(/>/g, "&gt;")
+                : "";
+            html +=
+                '<a class="search-result-item" href="/' +
+                item.id +
+                '">' +
+                '<span class="search-result-title">' +
+                item.title.replace(/</g, "&lt;").replace(/>/g, "&gt;") +
+                "</span>" +
+                (snippet
+                    ? '<span class="search-result-content">' + snippet + "</span>"
+                    : "") +
+                "</a>";
+        }
+        searchResults.innerHTML = html;
+    }
+
+    if (searchToggle) {
+        searchToggle.addEventListener("click", function (e) {
+            e.stopPropagation();
+            if (searchOpen) {
+                closeSearch();
+            } else {
+                closeCategoryPanel();
+                closeMobileMenu();
+                openSearch();
+            }
+        });
+    }
+
+    if (searchInput) {
+        var searchTimer = null;
+        searchInput.addEventListener("input", function () {
+            if (searchTimer) clearTimeout(searchTimer);
+            searchTimer = setTimeout(function () {
+                renderResults(searchInput.value.trim());
+            }, 150);
+        });
+        searchInput.addEventListener("keydown", function (e) {
+            if (e.key === "Escape") closeSearch();
+            if (e.key === "Enter") {
+                var first = searchResults && searchResults.querySelector(".search-result-item");
+                if (first) {
+                    window.location.href = first.getAttribute("href");
+                    closeSearch();
+                }
+            }
+        });
+    }
+
+    document.addEventListener("click", function (e) {
+        if (
+            searchOpen &&
+            searchDropdown &&
+            !searchDropdown.contains(e.target) &&
+            searchToggle &&
+            !searchToggle.contains(e.target)
+        ) {
+            closeSearch();
+        }
+    });
+
+    /* 页面滚动自动关闭搜索 */
+    document.addEventListener("scroll", function () {
+        if (searchOpen) closeSearch();
+    }, { passive: true, capture: true });
+
     /* ── 当前笔记 ID ── */
     function getCurrentNoteId() {
         var parts = window.location.pathname.split("/").filter(Boolean);

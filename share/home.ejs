@@ -318,10 +318,18 @@ try {
                 </div>
             </div>
         </nav>
+        <button class="icon-btn" id="search-toggle" aria-label="搜索"><i class="bx bx-search"></i></button>
         <button class="icon-btn" id="theme-toggle" aria-label="切换主题">☀</button>
         <button class="icon-btn menu-btn" id="menu-toggle" aria-label="菜单">☰</button>
     </div>
 </header>
+
+<div class="search-dropdown" id="search-dropdown">
+    <div class="search-inner">
+        <input class="search-input" id="search-input" type="text" placeholder="搜索笔记标题或内容…" autocomplete="off" spellcheck="false" />
+        <div class="search-results" id="search-results"></div>
+    </div>
+</div>
 
 <div class="mobile-menu" id="mobile-menu">
     <nav class="mobile-nav">
@@ -651,4 +659,40 @@ try {
 </script>
 
 
+<script>
+<%
+var __searchData = '[]';
+if (homeNote) {
+    function __sc(n, d) {
+        if (d > 15 || !n) return [];
+        var r = [];
+        var kids;
+        try { kids = n.getChildNotes(); } catch(e) { return r; }
+        if (!kids || !kids.length) return r;
+        for (var i = 0; i < kids.length; i++) {
+            var k = kids[i];
+            var hidden = false;
+            try { hidden = k.hasLabel('shareHiddenFromTree') && k.getLabelValue('shareHiddenFromTree') === 'true'; } catch(e) {}
+            if (!hidden) {
+                var txt = '';
+                try {
+                    var raw;
+                    if (typeof k.getContent === 'function') raw = k.getContent();
+                    else if (k.content) raw = k.content;
+                    if (raw) txt = raw.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').substring(0, 500).trim();
+                } catch(e) {}
+                r.push({ id: k.noteId, title: k.title || '', content: txt });
+                if (r.length < 300) {
+                    var sub = __sc(k, d + 1);
+                    for (var j = 0; j < sub.length && r.length < 300; j++) r.push(sub[j]);
+                }
+            }
+        }
+        return r;
+    }
+    __searchData = JSON.stringify(__sc(homeNote, 0));
+}
+%>
+window.__SEARCH_DATA__ = <%- __searchData %>;
+</script>
 <script src="/blog.js" defer></script>

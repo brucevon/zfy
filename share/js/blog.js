@@ -138,8 +138,6 @@
     /* ── 分类面板 ── */
     var TREE_JSON_URL = "/blog-tree";
     var treeData = null;
-    var categoryClose = document.getElementById("category-panel-close");
-
     function openCategoryPanel(e) {
         if (e) { e.preventDefault(); }
         if (!categoryPanel) categoryPanel = document.getElementById("category-panel");
@@ -152,11 +150,6 @@
 
     if (categoryBtn) categoryBtn.addEventListener("click", openCategoryPanel);
     if (categoryBtnM) categoryBtnM.addEventListener("click", openCategoryPanel);
-    if (categoryClose) categoryClose.addEventListener("click", function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-        closeCategoryPanel();
-    });
     document.addEventListener("keydown", function (e) {
         if (e.key === "Escape") {
             closeMobileMenu();

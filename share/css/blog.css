@@ -505,26 +505,6 @@ body {
     justify-content: flex-end;
     padding: 20px 24px 8px;
 }
-.category-panel-close {
-    background: transparent;
-    border: none;
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.1rem;
-    color: var(--muted);
-    cursor: pointer;
-    transition: background 0.2s, color 0.2s;
-    flex-shrink: 0;
-}
-.category-panel-close:hover {
-    background: rgba(128, 128, 128, 0.15);
-    color: var(--text);
-}
-
 /* ================================ */
 /* 树形菜单                          */
 /* ================================ */
@@ -548,6 +528,25 @@ body {
 }
 .tree-node:hover {
     background: rgba(255, 255, 255, 0.05);
+}
+.tree-node:hover .tag-chip,
+.tree-node:hover .tree-label {
+    color: var(--accent);
+}
+.tree-node::before {
+    content: "";
+    display: block;
+    width: 3px;
+    height: 0;
+    background: var(--accent);
+    border-radius: 0 3px 3px 0;
+    flex-shrink: 0;
+    transition: height 0.2s;
+    margin-right: 2px;
+}
+.tree-node:hover::before,
+.tree-node.active::before {
+    height: 18px;
 }
 
 .tree-toggle {
@@ -763,14 +762,30 @@ body {
     font-weight: 600;
     margin-bottom: 8px;
     line-height: 1.5;
+    position: relative;
+    padding-left: 10px;
+}
+.rec-title::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.15em;
+    width: 3px;
+    height: 1.2em;
+    background: var(--accent);
+    border-radius: 0 3px 3px 0;
+    opacity: 0;
+}
+.rec-title:hover::before {
+    opacity: 1;
 }
 .rec-title a {
     color: inherit;
     text-decoration: none;
-    transition: color 0.2s;
 }
 .rec-title a:hover {
     color: var(--accent);
+    text-decoration: underline;
 }
 .rec-summary {
     font-size: 0.82rem;

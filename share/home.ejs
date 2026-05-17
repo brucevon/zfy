@@ -658,7 +658,6 @@ try {
 })();
 </script>
 
-
 <script>
 <%
 var __searchData = '[]';
@@ -671,9 +670,17 @@ if (homeNote) {
         if (!kids || !kids.length) return r;
         for (var i = 0; i < kids.length; i++) {
             var k = kids[i];
-            var hidden = false;
-            try { hidden = k.hasLabel('shareHiddenFromTree') && k.getLabelValue('shareHiddenFromTree') === 'true'; } catch(e) {}
-            if (!hidden) {
+
+            // 1. 严格判断：只有标签存在，且值确实等于字符串 'true' 时，才判定为需要排除
+            var isHidden = false;
+            var isCategory = false;
+            try {
+                isHidden = k.hasLabel('shareHiddenFromTree') && k.getLabelValue('shareHiddenFromTree') === 'true';
+                isCategory = k.hasLabel('category') && k.getLabelValue('category') === 'true';
+            } catch(e) {}
+
+            // 2. 只有当它们都不为 true 的时候，才把当前笔记加入搜索结果
+            if (!isHidden && !isCategory) {
                 var txt = '';
                 try {
                     var raw;
@@ -682,10 +689,12 @@ if (homeNote) {
                     if (raw) txt = raw.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').substring(0, 500).trim();
                 } catch(e) {}
                 r.push({ id: k.noteId, title: k.title || '', content: txt });
-                if (r.length < 300) {
-                    var sub = __sc(k, d + 1);
-                    for (var j = 0; j < sub.length && r.length < 300; j++) r.push(sub[j]);
-                }
+            }
+
+            // 3. 递归保障：不管当前笔记是不是 true 被排除了，都要继续往下扫描它的子笔记
+            if (r.length < 300) {
+                var sub = __sc(k, d + 1);
+                for (var j = 0; j < sub.length && r.length < 300; j++) r.push(sub[j]);
             }
         }
         return r;

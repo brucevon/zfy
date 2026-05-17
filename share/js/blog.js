@@ -84,7 +84,9 @@
             if (opening) closeCategoryPanel();
         });
         mobileMenu.querySelectorAll(".nav-item").forEach(function (link) {
-            link.addEventListener("click", closeMobileMenu);
+            if (link.id !== "about-btn-mobile") {
+                link.addEventListener("click", closeMobileMenu);
+            }
         });
         document.addEventListener("keydown", function (e) {
             if (e.key === "Escape") closeMobileMenu();
@@ -497,6 +499,28 @@
         },
         true,
     );
+
+    /* ── 移动端"关于"下拉 ── */
+    var aboutBtnM = document.getElementById("about-btn-mobile");
+    var aboutDropdownM = document.getElementById("about-dropdown-mobile");
+    var aboutMenuM = document.getElementById("about-menu-mobile");
+
+    function toggleAboutMobile(e) {
+        if (e) e.preventDefault();
+        if (!aboutDropdownM) return;
+        var open = aboutDropdownM.classList.contains("open");
+        if (open) {
+            aboutDropdownM.classList.remove("open");
+        } else {
+            if (aboutMenuM) {
+                aboutMenuM.innerHTML = "";
+                renderAboutMenu(aboutData, aboutMenuM);
+            }
+            aboutDropdownM.classList.add("open");
+        }
+    }
+
+    if (aboutBtnM) aboutBtnM.addEventListener("click", toggleAboutMobile);
 
     /* ── 内容大纲 TOC ── */
     function initToc() {

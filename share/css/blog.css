@@ -402,6 +402,29 @@ body {
 .mobile-nav .nav-item.active {
     background: rgba(255, 255, 255, 0.06);
 }
+.about-dropdown--mobile {
+    position: static;
+    transform: none;
+    max-width: 100%;
+    max-height: none;
+    border: none;
+    border-radius: 8px;
+    margin: 2px 8px 6px;
+    background: rgba(128,128,128,0.06);
+    box-shadow: none;
+    overflow-y: visible;
+    padding: 4px;
+}
+.about-dropdown--mobile .about-menu {
+    padding: 0;
+}
+.about-dropdown--mobile .tree-toggle--empty {
+    visibility: hidden;
+}
+.about-dropdown--mobile .tag-chip {
+    font-size: 0.82rem;
+    padding: 3px 8px;
+}
 
 /* ================================ */
 /* 分类面板                          */

@@ -534,12 +534,20 @@ try {
 (function () {
     var opts = {
         el: '#tcomment',
-        path: window.location.pathname,
+        path: '<%= note.noteId %>',
         lang: 'zh-CN'
     };
     <% if (_cfg.twikooEnvId) { %>opts.envId = '<%= _cfg.twikooEnvId %>';<% } %>
 
     twikoo.init(opts);
+
+    /* 同步评论框主题 */
+    function syncTheme() {
+        var c = document.getElementById('twikoo-container');
+        if (!c) return;
+        c.setAttribute('data-theme', document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light');
+    }
+    new MutationObserver(syncTheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 })();
 </script>
     <% } %>
@@ -642,31 +650,5 @@ try {
 })();
 </script>
 
-<% if (_enableTwikoo) { %>
-<script src="/twikoo.min.js"></script>
-<script>
-(function () {
-    var noteId = '<%= note.noteId %>';
-    function initTwikoo() {
-        if (!window.twikoo) return;
-        twikoo.init({
-            envId: 'https://twikoo.brucevon.space/',
-            el: '#tcomment',
-            path: noteId,
-            lang: 'zh-CN'
-        });
-    }
-    function syncTheme() {
-        var c = document.getElementById('twikoo-container');
-        if (!c) return;
-        c.setAttribute('data-theme', document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light');
-    }
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', function () { initTwikoo(); syncTheme(); });
-    } else { initTwikoo(); syncTheme(); }
-    new MutationObserver(syncTheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
-})();
-</script>
-<% } %>
 
 <script src="/blog.js" defer></script>

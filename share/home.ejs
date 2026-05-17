@@ -60,6 +60,14 @@ if (homeNote) {
 <title><%= _cfg.blogTitle || 'Bento Blog' %></title>
 
 <%
+function _noteIcon(n) {
+    try {
+        var ic = typeof n.getIcon === 'function' ? n.getIcon() : '';
+        if (!ic && typeof n.getLabelValue === 'function') ic = n.getLabelValue('iconClass') || '';
+        return ic;
+    } catch(e) { return ''; }
+}
+
 function collectRecommendNotes(parentNote, arr, _depth) {
     if (_depth === undefined) _depth = 0;
     if (_depth > 20) return;
@@ -402,7 +410,7 @@ try {
             <div class="rec-card" id="rec-card">
                 <% if (articleNote) { %>
                     <% if (articleDate) { %><time class="rec-date"><%= articleDate %></time><% } %>
-                    <h4 class="rec-title"><a href="/<%= articleNote.noteId %>"><%= articleNote.title %></a></h4>
+                    <h4 class="rec-title"><i class="<%= _noteIcon(articleNote) || 'bx bx-star' %> rec-item-icon"></i> <a href="/<%= articleNote.noteId %>"><%= articleNote.title %></a></h4>
                     <% if (articleSummary) { %><p class="rec-summary"><%= articleSummary %></p><% } %>
                 <% } else { %>
                     <div class="rec-empty">暂无推荐</div>
@@ -418,7 +426,7 @@ try {
             <div class="rec-card">
                 <% if (latestNote) { %>
                     <% if (latestDate) { %><time class="rec-date"><%= latestDate %></time><% } %>
-                    <h4 class="rec-title"><a href="/<%= latestNote.noteId %>"><%= latestNote.title %></a></h4>
+                    <h4 class="rec-title"><i class="<%= _noteIcon(latestNote) || 'bx bx-notepad' %> rec-item-icon"></i> <a href="/<%= latestNote.noteId %>"><%= latestNote.title %></a></h4>
                     <% if (latestSummary) { %><p class="rec-summary"><%= latestSummary %></p><% } %>
                 <% } else { %>
                     <div class="rec-empty">暂无文章</div>
@@ -436,6 +444,7 @@ try {
                     for (var ui = 0; ui < updates.length; ui++) {
                         var u = updates[ui]; %>
                     <div class="rec-upd-item">
+                        <% var _updIcon = _noteIcon(u.note); if (_updIcon) { %><i class="<%= _updIcon %> upd-item-icon"></i><% } %>
                         <time class="rec-date"><%= u.date %></time>
                         <h4 class="rec-title"><a href="/<%= u.note.noteId %>"><%= u.note.title %></a></h4>
                     </div>
@@ -452,7 +461,7 @@ try {
             <div class="rec-card">
                 <% if (annNote) { %>
                     <time class="rec-date"><%= annDate %></time>
-                    <h4 class="rec-title"><a href="/<%= annNote.noteId %>"><%= annNote.title %></a></h4>
+                    <h4 class="rec-title"><i class="<%= _noteIcon(annNote) || 'bx bx-megaphone' %> rec-item-icon"></i> <a href="/<%= annNote.noteId %>"><%= annNote.title %></a></h4>
                     <% if (annSummary) { %><p class="rec-summary"><%= annSummary %></p><% } %>
                 <% } else { %>
                     <div class="rec-empty">暂无公告</div>

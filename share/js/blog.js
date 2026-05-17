@@ -19,7 +19,8 @@
         });
     })();
 
-    var HOME_ID = "s5augclsPgKT";
+    var _cfg = window.__BLOG_CONFIG__ || {};
+    var HOME_ID = _cfg.homeId || "";
     var KEY = "bento-theme";
     var doc = document.documentElement;
     var themeBtn = document.getElementById("theme-toggle");
@@ -55,6 +56,7 @@
     })();
     setTheme(
         saved ||
+            _cfg.defaultTheme ||
             (window.matchMedia &&
             window.matchMedia("(prefers-color-scheme:dark)").matches
                 ? "dark"
@@ -260,7 +262,7 @@
         runEl.textContent = Math.max(
             0,
             Math.floor(
-                (Date.now() - new Date("2026-04-10").getTime()) / 86400000,
+                (Date.now() - new Date(_cfg.siteStartDate || "2026-04-10").getTime()) / 86400000,
             ),
         );
     }

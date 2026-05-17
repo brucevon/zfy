@@ -15,9 +15,54 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/sql.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/dockerfile.min.js"></script>
 
-<% var HOME_ID = 'rNdtx5Rm6dHE'; var isHome = note.noteId === HOME_ID;
+<%
+// -- 标签化主页检测 --
+var HOME_ID = '';
+var homeNote = null;
+try {
+    var _cur = note;
+    for (var _d = 0; _d < 50; _d++) {
+        if (_cur.hasLabel && _cur.hasLabel('isHome') && _cur.getLabelValue('isHome') === 'true') {
+            homeNote = _cur;
+            HOME_ID = _cur.noteId;
+            break;
+        }
+        var _parents = _cur.getParentNotes();
+        if (!_parents || !_parents.length) break;
+        _cur = _parents[0];
+    }
+} catch(_e) {}
+var isHome = note.noteId === HOME_ID;
 
-function collectRecommendNotes(parentNote, arr) {
+// -- 从主页读取全局配置 --
+var _cfg = {};
+if (homeNote) {
+    function _cfgVal(name, def) {
+        try { var v = homeNote.getLabelValue(name); return v || def; } catch(_) { return def; }
+    }
+    _cfg.homeId = HOME_ID;
+    _cfg.defaultTheme = _cfgVal('appearanceDefaultTheme', 'dark');
+    _cfg.twikooEnabled = _cfgVal('twikooEnabled') === 'true';
+    _cfg.twikooEnvId = _cfgVal('twikooEnvId', '');
+    _cfg.defaultCover = _cfgVal('coverDefaultImage', '/bg-pc.png');
+    _cfg.coverMobileImage = _cfgVal('coverMobileImage', '/bg-mobile.png');
+    _cfg.blogTitle = _cfgVal('blogTitle', '');
+    _cfg.blogDescription = _cfgVal('blogDescription', '');
+    _cfg.footerCopyright = _cfgVal('footerCopyright', '');
+    _cfg.footerIcp = _cfgVal('footerIcp', '');
+    _cfg.footerPolice = _cfgVal('footerPolice', '');
+    _cfg.footerPoliceUrl = _cfgVal('footerPoliceUrl', '');
+    _cfg.footerBeianIcon = _cfgVal('footerBeianIcon', '/beian.png');
+    _cfg.siteStartDate = _cfgVal('siteStartDate', '');
+    _cfg.twikooVersion = _cfgVal('twikooVersion', '1.6.41');
+}
+%>
+<title><%= _cfg.blogTitle || 'Bento Blog' %></title>
+
+<%
+function collectRecommendNotes(parentNote, arr, _depth) {
+    if (_depth === undefined) _depth = 0;
+    if (_depth > 20) return;
     var children;
     try { children = parentNote.getChildNotes(); } catch(e) { return; }
     if (!children || !children.length) return;
@@ -27,12 +72,14 @@ function collectRecommendNotes(parentNote, arr) {
             arr.push(child);
         }
         if (child.hasVisibleChildren && child.hasVisibleChildren()) {
-            collectRecommendNotes(child, arr);
+            collectRecommendNotes(child, arr, _depth + 1);
         }
     }
 }
 
-function collectLatestByLabel(parentNote, labelName, arr) {
+function collectLatestByLabel(parentNote, labelName, arr, _depth) {
+    if (_depth === undefined) _depth = 0;
+    if (_depth > 20) return;
     var children;
     try { children = parentNote.getChildNotes(); } catch(e) { return; }
     if (!children || !children.length) return;
@@ -51,7 +98,7 @@ function collectLatestByLabel(parentNote, labelName, arr) {
         } catch(e) {}
         try {
             var gc = child.getChildNotes ? child.getChildNotes() : null;
-            if (gc && gc.length) { collectLatestByLabel(child, labelName, arr); }
+            if (gc && gc.length) { collectLatestByLabel(child, labelName, arr, _depth + 1); }
         } catch(e) {}
     }
 }
@@ -141,6 +188,7 @@ try {
 
 var annNote = null;
 var annDate = '';
+var annSummary = '';
 try {
     var annNotes = [];
     if (isHome) { collectLatestByLabel(note, 'announcement', annNotes); }
@@ -153,6 +201,7 @@ try {
         annNote = annNotes[0];
         var ad = extractNoteContent(annNote);
         annDate = ad.date;
+        annSummary = ad.summary;
     }
 } catch(e) { annNote = null; }
 
@@ -248,8 +297,8 @@ try {
     <div class="top-inner">
         <img class="top-avatar" src="/logo.icon" alt="" />
         <div class="top-info">
-            <span class="top-name">子非鱼</span>
-            <span class="top-subtitle">流水不腐，户枢不蠹。</span>
+            <span class="top-name"><%= _cfg.blogTitle || '子非鱼' %></span>
+            <span class="top-subtitle"><%= _cfg.blogDescription || '流水不腐，户枢不蠹。' %></span>
         </div>
         <nav class="top-nav">
             <a class="nav-item active" href="./">首页</a>
@@ -295,7 +344,7 @@ function buildCategoryTree(parentNote) {
     for (var ci = 0; ci < kids.length; ci++) {
         var kid = kids[ci];
         // 跳过 shareHiddenFromTree 标签的笔记
-        try { if (kid.hasLabel && kid.hasLabel('shareHiddenFromTree')) continue; } catch(e) {}
+        try { if (kid.hasLabel && kid.hasLabel('shareHiddenFromTree') && kid.getLabelValue('shareHiddenFromTree') === 'true') continue; } catch(e) {}
         var isCat = false;
         try { isCat = !!(kid.getLabelValue && kid.getLabelValue('category') === 'true'); } catch(e) {}
         var icon = '';
@@ -311,24 +360,8 @@ function buildCategoryTree(parentNote) {
 }
 var _catTree = [];
 try {
-    // 优先通过 noteId 获取根笔记（即分类树的根）
-    var rootNote = note.getNote ? note.getNote('rNdtx5Rm6dHE') : null;
-    // 如果在首页,当前笔记就是根
-    if (!rootNote && isHome) { rootNote = note; }
-    // 未找到根笔记且不在首页时，沿父链向上找直到 HOME_ID
-    if (!rootNote && note.getParentNotes) {
-        try {
-            var cur = note;
-            for (var _i = 0; _i < 50; _i++) {
-                if (cur.noteId === 'rNdtx5Rm6dHE') { rootNote = cur; break; }
-                var p = cur.getParentNotes();
-                if (!p || !p.length) break;
-                cur = p[0];
-            }
-        } catch(e) {}
-    }
-    // 从根构建树；根不可用时回退到当前笔记
-    _catTree = buildCategoryTree(rootNote || note);
+    var rootNote = homeNote || note;
+    _catTree = buildCategoryTree(rootNote);
 } catch(e) { _catTree = []; }
 %>
 <script>window.__CATEGORY_TREE__ = <%- JSON.stringify(_catTree) %>;</script>
@@ -352,6 +385,13 @@ try {
 } catch(e) {}
 %>
 <script>window.__ABOUT_MENU__ = <%- JSON.stringify(_aboutTree) %>;</script>
+<script>window.__BLOG_CONFIG__ = <%- JSON.stringify(_cfg) %>;</script>
+<style>
+  :root {
+    --cover-pc: url("<%= _cfg.defaultCover %>");
+    --cover-mobile: url("<%= _cfg.coverMobileImage %>");
+  }
+</style>
 
 <div class="page">
     <% if (isHome) { %>
@@ -415,6 +455,7 @@ try {
                 <% if (annNote) { %>
                     <time class="rec-date"><%= annDate %></time>
                     <h4 class="rec-title"><a href="/<%= annNote.noteId %>"><%= annNote.title %></a></h4>
+                    <% if (annSummary) { %><p class="rec-summary"><%= annSummary %></p><% } %>
                 <% } else { %>
                     <div class="rec-empty">暂无公告</div>
                 <% } %>
@@ -428,7 +469,7 @@ try {
             <div class="stats-row">
                 <span class="stats-item">推荐阅读 <em><%= (typeof recNotes !== 'undefined' ? recNotes : []).length %></em></span>
                 <span class="stats-item">文章 <em><%= (typeof artNotes !== 'undefined' ? artNotes : []).length %></em></span>
-                <span class="stats-item">最近动态 <em><%= (typeof updNotes !== 'undefined' ? updNotes.length : 0) %></em></span>
+                <span class="stats-item">动态 <em><%= (typeof updNotes !== 'undefined' ? updNotes.length : 0) %></em></span>
                 <span class="stats-item">公告 <em><%= (typeof annNotes !== 'undefined' ? annNotes : []).length %></em></span>
             </div>
             <div class="hm-wrap">
@@ -471,25 +512,43 @@ try {
     <% } %>
 
     <%
+    // Twikoo: 全局启用 + 每笔记单独开启
     var _enableTwikoo = false;
     try {
-        if (!isHome && note.hasLabel && note.hasLabel('enableTwikoo')) {
+        if (!isHome && _cfg.twikooEnabled && note.hasLabel && note.hasLabel('enableTwikoo')) {
             _enableTwikoo = (note.getLabelValue('enableTwikoo') === 'true');
         }
     } catch(_e) {}
     if (_enableTwikoo) { %>
     <div id="tcomment"></div>
+<script src="https://cdn.jsdelivr.net/npm/twikoo@<%= _cfg.twikooVersion %>/dist/twikoo.all.min.js"></script>
+<script>
+(function () {
+    var opts = {
+        el: '#tcomment',
+        path: window.location.pathname,
+        lang: 'zh-CN'
+    };
+    <% if (_cfg.twikooEnvId) { %>opts.envId = '<%= _cfg.twikooEnvId %>';<% } %>
+
+    twikoo.init(opts);
+})();
+</script>
     <% } %>
 
     <footer class="site-footer">
-        <span>© 2026 brucevon.space</span>
+        <% if (_cfg.footerCopyright) { %><span><%= _cfg.footerCopyright %></span><% } %>
         <span>已运行 <strong id="run-days">--</strong> 天</span>
+        <% if (_cfg.footerPolice) { %>
         <a class="beian-wrap"
-            href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=52230102000497"
+            href="<%= _cfg.footerPoliceUrl || '#' %>"
             target="_blank" rel="noopener">
-            <img class="beian-icon" src="/beian.png" alt="" aria-hidden="true" />
-            贵公网安备52230102000497号</a>
-        <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">黔ICP备2026006103号-1</a>
+            <img class="beian-icon" src="<%= _cfg.footerBeianIcon %>" alt="" aria-hidden="true" />
+            <%= _cfg.footerPolice %></a>
+        <% } %>
+        <% if (_cfg.footerIcp) { %>
+        <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener"><%= _cfg.footerIcp %></a>
+        <% } %>
         <a href="https://github.com/TriliumNext/Trilium" target="_blank" rel="noopener">Powered by TriliumNext</a>
     </footer>
 </div>

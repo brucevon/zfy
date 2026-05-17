@@ -48,7 +48,7 @@ body {
     font-family: var(--sans);
     background:
         linear-gradient(rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.35)),
-        url("/bg-pc.png") center / cover fixed;
+        var(--cover-pc, url("/bg-pc.png")) center / cover fixed;
     color: var(--text);
     line-height: 1.7;
     min-height: 100vh;
@@ -63,7 +63,20 @@ body {
 [data-theme="light"] body {
     background:
         linear-gradient(rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.1)),
-        url("/bg-pc.png") center / cover fixed;
+        var(--cover-pc, url("/bg-pc.png")) center / cover fixed;
+}
+
+@media (max-width: 768px) {
+    body {
+        background:
+            linear-gradient(rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.35)),
+            var(--cover-mobile, var(--cover-pc, url("/bg-mobile.png"))) center / cover fixed;
+    }
+    [data-theme="light"] body {
+        background:
+            linear-gradient(rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.1)),
+            var(--cover-mobile, var(--cover-pc, url("/bg-mobile.png"))) center / cover fixed;
+    }
 }
 
 /* hide trilium chrome */

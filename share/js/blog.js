@@ -134,10 +134,11 @@
     /* ── 分类面板 ── */
     var TREE_JSON_URL = "/blog-tree";
     var treeData = null;
+    var categoryClose = document.getElementById("category-panel-close");
 
     function openCategoryPanel(e) {
-        e.preventDefault();
-        e.stopPropagation();
+        if (e) { e.preventDefault(); }
+        if (!categoryPanel) categoryPanel = document.getElementById("category-panel");
         closeMobileMenu();
         if (categoryPanel) {
             categoryPanel.classList.add("open");
@@ -147,6 +148,11 @@
 
     if (categoryBtn) categoryBtn.addEventListener("click", openCategoryPanel);
     if (categoryBtnM) categoryBtnM.addEventListener("click", openCategoryPanel);
+    if (categoryClose) categoryClose.addEventListener("click", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        closeCategoryPanel();
+    });
     document.addEventListener("keydown", function (e) {
         if (e.key === "Escape") {
             closeMobileMenu();
@@ -271,27 +277,18 @@
         initHighlight();
     }
 
-    /* ── 加载分类树 ── */
+    /* ── 加载分类树（EJS 服务端内嵌，无需 fetch） ── */
     function loadCategoryTree() {
         var treeList = document.getElementById("tree-list");
         if (!treeList) return;
         var currentId = getCurrentNoteId();
-        if (treeData) {
-            renderTree(treeData, treeList, currentId);
-            return;
+        var data = window.__CATEGORY_TREE__;
+        if (data && data.length) {
+            renderTree(data, treeList, currentId);
+        } else {
+            treeList.innerHTML =
+                '<li class="tree-item"><span class="tag-chip">暂无分类</span></li>';
         }
-        fetch(TREE_JSON_URL)
-            .then(function (r) {
-                return r.json();
-            })
-            .then(function (d) {
-                treeData = d;
-                renderTree(d, treeList, currentId);
-            })
-            .catch(function () {
-                treeList.innerHTML =
-                    '<li class="tree-item"><span class="tag-chip">加载失败</span></li>';
-            });
     }
 
     function renderTree(items, container, currentId) {
@@ -311,27 +308,32 @@
             if (hasKids) toggle.addEventListener("click", toggleTree);
 
             var titleEl;
+            var iconCls = item.icon || "";
             if (item.category === true) {
                 titleEl = document.createElement("span");
-                titleEl.className = "tag-chip";
-                titleEl.textContent = item.title;
-                titleEl.style.cursor = hasKids ? "pointer" : "default";
-                if (hasKids) {
-                    titleEl.addEventListener("click", function (e) {
-                        e.stopPropagation();
-                        toggleTree({
-                            currentTarget: toggle,
-                            preventDefault: function () {},
-                            stopPropagation: function () {},
-                        });
+                titleEl.className = "tag-chip tag-chip--category";
+                titleEl.style.cursor = "pointer";
+                titleEl.addEventListener("click", function (e) {
+                    e.stopPropagation();
+                    toggleTree({
+                        currentTarget: toggle,
+                        preventDefault: function () {},
+                        stopPropagation: function () {},
                     });
-                }
+                });
             } else {
                 titleEl = document.createElement("a");
-                titleEl.href = item.noteId;
+                titleEl.href = "/" + item.noteId;
                 titleEl.className = "tag-chip";
-                titleEl.textContent = item.title;
                 titleEl.addEventListener("click", closeCategoryPanel);
+            }
+            if (iconCls) {
+                var iconEl = document.createElement("i");
+                iconEl.className = iconCls;
+                titleEl.appendChild(iconEl);
+                titleEl.appendChild(document.createTextNode(" " + item.title));
+            } else {
+                titleEl.textContent = item.title;
             }
 
             if (item.noteId === currentId) {
@@ -526,14 +528,68 @@
         return div.innerHTML;
     }
 
+    /* ── 移动端热力图：默认滚动到最右侧 ── */
+    function scrollHeatmapToEnd() {
+        var wrap = document.querySelector(".hm-wrap");
+        if (!wrap) return;
+        if (window.innerWidth <= 768) {
+            wrap.scrollLeft = wrap.scrollWidth - wrap.clientWidth;
+        }
+    }
+
     /* ── 初始化 TOC ── */
     if (document.readyState === "loading") {
         document.addEventListener("DOMContentLoaded", function () {
             initToc();
             initTocMobile();
+            scrollHeatmapToEnd();
         });
     } else {
         initToc();
         initTocMobile();
+        scrollHeatmapToEnd();
+    }
+
+    /* ── Trilium Internal Links 处理 ── */
+    function processInternalLinks() {
+        /* 建立 noteId → icon 查找表（从分类树） */
+        var iconMap = {};
+        var treeData = window.__CATEGORY_TREE__ || [];
+        function walkTree(arr) {
+            for (var i = 0; i < arr.length; i++) {
+                if (arr[i].icon) iconMap[arr[i].noteId] = arr[i].icon;
+                if (arr[i].children) walkTree(arr[i].children);
+            }
+        }
+        walkTree(treeData);
+        /* 处理 note:// 格式的内部链接 */
+        var noteLinks = document.querySelectorAll('.note-body a[href^="note://"]');
+        noteLinks.forEach(function (link) {
+            var href = link.getAttribute("href") || "";
+            var noteId = href.replace("note://", "").split(/[?#]/)[0];
+            if (noteId) {
+                link.href = "/" + noteId;
+                link.classList.add("trilium-ref-link");
+                if (iconMap[noteId]) {
+                    link.setAttribute("data-icon", iconMap[noteId]);
+                }
+            }
+        });
+        /* 处理已渲染为 reference-link 类的内部链接 */
+        var refLinks = document.querySelectorAll('.note-body a.reference-link');
+        refLinks.forEach(function (link) {
+            if (!link.id) link.id = "ref-" + Math.random().toString(36).slice(2, 8);
+            link.classList.add("trilium-ref-link");
+            var href = link.getAttribute("href") || "";
+            var noteId = href.replace(/^note:\/\//, "").split(/[?#]/)[0];
+            if (noteId && iconMap[noteId]) {
+                link.setAttribute("data-icon", iconMap[noteId]);
+            }
+        });
+    }
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", processInternalLinks);
+    } else {
+        processInternalLinks();
     }
 })();

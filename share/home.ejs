@@ -1,4 +1,5 @@
 <link rel="stylesheet" href="/blog.css" />
+<link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet" />
 <!-- highlight.js 代码高亮 -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" id="hljs-theme-dark" />
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css" id="hljs-theme-light" disabled />
@@ -37,8 +38,9 @@ function collectLatestByLabel(parentNote, labelName, arr) {
     if (!children || !children.length) return;
     for (var i = 0; i < children.length; i++) {
         var child = children[i];
-        if (child.type === 'text' && child.hasLabel && child.hasLabel(labelName) && child.getLabelValue(labelName) === 'true') {
-            arr.push(child);
+        if (child.type === 'text' && child.hasLabel && child.hasLabel(labelName)) {
+            var lv = child.getLabelValue(labelName);
+            if (lv !== 'false') { arr.push(child); }
         }
         if (child.hasVisibleChildren && child.hasVisibleChildren()) {
             collectLatestByLabel(child, labelName, arr);
@@ -146,7 +148,14 @@ try {
     }
 } catch(e) { annNote = null; }
 
-// ── 热力图数据：统计所有 text 笔记的修改日期 ──
+// ── 热力图数据：模拟 SQL 逻辑 ──
+// 对应 SQL：
+//   SELECT date, COUNT(*) AS total FROM (
+//     SELECT noteId, SUBSTR(dateModified,0,11) AS date FROM notes
+//     UNION
+//     SELECT DISTINCT noteId, SUBSTR(dateCreated,0,11) AS date FROM revisions
+//   ) GROUP BY date
+// EJS 中无 revisions 表，用 dateCreated 近似
 var dateFreq = {};
 var hmWeeks = [];
 var hmMonths = [];
@@ -158,14 +167,22 @@ try {
         if (!kids || !kids.length) return;
         for (var i = 0; i < kids.length; i++) {
             var c = kids[i];
-            if (c.type === 'text') {
-                var ds = c.utcDateModified || c.dateModified || '';
-                if (ds) {
-                    var d = new Date(ds);
-                    if (!isNaN(d.getTime())) {
-                        var key = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
-                        dateFreq[key] = (dateFreq[key] || 0) + 1;
-                    }
+            // dateModified (对应 SQL 的 notes.dateModified)
+            var dsMod = c.utcDateModified || c.dateModified || '';
+            if (dsMod) {
+                var d = new Date(dsMod);
+                if (!isNaN(d.getTime())) {
+                    var key = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+                    dateFreq[key] = (dateFreq[key] || 0) + 1;
+                }
+            }
+            // dateCreated (对应 SQL 的 revisions.dateCreated)
+            var dsCre = c.utcDateCreated || c.dateCreated || '';
+            if (dsCre && dsCre !== dsMod) {
+                var dc = new Date(dsCre);
+                if (!isNaN(dc.getTime())) {
+                    var key = dc.getFullYear() + '-' + String(dc.getMonth()+1).padStart(2,'0') + '-' + String(dc.getDate()).padStart(2,'0');
+                    dateFreq[key] = (dateFreq[key] || 0) + 1;
                 }
             }
             if (c.hasVisibleChildren && c.hasVisibleChildren()) collectDates(c);
@@ -237,9 +254,60 @@ try {
 
 <div class="category-panel" id="category-panel">
     <div class="category-tags" id="category-tags">
+        <div class="category-panel-header">
+            <span class="category-panel-title">分类目录</span>
+            <button class="category-panel-close" id="category-panel-close" aria-label="关闭">✕</button>
+        </div>
         <ul class="tree-list" id="tree-list"></ul>
     </div>
 </div>
+<%
+// 服务端构建分类树，内嵌到页面供 blog.js 使用
+function buildCategoryTree(parentNote) {
+    var result = [];
+    var kids;
+    try { kids = parentNote.getChildNotes(); } catch(e) { return result; }
+    if (!kids || !kids.length) return result;
+    for (var ci = 0; ci < kids.length; ci++) {
+        var kid = kids[ci];
+        // 跳过 shareHiddenFromTree 标签的笔记
+        try { if (kid.hasLabel && kid.hasLabel('shareHiddenFromTree')) continue; } catch(e) {}
+        var isCat = false;
+        try { isCat = !!(kid.hasLabel && kid.hasLabel('category')); } catch(e) {}
+        var icon = '';
+        try {
+            icon = kid.getLabelValue ? kid.getLabelValue('iconClass') || '' : '';
+        } catch(e) {}
+        var node = { noteId: kid.noteId, title: kid.title, category: isCat, children: [] };
+        if (icon) node.icon = icon;
+        node.children = buildCategoryTree(kid);
+        result.push(node);
+    }
+    return result;
+}
+var _catTree = [];
+try {
+    // 优先通过 noteId 获取根笔记（即分类树的根）
+    var rootNote = note.getNote ? note.getNote('rNdtx5Rm6dHE') : null;
+    // 如果在首页,当前笔记就是根
+    if (!rootNote && isHome) { rootNote = note; }
+    // 未找到根笔记且不在首页时，沿父链向上找直到 HOME_ID
+    if (!rootNote && note.getParentNotes) {
+        try {
+            var cur = note;
+            for (var _i = 0; _i < 50; _i++) {
+                if (cur.noteId === 'rNdtx5Rm6dHE') { rootNote = cur; break; }
+                var p = cur.getParentNotes();
+                if (!p || !p.length) break;
+                cur = p[0];
+            }
+        } catch(e) {}
+    }
+    // 从根构建树；根不可用时回退到当前笔记
+    _catTree = buildCategoryTree(rootNote || note);
+} catch(e) { _catTree = []; }
+%>
+<script>window.__CATEGORY_TREE__ = <%- JSON.stringify(_catTree) %>;</script>
 
 <div class="page">
     <% if (isHome) { %>
@@ -279,6 +347,7 @@ try {
             <div class="mod-header-rec">
                 <div class="mod-icon mod-icon--rec">⚡</div>
                 <h3 class="mod-title mod-title--rec">最近动态</h3>
+                <span class="rec-count"><%= updates.length %></span>
             </div>
             <div class="rec-card">
                 <% if (updates.length > 0) {
@@ -313,10 +382,10 @@ try {
                 <h3 class="mod-title">统计摘要</h3>
             </div>
             <div class="stats-row">
-                <span class="stats-item">推荐阅读 <em><%= (typeof recNotes !== 'undefined' ? recNotes : [null]).length %></em></span>
-                <span class="stats-item">最近发布 <em><%= (typeof artNotes !== 'undefined' ? artNotes : [null]).length %></em></span>
-                <span class="stats-item">最近动态 <em><%= (typeof updNotes !== 'undefined' ? updNotes : [null]).length %></em></span>
-                <span class="stats-item">公告 <em><%= (typeof annNotes !== 'undefined' ? annNotes : [null]).length %></em></span>
+                <span class="stats-item">推荐阅读 <em><%= (typeof recNotes !== 'undefined' ? recNotes : []).length %></em></span>
+                <span class="stats-item">文章 <em><%= (typeof artNotes !== 'undefined' ? artNotes : []).length %></em></span>
+                <span class="stats-item">最近动态 <em><%= (typeof updNotes !== 'undefined' ? updNotes.length : 0) %></em></span>
+                <span class="stats-item">公告 <em><%= (typeof annNotes !== 'undefined' ? annNotes : []).length %></em></span>
             </div>
             <div class="hm-wrap">
                 <div class="hm-grid" style="grid-template-columns: 28px repeat(<%= hmWeeks.length %>, 13px); grid-template-rows: 18px repeat(7, 13px);">
@@ -331,7 +400,7 @@ try {
                             var level = 0;
                             if (cell.count > 0) { level = Math.ceil((cell.count / hmMax) * 4); if (level < 1) level = 1; if (level > 4) level = 4; }
                         %>
-                            <div class="hm-cell hm-l<%= level %>" style="grid-column: <%= wi + 2 %>; grid-row: <%= di + 2 %>" data-date="<%= cell.date %>" data-count="<%= cell.count %>" title="<%= cell.date %>: <%= cell.count > 0 ? '更新了 ' + cell.count + ' 个文件' : '无更新' %>"></div>
+                            <div class="hm-cell hm-l<%= level %>" style="grid-column: <%= wi + 2 %>; grid-row: <%= di + 2 %>" data-date="<%= cell.date %>" data-count="<%= cell.count %>"></div>
                         <% } %>
                     <% } %>
                 </div>

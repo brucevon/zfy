@@ -58,10 +58,14 @@ async function generateTree(api, rootNoteId, targetNoteId) {
     }
 
     var catSet = {};
+    var hiddenSet = {};
     var iconMap = {};
     for (var i = 0; i < labels.length; i++) {
         if (labels[i].name === "category" && labels[i].value === "true") {
             catSet[labels[i].noteId] = true;
+        }
+        if (labels[i].name === "shareHiddenFromTree" && labels[i].value === "true") {
+            hiddenSet[labels[i].noteId] = true;
         }
         if (labels[i].name === "icon") {
             iconMap[labels[i].noteId] = labels[i].value;
@@ -89,6 +93,7 @@ async function generateTree(api, rootNoteId, targetNoteId) {
         for (var i = 0; i < children.length; i++) {
             var n = children[i];
             if (n.noteId === rootNoteId) continue;
+            if (hiddenSet[n.noteId]) continue;
             result.push({
                 noteId: n.noteId,
                 title: n.title,

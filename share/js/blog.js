@@ -280,7 +280,7 @@
                 }
             }
             if (categoryPanel && categoryPanel.classList.contains("open")) {
-                var inner = document.getElementById("category-tags");
+                var inner = document.getElementById("cat-drawer");
                 var isInsideContent = inner && inner.contains(e.target);
                 var isOnCategoryBtn =
                     (categoryBtn && categoryBtn.contains(e.target)) ||
@@ -316,6 +316,8 @@
 
     if (categoryBtn) categoryBtn.addEventListener("click", openCategoryPanel);
     if (categoryBtnM) categoryBtnM.addEventListener("click", openCategoryPanel);
+    var closeBtn = document.getElementById("cat-drawer-close");
+    if (closeBtn) closeBtn.addEventListener("click", closeCategoryPanel);
     document.addEventListener("keydown", function (e) {
         if (e.key === "Escape") {
             closeMobileMenu();

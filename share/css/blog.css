@@ -780,7 +780,7 @@ body {
     min-height: 0;
     display: grid;
     grid-template-columns: repeat(12, 1fr);
-    grid-auto-rows: minmax(180px, 1fr);
+    grid-auto-rows: 1fr;
     gap: 20px;
 }
 .grid-4 .mod:nth-child(1) {

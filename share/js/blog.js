@@ -230,6 +230,9 @@
         try {
             localStorage.setItem(KEY, m);
         } catch (_) {}
+        /* 同步 Twikoo 主题 */
+        var tc = document.getElementById("twikoo-container");
+        if (tc) tc.setAttribute("data-theme", m);
         if (themeBtn) themeBtn.textContent = m === "dark" ? "☀" : "☾";
     }
     var saved = (function () {

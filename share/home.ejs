@@ -41,6 +41,7 @@ if (homeNote) {
         try { var v = homeNote.getLabelValue(name); return v || def; } catch(_) { return def; }
     }
     _cfg.homeId = HOME_ID;
+    _cfg.isHome = isHome;
     _cfg.defaultTheme = _cfgVal('appearanceDefaultTheme', 'dark');
     _cfg.twikooEnabled = _cfgVal('twikooEnabled') === 'true';
     _cfg.twikooEnvId = _cfgVal('twikooEnvId', '');

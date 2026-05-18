@@ -159,7 +159,7 @@
         var parts = window.location.pathname.split("/").filter(Boolean);
         return parts[parts.length - 1] || "";
     }
-    var isHome = getCurrentNoteId() === HOME_ID;
+    var isHome = _cfg.isHome || false;
 
     /* ── 主题 ── */
     function setTheme(m) {

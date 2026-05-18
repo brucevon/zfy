@@ -2082,13 +2082,11 @@ html.mobile-view .lightbox-close {
     top: 0;
     left: 0;
     z-index: 9999;
-    width: 100%;
+    width: 0%;
     height: 3px;
     background: var(--md-link);
-    transform: scaleX(0);
-    transform-origin: left center;
     pointer-events: none;
-    will-change: transform;
+    will-change: width;
     box-shadow: 0 0 6px var(--md-link);
 }
 

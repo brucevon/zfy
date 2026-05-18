@@ -592,7 +592,7 @@
                 clientH = window.innerHeight;
             }
             var pct = scrollHeight > clientH ? scrollTop / (scrollHeight - clientH) : 0;
-            bar.style.transform = "scaleX(" + Math.min(pct, 1) + ")";
+            bar.style.width = Math.min(pct, 1) * 100 + "%";
             ticking = false;
         }
         function onScroll() { if (!ticking) { requestAnimationFrame(calc); ticking = true; } }
@@ -612,7 +612,9 @@
         if (!meta) return;
         var body = document.querySelector(".note-body");
         if (!body) return;
-        var text = body.textContent || "";
+        var clone = body.cloneNode(true);
+        clone.querySelectorAll("pre").forEach(function (el) { el.remove(); });
+        var text = clone.textContent || "";
         var len = text.replace(/\s+/g, "").length;
         var min = Math.max(1, Math.ceil(len / 300));
         meta.textContent = "约 " + len + " 字 · 预计阅读 " + min + " 分钟";

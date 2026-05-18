@@ -589,8 +589,27 @@
 
         var lbImg = lb.querySelector(".lightbox-img");
         var lbClose = lb.querySelector(".lightbox-close");
+        var images = [];
+        var currentIndex = -1;
+
+        function getImageList() {
+            var list = [];
+            body.querySelectorAll("img").forEach(function (img) {
+                if (!img.closest("a")) list.push(img);
+            });
+            return list;
+        }
+
+        function findIndex(list, src) {
+            for (var i = 0; i < list.length; i++) {
+                if (list[i].src === src) return i;
+            }
+            return -1;
+        }
 
         function open(src) {
+            images = getImageList();
+            currentIndex = findIndex(images, src);
             lbImg.src = src;
             lb.classList.add("active");
             document.body.style.overflow = "hidden";
@@ -599,6 +618,21 @@
         function close() {
             lb.classList.remove("active");
             document.body.style.overflow = "";
+            currentIndex = -1;
+        }
+
+        function prev() {
+            if (currentIndex > 0) {
+                currentIndex--;
+                lbImg.src = images[currentIndex].src;
+            }
+        }
+
+        function next() {
+            if (currentIndex < images.length - 1) {
+                currentIndex++;
+                lbImg.src = images[currentIndex].src;
+            }
         }
 
         lb.addEventListener("click", function (e) {
@@ -607,6 +641,8 @@
         lbClose.addEventListener("click", close);
         document.addEventListener("keydown", function (e) {
             if (e.key === "Escape") close();
+            if (e.key === "ArrowLeft") prev();
+            if (e.key === "ArrowRight") next();
         });
 
         body.addEventListener("click", function (e) {

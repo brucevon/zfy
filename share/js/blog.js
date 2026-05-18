@@ -431,6 +431,38 @@
         initHighlight();
     }
 
+    /* ── 代码块复制按钮 ── */
+    function initCopyButtons() {
+        document.querySelectorAll(".note-body pre").forEach(function (pre) {
+            if (pre.querySelector(".copy-btn")) return;
+            var btn = document.createElement("button");
+            btn.className = "copy-btn";
+            btn.innerHTML =
+                '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
+            btn.setAttribute("aria-label", "复制代码");
+            btn.addEventListener("click", function () {
+                var code = pre.querySelector("code");
+                var text = code ? code.textContent : pre.textContent;
+                navigator.clipboard.writeText(text.trim()).then(function () {
+                    btn.innerHTML = "✓";
+                    btn.classList.add("copied");
+                    setTimeout(function () {
+                        btn.innerHTML =
+                            '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
+                        btn.classList.remove("copied");
+                    }, 2000);
+                });
+            });
+            pre.style.position = "relative";
+            pre.appendChild(btn);
+        });
+    }
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", initCopyButtons);
+    } else {
+        initCopyButtons();
+    }
+
     /* ── 首页模块数据加载 ── */
     /* 预处理脚本输出字段:
        recommend: [{noteId, title, noteIcon, dateCreated, content}]

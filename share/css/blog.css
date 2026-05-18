@@ -1480,6 +1480,35 @@ html.mobile-view .site-footer {
     background: var(--md-code-bg);
 }
 
+/* 代码块复制按钮 */
+.copy-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 1;
+    cursor: pointer;
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    padding: 4px 8px;
+    font-size: 16px;
+    line-height: 1;
+    border-radius: 6px;
+    opacity: 0;
+    transition: opacity 0.2s, color 0.2s, background 0.2s;
+}
+.note-body pre:hover .copy-btn {
+    opacity: 1;
+}
+.copy-btn:hover {
+    background: rgba(255,255,255,0.08);
+    color: var(--text);
+}
+.copy-btn.copied {
+    color: #22c55e;
+    opacity: 1;
+}
+
 /* 引用块 */
 .note-body blockquote {
     margin: 0 0 1.5em;

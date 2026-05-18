@@ -574,6 +574,38 @@
         initLightbox();
     }
 
+    /* ── 阅读进度条 ── */
+    function initReadingProgress() {
+        var bar = document.getElementById("reading-progress");
+        if (!bar) return;
+        var ticking = false;
+        function calc() {
+            var pageEl = document.querySelector(".page");
+            var scrollTop, scrollHeight, clientH;
+            if (pageEl && pageEl.scrollHeight > pageEl.clientHeight) {
+                scrollTop = pageEl.scrollTop;
+                scrollHeight = pageEl.scrollHeight;
+                clientH = pageEl.clientHeight;
+            } else {
+                scrollTop = window.pageYOffset || document.documentElement.scrollTop || 0;
+                scrollHeight = document.documentElement.scrollHeight;
+                clientH = window.innerHeight;
+            }
+            var pct = scrollHeight > clientH ? scrollTop / (scrollHeight - clientH) : 0;
+            bar.style.transform = "scaleX(" + Math.min(pct, 1) + ")";
+            ticking = false;
+        }
+        function onScroll() { if (!ticking) { requestAnimationFrame(calc); ticking = true; } }
+        window.addEventListener("scroll", onScroll, { passive: true });
+        var p = document.querySelector(".page");
+        if (p) p.addEventListener("scroll", onScroll, { passive: true });
+    }
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", initReadingProgress);
+    } else {
+        initReadingProgress();
+    }
+
     /* ── 首页模块数据加载 ── */
     /* 预处理脚本输出字段:
        recommend: [{noteId, title, noteIcon, dateCreated, content}]

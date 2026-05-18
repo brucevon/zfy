@@ -136,6 +136,18 @@
         return out;
     }
 
+    function highlightText(text, tokens) {
+        if (!tokens || !tokens.length) return text;
+        var parts = [];
+        for (var i = 0; i < tokens.length; i++) {
+            if (!tokens[i]) continue;
+            parts.push(tokens[i].replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+        }
+        if (!parts.length) return text;
+        var re = new RegExp("(" + parts.join("|") + ")", "gi");
+        return text.replace(re, "<mark>$1</mark>");
+    }
+
     function renderResults(q) {
         if (!searchResults) return;
         var items = q ? filterSearchData(q) : [];
@@ -146,18 +158,24 @@
                     : '<div class="search-no-results">输入关键词搜索笔记</div>';
             return;
         }
+        var tokens = q.toLowerCase().split(/\s+/);
         var html = "";
         for (var i = 0; i < items.length; i++) {
             var item = items[i];
+            var title = (item.title || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            var titleHl = highlightText(title, tokens);
             var snippet = item.content
-                ? item.content.substring(0, 120).replace(/</g, "&lt;").replace(/>/g, "&gt;")
+                ? highlightText(
+                      item.content.substring(0, 120).replace(/</g, "&lt;").replace(/>/g, "&gt;"),
+                      tokens
+                  )
                 : "";
             html +=
                 '<a class="search-result-item" href="/' +
                 item.noteId +
                 '">' +
                 '<span class="search-result-title">' +
-                (item.title || "").replace(/</g, "&lt;").replace(/>/g, "&gt;") +
+                titleHl +
                 "</span>" +
                 (snippet
                     ? '<span class="search-result-content">' + snippet + "</span>"

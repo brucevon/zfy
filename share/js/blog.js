@@ -573,7 +573,7 @@
             var week = [];
             for (var d = 0; d < 7; d++) {
                 var key = cur.getFullYear() + "-" + String(cur.getMonth()+1).padStart(2,"0") + "-" + String(cur.getDate()).padStart(2,"0");
-                week.push({ date: key, count: dateFreq[key] || 0 });
+                week.push({ date: key, count: dateFreq[key] || 0, future: cur > now });
                 cur.setDate(cur.getDate() + 1);
             }
             hmWeeks.push(week);
@@ -605,7 +605,8 @@
                 var cell = hmWeeks[wi][di];
                 var level = 0;
                 if (cell.count > 0) { level = Math.ceil((cell.count / hmMax) * 4); if (level < 1) level = 1; if (level > 4) level = 4; }
-                html += '<div class="hm-cell hm-l' + level + '" style="grid-column: ' + (wi + 2) + '; grid-row: ' + (di + 2) + '" data-date="' + cell.date + '" data-count="' + cell.count + '"></div>';
+                var cls = cell.future ? 'hm-future' : 'hm-cell hm-l' + level;
+                html += '<div class="' + cls + '" style="grid-column: ' + (wi + 2) + '; grid-row: ' + (di + 2) + '" data-date="' + cell.date + '" data-count="' + cell.count + '"></div>';
             }
         }
 

@@ -1002,6 +1002,11 @@ body {
     cursor: pointer;
     transition: opacity 0.15s;
 }
+.hm-future {
+    width: 13px;
+    height: 13px;
+    visibility: hidden;
+}
 .hm-cell:hover {
     opacity: 0.7;
 }

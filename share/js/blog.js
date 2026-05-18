@@ -463,6 +463,71 @@
         initCopyButtons();
     }
 
+    /* ── 分享按钮 ── */
+    function initShareButton() {
+        var btn = document.querySelector(".share-btn");
+        if (!btn) return;
+
+        function showCopied() {
+            btn.classList.add("copied");
+            setTimeout(function () { btn.classList.remove("copied"); }, 2000);
+        }
+
+        function copyUrl(url) {
+            /* Clipboard API */
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(url).then(showCopied).catch(function () {
+                    execCopy(url);
+                });
+                return;
+            }
+            execCopy(url);
+        }
+
+        function execCopy(url) {
+            /* execCommand fallback (微信等不支持 Clipboard API) */
+            try {
+                var ta = document.createElement("textarea");
+                ta.value = url;
+                ta.style.position = "fixed";
+                ta.style.opacity = "0";
+                ta.style.pointerEvents = "none";
+                document.body.appendChild(ta);
+                ta.select();
+                if (document.execCommand("copy")) {
+                    showCopied();
+                } else {
+                    fallbackPrompt(url);
+                }
+                document.body.removeChild(ta);
+            } catch (e) {
+                fallbackPrompt(url);
+            }
+        }
+
+        function fallbackPrompt(url) {
+            prompt("复制链接", url);
+        }
+
+        btn.addEventListener("click", function (e) {
+            e.stopPropagation();
+            var url = window.location.href;
+            var titleEl = document.querySelector(".note-title");
+            var title = titleEl ? titleEl.textContent.trim() : document.title;
+            /* 移动端: 系统分享面板 */
+            if (navigator.share) {
+                navigator.share({ title: title, url: url }).catch(function () {});
+                return;
+            }
+            copyUrl(url);
+        });
+    }
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", initShareButton);
+    } else {
+        initShareButton();
+    }
+
     /* ── 首页模块数据加载 ── */
     /* 预处理脚本输出字段:
        recommend: [{noteId, title, noteIcon, dateCreated, content}]

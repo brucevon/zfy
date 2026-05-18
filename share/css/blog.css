@@ -1354,6 +1354,10 @@ html.mobile-view .site-footer {
 
 /* 文章大标题 */
 .note-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
     font-family: var(--serif);
     font-size: 1.9rem;
     font-weight: 700;
@@ -1511,6 +1515,34 @@ html.mobile-view .site-footer {
 .copy-btn.copied {
     color: #22c55e;
     opacity: 1;
+}
+
+/* 分享按钮 */
+.share-btn {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--muted);
+    padding: 4px;
+    border-radius: 6px;
+    transition: color 0.2s, background 0.2s, border-color 0.2s;
+    line-height: 1;
+}
+.share-btn:hover {
+    background: var(--glass-bg);
+    color: var(--text);
+    border-color: var(--glass-border);
+}
+.share-btn.copied {
+    color: #22c55e;
+}
+/* 移动端分享按钮更易点击 */
+html.mobile-view .share-btn {
+    padding: 8px;
 }
 
 /* 引用块 */

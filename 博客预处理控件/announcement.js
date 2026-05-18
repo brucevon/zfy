@@ -32,9 +32,9 @@ async function generateAnnouncement(api, rootNoteId, targetNoteId) {
     try {
         var nodes = await api.sql.getRows(
             "SELECT n.noteId, n.title, n.dateCreated FROM notes n " +
-            "INNER JOIN attributes a ON n.noteId = a.noteId AND a.name = 'announcement' AND a.value = 'true' " +
-            "WHERE n.isDeleted = 0 " +
-            "ORDER BY n.dateCreated DESC",
+                "INNER JOIN attributes a ON n.noteId = a.noteId AND a.name = 'announcement' AND a.value = 'true' " +
+                "WHERE n.isDeleted = 0 " +
+                "ORDER BY n.dateCreated DESC",
         );
 
         for (var i = 0; i < nodes.length; i++) {
@@ -42,13 +42,20 @@ async function generateAnnouncement(api, rootNoteId, targetNoteId) {
                 var note = await api.getNote(nodes[i].noteId);
                 if (note && note.getContent) {
                     var content = note.getContent();
-                    if (content && typeof content === "string" && content.trim().length > 0) {
-                        var icon = note.getLabelValue("icon") || note.getLabelValue("iconClass") || "";
+                    if (
+                        content &&
+                        typeof content === "string" &&
+                        content.trim().length > 0
+                    ) {
+                        var icon =
+                            note.getLabelValue("icon") ||
+                            note.getLabelValue("iconClass") ||
+                            "";
                         result = {
                             noteId: nodes[i].noteId,
                             title: nodes[i].title,
                             noteIcon: icon,
-                            content: truncate(stripHtml(content), 80),
+                            content: truncate(stripHtml(content), 150),
                             dateCreated: nodes[i].dateCreated,
                         };
                         break;
@@ -70,9 +77,7 @@ async function generateAnnouncement(api, rootNoteId, targetNoteId) {
         await api.protectNote(targetNoteId, false, false);
     await targetNote.setContent(output);
 
-    console.log(
-        "公告同步完成（" + (Date.now() - startTime) + "ms）",
-    );
+    console.log("公告同步完成（" + (Date.now() - startTime) + "ms）");
     return { found: !!result, elapsedMs: Date.now() - startTime };
 }
 

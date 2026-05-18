@@ -32,9 +32,9 @@ async function generateArticle(api, rootNoteId, targetNoteId) {
     try {
         var nodes = await api.sql.getRows(
             "SELECT n.noteId, n.title, n.dateCreated, n.dateModified FROM notes n " +
-            "INNER JOIN attributes a ON n.noteId = a.noteId AND a.name = 'article' AND a.value = 'true' " +
-            "WHERE n.isDeleted = 0 " +
-            "ORDER BY n.dateCreated DESC",
+                "INNER JOIN attributes a ON n.noteId = a.noteId AND a.name = 'article' AND a.value = 'true' " +
+                "WHERE n.isDeleted = 0 " +
+                "ORDER BY n.dateCreated DESC",
         );
 
         for (var i = 0; i < nodes.length; i++) {
@@ -42,13 +42,20 @@ async function generateArticle(api, rootNoteId, targetNoteId) {
                 var note = await api.getNote(nodes[i].noteId);
                 if (note && note.getContent) {
                     var content = note.getContent();
-                    if (content && typeof content === "string" && content.trim().length > 0) {
-                        var icon = note.getLabelValue("icon") || note.getLabelValue("iconClass") || "";
+                    if (
+                        content &&
+                        typeof content === "string" &&
+                        content.trim().length > 0
+                    ) {
+                        var icon =
+                            note.getLabelValue("icon") ||
+                            note.getLabelValue("iconClass") ||
+                            "";
                         result = {
                             noteId: nodes[i].noteId,
                             title: nodes[i].title,
                             noteIcon: icon,
-                            content: truncate(stripHtml(content), 80),
+                            content: truncate(stripHtml(content), 150),
                             dateCreated: nodes[i].dateCreated,
                             dateModified: nodes[i].dateModified,
                         };
@@ -71,9 +78,7 @@ async function generateArticle(api, rootNoteId, targetNoteId) {
         await api.protectNote(targetNoteId, false, false);
     await targetNote.setContent(output);
 
-    console.log(
-        "最近发布同步完成（" + (Date.now() - startTime) + "ms）",
-    );
+    console.log("最近发布同步完成（" + (Date.now() - startTime) + "ms）");
     return { found: !!result, elapsedMs: Date.now() - startTime };
 }
 
@@ -85,7 +90,9 @@ if (typeof api !== "undefined") {
             var targetId = api.currentNote.getLabelValue("saveNoteId");
             if (!targetId) throw new Error("缺少 #saveNoteId");
             var r = await generateArticle(api, null, targetId);
-            console.log("✅ 最近发布完成" + (r.found ? "" : "（未找到匹配笔记）"));
+            console.log(
+                "✅ 最近发布完成" + (r.found ? "" : "（未找到匹配笔记）"),
+            );
         } catch (e) {
             console.error("❌ 最近发布失败: " + e.message);
         }

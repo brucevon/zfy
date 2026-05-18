@@ -107,17 +107,31 @@
 
     function filterSearchData(q) {
         if (!q || !searchData) return [];
-        q = q.toLowerCase();
-        var out = [];
+        var tokens = q.toLowerCase().split(/\s+/);
+        var scored = [];
         for (var i = 0; i < searchData.length; i++) {
             var item = searchData[i];
-            if (
-                item.title.toLowerCase().indexOf(q) !== -1 ||
-                (item.content && item.content.toLowerCase().indexOf(q) !== -1)
-            ) {
-                out.push(item);
-                if (out.length >= 30) break;
+            var title = (item.title || "").toLowerCase();
+            var content = (item.content || "").toLowerCase();
+            var score = 0;
+            for (var t = 0; t < tokens.length; t++) {
+                var token = tokens[t];
+                if (!token) continue;
+                /* 标题匹配: 基础 10 分 + 频次 bonus (每多一次 +5，上限 +15) */
+                var ti = -1, tc = 0;
+                while ((ti = title.indexOf(token, ti + 1)) !== -1 && tc < 4) { tc++; }
+                if (tc > 0) score += 10 + Math.min(tc - 1, 3) * 5;
+                /* 内容匹配: 基础 1 分 + 频次 bonus (每多一次 +0.5，上限 +2) */
+                var ci = -1, cc = 0;
+                while ((ci = content.indexOf(token, ci + 1)) !== -1 && cc < 6) { cc++; }
+                if (cc > 0) score += 1 + Math.min(cc - 1, 4) * 0.5;
             }
+            if (score > 0) scored.push({ item: item, s: score });
+        }
+        scored.sort(function (a, b) { return b.s - a.s; });
+        var out = [];
+        for (var j = 0; j < Math.min(scored.length, 30); j++) {
+            out.push(scored[j].item);
         }
         return out;
     }

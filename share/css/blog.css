@@ -1409,7 +1409,7 @@ html.mobile-view .site-footer {
 .note-body {
     font-family: var(--serif);
     font-size: 1rem;
-    line-height: 1.95;
+    line-height: 1.8;
     color: var(--text);
     overflow-wrap: break-word;
     word-break: break-word;
@@ -1495,6 +1495,7 @@ html.mobile-view .site-footer {
     padding: 0.15em 0.45em;
     color: #e06c75;
     white-space: nowrap;
+    -webkit-font-smoothing: antialiased;
 }
 [data-theme="light"] .note-body :not(pre) > code {
     color: #c0392b;
@@ -1518,6 +1519,7 @@ html.mobile-view .site-footer {
     white-space: pre;
     word-break: normal;
     color: inherit;
+    -webkit-font-smoothing: antialiased;
 }
 /* 无高亮时降级背景 */
 .note-body pre {

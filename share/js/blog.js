@@ -1317,6 +1317,8 @@
         initToc();
         initTocMobile();
         initBackTop();
+        /* 静默预加载搜索数据 */
+        ensureSearchData();
         if (isHome) {
             loadHomeModules();
         }

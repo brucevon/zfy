@@ -903,7 +903,7 @@
             scrollToCurrentNote();
             return;
         }
-        treeList.innerHTML = '<li class="tree-item" style="padding:8px;color:var(--text-muted)">加载中…</li>';
+        treeList.innerHTML = '<li class="tree-item" style="padding:8px;color:var(--muted)">加载中…</li>';
         fetchJSON(TREE_JSON_URL).then(function (data) {
             if (data && data.length) {
                 treeData = data;
@@ -1107,7 +1107,7 @@
             closeAboutDropdown();
         } else {
             if (aboutMenu) {
-                aboutMenu.innerHTML = '<li class="tree-item" style="padding:8px;color:var(--text-muted)">加载中…</li>';
+                aboutMenu.innerHTML = '<li class="tree-item" style="padding:8px;color:var(--muted)">加载中…</li>';
             }
             ensureAboutData(function () {
                 if (aboutMenu) {
@@ -1149,7 +1149,7 @@
             aboutDropdownM.classList.remove("open");
         } else {
             if (aboutMenuM) {
-                aboutMenuM.innerHTML = '<li class="tree-item" style="padding:8px;color:var(--text-muted)">加载中…</li>';
+                aboutMenuM.innerHTML = '<li class="tree-item" style="padding:8px;color:var(--muted)">加载中…</li>';
             }
             ensureAboutData(function () {
                 if (aboutMenuM) {

@@ -346,16 +346,6 @@
         if (categoryPanel) {
             categoryPanel.classList.add("open");
             loadCategoryTree();
-            /* 滚动到高亮（当前笔记）位置 */
-            var curId = getCurrentNoteId();
-            if (curId) {
-                var curLink = document.querySelector('#tree-list a[href="/' + curId + '"]');
-                if (curLink) {
-                    setTimeout(function () {
-                        curLink.scrollIntoView({ behavior: "smooth", block: "center" });
-                    }, 50);
-                }
-            }
         }
     }
 
@@ -897,11 +887,20 @@
     }
 
     /* ── 加载分类树（fetch /blog-tree） ── */
+    function scrollToCurrentNote() {
+        var curId = getCurrentNoteId();
+        if (!curId) return;
+        var curLink = document.querySelector('#tree-list a[href="/' + curId + '"]');
+        if (curLink) {
+            curLink.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+    }
     function loadCategoryTree() {
         var treeList = document.getElementById("tree-list");
         if (!treeList) return;
         if (treeData) {
             renderTree(treeData, treeList, getCurrentNoteId());
+            scrollToCurrentNote();
             return;
         }
         treeList.innerHTML = '<li class="tree-item" style="padding:8px;color:var(--text-muted)">加载中…</li>';
@@ -910,6 +909,7 @@
                 treeData = data;
                 processInternalLinks();
                 renderTree(treeData, treeList, getCurrentNoteId());
+                scrollToCurrentNote();
             } else {
                 treeList.innerHTML = '<li class="tree-item"><span class="tag-chip">暂无分类</span></li>';
             }

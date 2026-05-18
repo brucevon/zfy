@@ -91,8 +91,8 @@
         if (!searchDropdown || !searchInput) return;
         searchDropdown.classList.add("open");
         searchOpen = true;
+        searchInput.focus();
         ensureSearchData(function () {
-            setTimeout(function () { searchInput.focus(); }, 100);
             renderResults(searchInput.value.trim());
         });
     }

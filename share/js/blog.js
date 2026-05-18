@@ -528,6 +528,52 @@
         initShareButton();
     }
 
+    /* ── 图片灯箱 ── */
+    function initLightbox() {
+        var body = document.querySelector(".note-body");
+        if (!body) return;
+
+        var lb = document.createElement("div");
+        lb.className = "lightbox";
+        lb.innerHTML =
+            '<button class="lightbox-close" aria-label="关闭">&times;</button>' +
+            '<img class="lightbox-img" alt="">';
+        document.body.appendChild(lb);
+
+        var lbImg = lb.querySelector(".lightbox-img");
+        var lbClose = lb.querySelector(".lightbox-close");
+
+        function open(src) {
+            lbImg.src = src;
+            lb.classList.add("active");
+            document.body.style.overflow = "hidden";
+        }
+
+        function close() {
+            lb.classList.remove("active");
+            document.body.style.overflow = "";
+        }
+
+        lb.addEventListener("click", function (e) {
+            if (e.target === lb) close();
+        });
+        lbClose.addEventListener("click", close);
+        document.addEventListener("keydown", function (e) {
+            if (e.key === "Escape") close();
+        });
+
+        body.addEventListener("click", function (e) {
+            if (e.target.tagName === "IMG" && !e.target.closest("a")) {
+                open(e.target.src);
+            }
+        });
+    }
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", initLightbox);
+    } else {
+        initLightbox();
+    }
+
     /* ── 首页模块数据加载 ── */
     /* 预处理脚本输出字段:
        recommend: [{noteId, title, noteIcon, dateCreated, content}]

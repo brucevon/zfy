@@ -328,6 +328,16 @@
         if (categoryPanel) {
             categoryPanel.classList.add("open");
             loadCategoryTree();
+            /* 滚动到高亮（当前笔记）位置 */
+            var curId = getCurrentNoteId();
+            if (curId) {
+                var curLink = document.querySelector('#tree-list a[href="/' + curId + '"]');
+                if (curLink) {
+                    setTimeout(function () {
+                        curLink.scrollIntoView({ behavior: "smooth", block: "center" });
+                    }, 50);
+                }
+            }
         }
     }
 

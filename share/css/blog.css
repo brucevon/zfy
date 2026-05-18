@@ -1369,6 +1369,16 @@ html.mobile-view .site-footer {
     letter-spacing: 0.02em;
 }
 
+/* 笔记元信息（字数、阅读时长） */
+.note-meta {
+    font-size: 0.82rem;
+    color: var(--muted);
+    margin-top: -20px;
+    margin-bottom: 28px;
+    padding-bottom: 0;
+    letter-spacing: 0.02em;
+}
+
 /* 正文容器 */
 .note-body {
     font-family: var(--serif);

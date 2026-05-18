@@ -606,6 +606,23 @@
         initReadingProgress();
     }
 
+    /* ── 字数统计 & 阅读时长 ── */
+    function initNoteMeta() {
+        var meta = document.querySelector(".note-meta");
+        if (!meta) return;
+        var body = document.querySelector(".note-body");
+        if (!body) return;
+        var text = body.textContent || "";
+        var len = text.replace(/\s+/g, "").length;
+        var min = Math.max(1, Math.ceil(len / 300));
+        meta.textContent = "约 " + len + " 字 · 预计阅读 " + min + " 分钟";
+    }
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", initNoteMeta);
+    } else {
+        initNoteMeta();
+    }
+
     /* ── 首页模块数据加载 ── */
     /* 预处理脚本输出字段:
        recommend: [{noteId, title, noteIcon, dateCreated, content}]

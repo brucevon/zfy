@@ -872,6 +872,7 @@
         fetchJSON(TREE_JSON_URL).then(function (data) {
             if (data && data.length) {
                 treeData = data;
+                processInternalLinks();
                 renderTree(treeData, treeList, getCurrentNoteId());
             } else {
                 treeList.innerHTML = '<li class="tree-item"><span class="tag-chip">暂无分类</span></li>';

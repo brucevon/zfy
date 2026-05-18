@@ -1222,6 +1222,40 @@
         });
     }
 
+    /* ── 回到顶部 ── */
+    function initBackTop() {
+        var btn = document.createElement("button");
+        btn.id = "back-top";
+        btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 15l-6-6-6 6"/></svg>';
+        btn.setAttribute("aria-label", "回到顶部");
+        document.body.appendChild(btn);
+
+        var pageEl = document.querySelector(".page");
+        var ticking = false;
+
+        function calc() {
+            var scrollTop, clientH;
+            if (pageEl && pageEl.scrollHeight > pageEl.clientHeight) {
+                scrollTop = pageEl.scrollTop;
+                clientH = pageEl.clientHeight;
+            } else {
+                scrollTop = window.pageYOffset || document.documentElement.scrollTop || 0;
+                clientH = window.innerHeight;
+            }
+            btn.classList.toggle("visible", scrollTop > clientH);
+            ticking = false;
+        }
+        function onScroll() { if (!ticking) { requestAnimationFrame(calc); ticking = true; } }
+
+        btn.addEventListener("click", function () {
+            window.scrollTo({ top: 0, behavior: "smooth" });
+            if (pageEl) pageEl.scrollTo({ top: 0, behavior: "smooth" });
+        });
+
+        window.addEventListener("scroll", onScroll, { passive: true });
+        if (pageEl) pageEl.addEventListener("scroll", onScroll, { passive: true });
+    }
+
     function escapeHtml(str) {
         if (str === null || str === undefined) return "";
         var div = document.createElement("div");
@@ -1233,6 +1267,7 @@
     function init() {
         initToc();
         initTocMobile();
+        initBackTop();
         if (isHome) {
             loadHomeModules();
         }

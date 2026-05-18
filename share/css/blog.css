@@ -2091,3 +2091,40 @@ html.mobile-view .lightbox-close {
     will-change: transform;
     box-shadow: 0 0 6px var(--md-link);
 }
+
+/* 回到顶部按钮 */
+#back-top {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    right: 20px;
+    bottom: 24px;
+    z-index: 99;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    color: var(--text);
+    cursor: pointer;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s, transform 0.2s;
+    line-height: 1;
+}
+#back-top.visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+#back-top:hover {
+    transform: scale(1.1);
+}
+@media (max-width: 1499px) {
+    #back-top {
+        bottom: 76px;
+    }
+}

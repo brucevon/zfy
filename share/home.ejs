@@ -60,247 +60,15 @@ if (homeNote) {
 %>
 <title><%= _cfg.blogTitle || 'Bento Blog' %></title>
 
-<%
-function _noteIcon(n) {
-    try {
-        var ic = typeof n.getIcon === 'function' ? n.getIcon() : '';
-        if (!ic && typeof n.getLabelValue === 'function') ic = n.getLabelValue('iconClass') || '';
-        return ic;
-    } catch(e) { return ''; }
-}
+<script>window.__BLOG_CONFIG__ = <%- JSON.stringify(_cfg) %>;</script>
+<style>
+  :root {
+    --cover-pc: url("<%= _cfg.defaultCover %>");
+    --cover-mobile: url("<%= _cfg.coverMobileImage %>");
+  }
+</style>
 
-function collectRecommendNotes(parentNote, arr, _depth) {
-    if (_depth === undefined) _depth = 0;
-    if (_depth > 20) return;
-    var children;
-    try { children = parentNote.getChildNotes(); } catch(e) { return; }
-    if (!children || !children.length) return;
-    for (var i = 0; i < children.length; i++) {
-        var child = children[i];
-        if (child.type === 'text' && child.hasLabel && child.hasLabel('recommend') && child.getLabelValue('recommend') === 'true') {
-            arr.push(child);
-        }
-        if (child.hasVisibleChildren && child.hasVisibleChildren()) {
-            collectRecommendNotes(child, arr, _depth + 1);
-        }
-    }
-}
-
-function collectLatestByLabel(parentNote, labelName, arr, _depth) {
-    if (_depth === undefined) _depth = 0;
-    if (_depth > 20) return;
-    var children;
-    try { children = parentNote.getChildNotes(); } catch(e) { return; }
-    if (!children || !children.length) return;
-    for (var i = 0; i < children.length; i++) {
-        var child = children[i];
-        try {
-            var hasIt = false;
-            if (child.hasLabel && child.hasLabel(labelName)) { hasIt = true; }
-            else if (child.getLabelValue) {
-                try { var _v = child.getLabelValue(labelName); hasIt = (_v !== null && _v !== undefined); } catch(_){}
-            }
-            if (hasIt) {
-                var lv = child.getLabelValue ? child.getLabelValue(labelName) : '';
-                if (lv !== 'false') { arr.push(child); }
-            }
-        } catch(e) {}
-        try {
-            var gc = child.getChildNotes ? child.getChildNotes() : null;
-            if (gc && gc.length) { collectLatestByLabel(child, labelName, arr, _depth + 1); }
-        } catch(e) {}
-    }
-}
-
-function extractNoteContent(n) {
-    var data = { date: '', summary: '' };
-    try {
-        var raw = '';
-        if (typeof n.getContent === 'function') { raw = n.getContent(); }
-        else if (n.content) { raw = n.content; }
-        if (typeof raw === 'string' && raw) {
-            var txt = raw.replace(/<[^>]*>/g, '').replace(/&[^;]+;/g, ' ').replace(/\s+/g, ' ').trim();
-            data.summary = txt.substring(0, 80);
-            if (txt.length > 80) data.summary += '…';
-        }
-    } catch(e) {}
-    try {
-        var dateSrc = n.dateCreated || n.utcDateCreated || n.utcDateModified || n.dateModified;
-        if (dateSrc) {
-            var d = typeof dateSrc.getTime === 'function' ? dateSrc : new Date(dateSrc);
-            if (!isNaN(d.getTime())) {
-                data.date = d.getFullYear() + '-' +
-                    String(d.getMonth() + 1).padStart(2, '0') + '-' +
-                    String(d.getDate()).padStart(2, '0') + ' ' +
-                    String(d.getHours()).padStart(2, '0') + ':' +
-                    String(d.getMinutes()).padStart(2, '0') + ':' +
-                    String(d.getSeconds()).padStart(2, '0');
-            }
-        }
-    } catch(e) {}
-    return data;
-}
-
-var articleNote = null;
-var articleDate = '';
-var articleSummary = '';
-try {
-    var recNotes = [];
-    if (isHome) { collectRecommendNotes(note, recNotes); }
-    if (recNotes.length > 0) {
-        articleNote = recNotes[Math.floor(Math.random() * recNotes.length)];
-        var ad = extractNoteContent(articleNote);
-        articleDate = ad.date;
-        articleSummary = ad.summary;
-    }
-} catch(e) { articleNote = null; }
-
-var latestNote = null;
-var latestDate = '';
-var latestSummary = '';
-try {
-    var artNotes = [];
-    if (isHome) { collectLatestByLabel(note, 'article', artNotes); }
-    if (artNotes.length > 0) {
-        artNotes.sort(function (a, b) {
-            var da = a.dateCreated || a.utcDateCreated || a.utcDateModified || a.dateModified || '';
-            var db = b.dateCreated || b.utcDateCreated || b.utcDateModified || b.dateModified || '';
-            return da > db ? -1 : da < db ? 1 : 0;
-        });
-        latestNote = artNotes[0];
-        var ld = extractNoteContent(latestNote);
-        latestDate = ld.date;
-        latestSummary = ld.summary;
-    }
-} catch(e) { latestNote = null; }
-
-var updates = [];
-try {
-    var updNotes = [];
-    try { collectLatestByLabel(note, 'recentUpdate', updNotes); } catch(e) {}
-    if (updNotes.length > 0) {
-        updNotes.sort(function (a, b) {
-            var da = '', db = '';
-            try { da = a.getLabelValue('dateNote') || a.utcDateModified || a.dateModified || ''; } catch(e) { da = a.utcDateModified || a.dateModified || ''; }
-            try { db = b.getLabelValue('dateNote') || b.utcDateModified || b.dateModified || ''; } catch(e) { db = b.utcDateModified || b.dateModified || ''; }
-            return da > db ? -1 : da < db ? 1 : 0;
-        });
-        for (var ui = 0; ui < updNotes.length && updates.length < 3; ui++) {
-            var n = updNotes[ui];
-            var ud = extractNoteContent(n);
-            var dnote = '';
-            try { dnote = n.getLabelValue('dateNote') || ''; } catch(e) {}
-            updates.push({ note: n, date: dnote || ud.date, summary: ud.summary });
-        }
-    }
-} catch(e) {}
-
-var annNote = null;
-var annDate = '';
-var annSummary = '';
-try {
-    var annNotes = [];
-    if (isHome) { collectLatestByLabel(note, 'announcement', annNotes); }
-    if (annNotes.length > 0) {
-        annNotes.sort(function (a, b) {
-            var da = a.dateCreated || a.utcDateCreated || a.utcDateModified || a.dateModified || '';
-            var db = b.dateCreated || b.utcDateCreated || b.utcDateModified || b.dateModified || '';
-            return da > db ? -1 : da < db ? 1 : 0;
-        });
-        annNote = annNotes[0];
-        var ad = extractNoteContent(annNote);
-        annDate = ad.date;
-        annSummary = ad.summary;
-    }
-} catch(e) { annNote = null; }
-
-// ── 热力图数据 ──
-// SQL: SELECT date, COUNT(*) AS total FROM (
-//   SELECT noteId, SUBSTR(dateModified,0,11) AS date FROM notes
-//   UNION
-//   SELECT DISTINCT noteId, SUBSTR(dateCreated,0,11) AS date FROM revisions
-// ) GROUP BY date
-// 优先使用 api.sql 查询整个服务端，回退到子树遍历
-var dateFreq = {};
-var hmWeeks = [];
-var hmMonths = [];
-var hmMax = 1;
-try {
-    if (typeof api !== 'undefined' && api.sql) {
-        var sqlRows = api.sql.execute("SELECT date, COUNT(*) AS total FROM (SELECT noteId, SUBSTR(dateModified,0,11) AS date FROM notes UNION SELECT DISTINCT noteId, SUBSTR(dateCreated,0,11) AS date FROM revisions) GROUP BY date");
-        if (sqlRows && sqlRows.length) {
-            for (var ri = 0; ri < sqlRows.length; ri++) {
-                dateFreq[sqlRows[ri].date] = parseInt(sqlRows[ri].total, 10);
-            }
-        }
-    } else {
-        (function collectDates(n) {
-            var dsMod = n.utcDateModified || n.dateModified || '';
-            if (dsMod) {
-                var d = new Date(dsMod);
-                if (!isNaN(d.getTime())) {
-                    var key = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
-                    dateFreq[key] = (dateFreq[key] || 0) + 1;
-                }
-            }
-            var dsCre = n.utcDateCreated || n.dateCreated || '';
-            if (dsCre) {
-                var dc = new Date(dsCre);
-                if (!isNaN(dc.getTime())) {
-                    var key = dc.getFullYear() + '-' + String(dc.getMonth()+1).padStart(2,'0') + '-' + String(dc.getDate()).padStart(2,'0');
-                    dateFreq[key] = (dateFreq[key] || 0) + 1;
-                }
-            }
-            var kids;
-            try { kids = n.getChildNotes(); } catch(e) { return; }
-            if (!kids || !kids.length) return;
-            for (var i = 0; i < kids.length; i++) {
-                collectDates(kids[i]);
-            }
-        })(note);
-    }
-    // 计算 hmMax
-    for (var dk in dateFreq) {
-        if (dateFreq[dk] > hmMax) hmMax = dateFreq[dk];
-    }
-
-    var now = new Date();
-    now.setHours(0, 0, 0, 0);
-    var start = new Date(now);
-    start.setDate(start.getDate() - 363);
-    while (start.getDay() !== 1) { start.setDate(start.getDate() - 1); }
-
-    var cur = new Date(start);
-    var prevMonth = -1;
-    var monthStart = -1;
-
-    while (cur <= now) {
-        if (cur.getMonth() !== prevMonth) {
-            if (prevMonth !== -1) {
-                hmMonths.push({ label: (prevMonth + 1) + '月', start: monthStart, span: hmWeeks.length - monthStart });
-            }
-            prevMonth = cur.getMonth();
-            monthStart = hmWeeks.length;
-        }
-        var week = [];
-        for (var d = 0; d < 7; d++) {
-            var key = cur.getFullYear() + '-' + String(cur.getMonth()+1).padStart(2,'0') + '-' + String(cur.getDate()).padStart(2,'0');
-            week.push({ date: key, count: dateFreq[key] || 0 });
-            cur.setDate(cur.getDate() + 1);
-        }
-        hmWeeks.push(week);
-    }
-    if (prevMonth !== -1) {
-        hmMonths.push({ label: (prevMonth + 1) + '月', start: monthStart, span: hmWeeks.length - monthStart });
-    }
-
-    for (var wi = 0; wi < hmWeeks.length; wi++) {
-        for (var di = 0; di < 7; di++) {
-            if (hmWeeks[wi][di].count > hmMax) hmMax = hmWeeks[wi][di].count;
-        }
-    }
-} catch(e) {}
-%>
+<div class="page">
 
 <header class="top-bar">
     <div class="top-inner">
@@ -349,66 +117,7 @@ try {
         <ul class="tree-list" id="tree-list"></ul>
     </div>
 </div>
-<%
-// 服务端构建分类树，内嵌到页面供 blog.js 使用
-function buildCategoryTree(parentNote) {
-    var result = [];
-    var kids;
-    try { kids = parentNote.getChildNotes(); } catch(e) { return result; }
-    if (!kids || !kids.length) return result;
-    for (var ci = 0; ci < kids.length; ci++) {
-        var kid = kids[ci];
-        // 跳过 shareHiddenFromTree 标签的笔记
-        try { if (kid.hasLabel && kid.hasLabel('shareHiddenFromTree') && kid.getLabelValue('shareHiddenFromTree') === 'true') continue; } catch(e) {}
-        var isCat = false;
-        try { isCat = !!(kid.getLabelValue && kid.getLabelValue('category') === 'true'); } catch(e) {}
-        var icon = '';
-        try {
-            icon = kid.getLabelValue ? kid.getLabelValue('iconClass') || '' : '';
-        } catch(e) {}
-        var node = { noteId: kid.noteId, title: kid.title, category: isCat, children: [] };
-        if (icon) node.icon = icon;
-        node.children = buildCategoryTree(kid);
-        result.push(node);
-    }
-    return result;
-}
-var _catTree = [];
-try {
-    var rootNote = homeNote || note;
-    _catTree = buildCategoryTree(rootNote);
-} catch(e) { _catTree = []; }
-%>
-<script>window.__CATEGORY_TREE__ = <%- JSON.stringify(_catTree) %>;</script>
 
-<%
-// 服务端查找"关于"笔记，构建下拉菜单树
-var _aboutTree = [];
-try {
-    (function findAbout(n) {
-        if (n.title === '关于') {
-            _aboutTree = buildCategoryTree(n);
-        } else {
-            var ks;
-            try { ks = n.getChildNotes(); } catch(e) { ks = []; }
-            for (var fi = 0; fi < ks.length; fi++) {
-                if (_aboutTree.length) break;
-                findAbout(ks[fi]);
-            }
-        }
-    })(rootNote || note);
-} catch(e) {}
-%>
-<script>window.__ABOUT_MENU__ = <%- JSON.stringify(_aboutTree) %>;</script>
-<script>window.__BLOG_CONFIG__ = <%- JSON.stringify(_cfg) %>;</script>
-<style>
-  :root {
-    --cover-pc: url("<%= _cfg.defaultCover %>");
-    --cover-mobile: url("<%= _cfg.coverMobileImage %>");
-  }
-</style>
-
-<div class="page">
     <% if (isHome) { %>
     <style>html { overflow-y: hidden; height: 100%; } body { height: 100%; }</style>
     <main class="grid-4">
@@ -417,95 +126,42 @@ try {
                 <div class="mod-icon mod-icon--rec">📕</div>
                 <h3 class="mod-title mod-title--rec">推荐阅读</h3>
             </div>
-            <div class="rec-card" id="rec-card">
-                <% if (articleNote) { %>
-                    <% if (articleDate) { %><time class="rec-date"><%= articleDate %></time><% } %>
-                    <h4 class="rec-title"><i class="<%= _noteIcon(articleNote) || 'bx bx-star' %> rec-item-icon"></i> <a href="/<%= articleNote.noteId %>"><%= articleNote.title %></a></h4>
-                    <% if (articleSummary) { %><p class="rec-summary"><%= articleSummary %></p><% } %>
-                <% } else { %>
-                    <div class="rec-empty">暂无推荐</div>
-                <% } %>
-            </div>
+            <div class="rec-card" id="mod-recommend"></div>
         </div>
         <div class="mod mod-rec">
             <div class="mod-header-rec">
                 <div class="mod-icon mod-icon--rec">📰</div>
                 <h3 class="mod-title mod-title--rec">最近发布</h3>
             </div>
-
-            <div class="rec-card">
-                <% if (latestNote) { %>
-                    <% if (latestDate) { %><time class="rec-date"><%= latestDate %></time><% } %>
-                    <h4 class="rec-title"><i class="<%= _noteIcon(latestNote) || 'bx bx-notepad' %> rec-item-icon"></i> <a href="/<%= latestNote.noteId %>"><%= latestNote.title %></a></h4>
-                    <% if (latestSummary) { %><p class="rec-summary"><%= latestSummary %></p><% } %>
-                <% } else { %>
-                    <div class="rec-empty">暂无文章</div>
-                <% } %>
-            </div>
+            <div class="rec-card" id="mod-article"></div>
         </div>
         <div class="mod mod-rec">
             <div class="mod-header-rec">
                 <div class="mod-icon mod-icon--rec">⚡</div>
                 <h3 class="mod-title mod-title--rec">最近动态</h3>
-                <span class="rec-count"><%= updates.length %></span>
             </div>
-            <div class="rec-card">
-                <% if (updates.length > 0) {
-                    for (var ui = 0; ui < updates.length; ui++) {
-                        var u = updates[ui]; %>
-                    <div class="rec-upd-item">
-                        <% var _updIcon = _noteIcon(u.note); if (_updIcon) { %><i class="<%= _updIcon %> upd-item-icon"></i><% } %>
-                        <time class="rec-date"><%= u.date %></time>
-                        <h4 class="rec-title"><a href="/<%= u.note.noteId %>"><%= u.note.title %></a></h4>
-                    </div>
-                <% } } else { %>
-                    <div class="rec-empty">暂无动态</div>
-                <% } %>
-            </div>
+            <div class="rec-card" id="mod-updates"></div>
         </div>
         <div class="mod mod-rec">
             <div class="mod-header-rec">
                 <div class="mod-icon mod-icon--rec">📣</div>
                 <h3 class="mod-title mod-title--rec">公告</h3>
             </div>
-            <div class="rec-card">
-                <% if (annNote) { %>
-                    <time class="rec-date"><%= annDate %></time>
-                    <h4 class="rec-title"><i class="<%= _noteIcon(annNote) || 'bx bx-megaphone' %> rec-item-icon"></i> <a href="/<%= annNote.noteId %>"><%= annNote.title %></a></h4>
-                    <% if (annSummary) { %><p class="rec-summary"><%= annSummary %></p><% } %>
-                <% } else { %>
-                    <div class="rec-empty">暂无公告</div>
-                <% } %>
-            </div>
+            <div class="rec-card" id="mod-announcement"></div>
         </div>
         <div class="mod mod-stats">
             <div class="mod-header-stats">
                 <div class="mod-icon">📊</div>
                 <h3 class="mod-title">统计摘要</h3>
             </div>
-            <div class="stats-row">
-                <span class="stats-item">推荐阅读 <em><%= (typeof recNotes !== 'undefined' ? recNotes : []).length %></em></span>
-                <span class="stats-item">文章 <em><%= (typeof artNotes !== 'undefined' ? artNotes : []).length %></em></span>
-                <span class="stats-item">动态 <em><%= (typeof updNotes !== 'undefined' ? updNotes.length : 0) %></em></span>
-                <span class="stats-item">公告 <em><%= (typeof annNotes !== 'undefined' ? annNotes : []).length %></em></span>
+            <div class="stats-row" id="mod-stats">
+                <span class="stats-item">推荐阅读 <em id="stat-recommend">--</em></span>
+                <span class="stats-item">文章 <em id="stat-article">--</em></span>
+                <span class="stats-item">动态 <em id="stat-recentUpdate">--</em></span>
+                <span class="stats-item">公告 <em id="stat-announcement">--</em></span>
             </div>
-            <div class="hm-wrap">
-                <div class="hm-grid" style="grid-template-columns: 28px repeat(<%= hmWeeks.length %>, 13px); grid-template-rows: 18px repeat(7, 13px);">
-                    <% for (var mi = 0; mi < hmMonths.length; mi++) { var m = hmMonths[mi]; %>
-                        <div class="hm-month" style="grid-column: <%= 2 + m.start %> / span <%= m.span %>; grid-row: 1"><%= m.label %></div>
-                    <% } %>
-                    <% var wdays = ['一','二','三','四','五','六','日']; %>
-                    <% for (var di = 0; di < 7; di++) { %>
-                        <div class="hm-wday" style="grid-column: 1; grid-row: <%= di + 2 %>"><%= wdays[di] %></div>
-                        <% for (var wi = 0; wi < hmWeeks.length; wi++) {
-                            var cell = hmWeeks[wi][di];
-                            var level = 0;
-                            if (cell.count > 0) { level = Math.ceil((cell.count / hmMax) * 4); if (level < 1) level = 1; if (level > 4) level = 4; }
-                        %>
-                            <div class="hm-cell hm-l<%= level %>" style="grid-column: <%= wi + 2 %>; grid-row: <%= di + 2 %>" data-date="<%= cell.date %>" data-count="<%= cell.count %>"></div>
-                        <% } %>
-                    <% } %>
-                </div>
+            <div class="hm-wrap" id="mod-heatmap">
+                <div class="hm-grid" id="heatmap-grid"></div>
             </div>
         </div>
     </main>
@@ -589,13 +245,13 @@ try {
         if (lightLink) lightLink.disabled = isDark;
     }
     syncHljsTheme();
-    // 观察主题属性变化
     var observer = new MutationObserver(syncHljsTheme);
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
 })();
 </script>
 
 <script>
+// 热力图 tooltip
 (function () {
     var hmTip = null;
     var hmActiveCell = null;
@@ -621,88 +277,42 @@ try {
         var margin = 8;
         var left = rect.left + rect.width / 2;
         var top = rect.top - margin;
-        if (left - tipW / 2 < margin) left = tipW / 2 + margin;
-        if (left + tipW / 2 > window.innerWidth - margin) left = window.innerWidth - tipW / 2 - margin;
-        if (top - tipH < margin) {
-            top = rect.bottom + margin;
-            tip.style.transform = 'translate(-50%, 0)';
-        }
-        tip.style.left = left + 'px';
-        tip.style.top = top + 'px';
+        if (left - tipW / 2 < margin) left = margin + tipW / 2;
+        if (left + tipW / 2 > window.innerWidth - margin) left = window.innerWidth - margin - tipW / 2;
+        if (top - tipH < margin) top = rect.bottom + margin;
+        tip.style.left = (left - tipW / 2) + 'px';
+        tip.style.top = (top - tipH) + 'px';
         hmTip = tip;
         hmActiveCell = cell;
-        cell.classList.add('active');
+        if (cell) { cell.classList.add('active'); }
     }
 
-    var hmGrid = document.querySelector('.hm-grid');
-    if (!hmGrid) return;
-
-    if (!isMobile) {
-        hmGrid.addEventListener('mouseover', function (e) {
+    function hmListen(grid) {
+        grid.addEventListener('mouseover', function (e) {
             var cell = e.target.closest('.hm-cell');
-            if (cell) showTip(cell);
-        });
-        hmGrid.addEventListener('mouseleave', function () { hmDismiss(); });
-    } else {
-        hmGrid.addEventListener('click', function (e) {
-            var cell = e.target.closest('.hm-cell');
-            if (!cell) return;
-            if (hmActiveCell === cell) { hmDismiss(); return; }
+            if (!cell) { hmDismiss(); return; }
             showTip(cell);
         });
-    }
-
-    document.addEventListener('click', function (e) {
-        if (hmTip && !e.target.closest('.hm-grid')) hmDismiss();
-    }, true);
-    document.addEventListener('scroll', function () { hmDismiss(); }, { capture: true, passive: true });
-})();
-</script>
-
-<script>
-<%
-var __searchData = '[]';
-if (homeNote) {
-    function __sc(n, d) {
-        if (d > 15 || !n) return [];
-        var r = [];
-        var kids;
-        try { kids = n.getChildNotes(); } catch(e) { return r; }
-        if (!kids || !kids.length) return r;
-        for (var i = 0; i < kids.length; i++) {
-            var k = kids[i];
-
-            // 1. 严格判断：只有标签存在，且值确实等于字符串 'true' 时，才判定为需要排除
-            var isHidden = false;
-            var isCategory = false;
-            try {
-                isHidden = k.hasLabel('shareHiddenFromTree') && k.getLabelValue('shareHiddenFromTree') === 'true';
-                isCategory = k.hasLabel('category') && k.getLabelValue('category') === 'true';
-            } catch(e) {}
-
-            // 2. 只有当它们都不为 true 的时候，才把当前笔记加入搜索结果
-            if (!isHidden && !isCategory) {
-                var txt = '';
-                try {
-                    var raw;
-                    if (typeof k.getContent === 'function') raw = k.getContent();
-                    else if (k.content) raw = k.content;
-                    if (raw) txt = raw.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').substring(0, 500).trim();
-                } catch(e) {}
-                r.push({ id: k.noteId, title: k.title || '', content: txt });
-            }
-
-            // 3. 递归保障：不管当前笔记是不是 true 被排除了，都要继续往下扫描它的子笔记
-            if (r.length < 300) {
-                var sub = __sc(k, d + 1);
-                for (var j = 0; j < sub.length && r.length < 300; j++) r.push(sub[j]);
-            }
+        grid.addEventListener('mouseleave', hmDismiss);
+        if (isMobile) {
+            grid.addEventListener('click', function (e) {
+                var cell = e.target.closest('.hm-cell');
+                if (!cell) return;
+                if (hmActiveCell === cell) { hmDismiss(); return; }
+                showTip(cell);
+            });
         }
-        return r;
     }
-    __searchData = JSON.stringify(__sc(homeNote, 0));
-}
-%>
-window.__SEARCH_DATA__ = <%- __searchData %>;
+
+    // 观察热力图区域，渲染完成后绑定事件
+    var hmObs = new MutationObserver(function () {
+        var grid = document.getElementById('heatmap-grid');
+        if (grid && grid.children.length > 0) {
+            hmObs.disconnect();
+            hmListen(grid);
+        }
+    });
+    hmObs.observe(document.getElementById('mod-heatmap'), { childList: true, subtree: true });
+})();
 </script>
 <script src="/blog.js" defer></script>

@@ -32,20 +32,69 @@
     var bar = document.querySelector(".top-bar");
     var pageEl = document.querySelector(".page");
 
+    /* ── 数据加载工具 ── */
+    var cachedData = {};
+    function fetchJSON(url) {
+        if (cachedData[url]) return Promise.resolve(cachedData[url]);
+        return fetch(url)
+            .then(function (r) {
+                if (!r.ok) throw new Error("fetch " + url + " failed: " + r.status);
+                return r.json();
+            })
+            .then(function (data) {
+                cachedData[url] = data;
+                return data;
+            })
+            .catch(function (e) {
+                console.error(e);
+                return null;
+            });
+    }
+
+    function fmtDate(iso) {
+        if (!iso) return "";
+        try {
+            var d = new Date(iso);
+            if (isNaN(d.getTime())) return iso;
+            return d.getFullYear() + "-" +
+                String(d.getMonth() + 1).padStart(2, "0") + "-" +
+                String(d.getDate()).padStart(2, "0") + " " +
+                String(d.getHours()).padStart(2, "0") + ":" +
+                String(d.getMinutes()).padStart(2, "0") + ":" +
+                String(d.getSeconds()).padStart(2, "0");
+        } catch (e) { return iso; }
+    }
+
+    function isEmpty(obj) { return obj === null || obj === undefined || (Array.isArray(obj) && obj.length === 0); }
+
     /* ── 搜索 ── */
     var searchToggle = document.getElementById("search-toggle");
     var searchDropdown = document.getElementById("search-dropdown");
     var searchInput = document.getElementById("search-input");
     var searchResults = document.getElementById("search-results");
-    var searchData = window.__SEARCH_DATA__ || [];
+    var searchData = null;
+    var searchDataLoading = false;
     var searchOpen = false;
+
+    function ensureSearchData(cb) {
+        if (searchData) { if (cb) cb(); return; }
+        if (searchDataLoading) { if (cb) setTimeout(function () { ensureSearchData(cb); }, 100); return; }
+        searchDataLoading = true;
+        fetchJSON("/blog-search").then(function (data) {
+            searchData = data || [];
+            searchDataLoading = false;
+            if (cb) cb();
+        });
+    }
 
     function openSearch() {
         if (!searchDropdown || !searchInput) return;
         searchDropdown.classList.add("open");
         searchOpen = true;
-        setTimeout(function () { searchInput.focus(); }, 100);
-        renderResults("");
+        ensureSearchData(function () {
+            setTimeout(function () { searchInput.focus(); }, 100);
+            renderResults(searchInput.value.trim());
+        });
     }
 
     function closeSearch() {
@@ -57,14 +106,14 @@
     }
 
     function filterSearchData(q) {
-        if (!q) return [];
+        if (!q || !searchData) return [];
         q = q.toLowerCase();
         var out = [];
         for (var i = 0; i < searchData.length; i++) {
             var item = searchData[i];
             if (
                 item.title.toLowerCase().indexOf(q) !== -1 ||
-                item.content.toLowerCase().indexOf(q) !== -1
+                (item.content && item.content.toLowerCase().indexOf(q) !== -1)
             ) {
                 out.push(item);
                 if (out.length >= 30) break;
@@ -91,10 +140,10 @@
                 : "";
             html +=
                 '<a class="search-result-item" href="/' +
-                item.id +
+                item.noteId +
                 '">' +
                 '<span class="search-result-title">' +
-                item.title.replace(/</g, "&lt;").replace(/>/g, "&gt;") +
+                (item.title || "").replace(/</g, "&lt;").replace(/>/g, "&gt;") +
                 "</span>" +
                 (snippet
                     ? '<span class="search-result-content">' + snippet + "</span>"
@@ -217,13 +266,10 @@
         });
     }
 
-    /* ── 点击任意位置 / 滚动 关闭所有浮层 ──
-       用 capture:true 确保能捕获到 div.page 内部的点击/滚动
-    ── */
+    /* ── 点击任意位置 / 滚动 关闭所有浮层 ── */
     document.addEventListener(
         "click",
         function (e) {
-            // 关闭移动菜单
             if (mobileMenu && mobileMenu.classList.contains("open")) {
                 if (
                     !mobileMenu.contains(e.target) &&
@@ -233,7 +279,6 @@
                     closeMobileMenu();
                 }
             }
-            // 关闭分类面板（点到 category-tags 内容区之外）
             if (categoryPanel && categoryPanel.classList.contains("open")) {
                 var inner = document.getElementById("category-tags");
                 var isInsideContent = inner && inner.contains(e.target);
@@ -248,7 +293,6 @@
         true,
     );
 
-    // 滚动时关闭移动菜单
     document.addEventListener(
         "scroll",
         function () {
@@ -279,23 +323,17 @@
         }
     });
 
-    /* ── 顶部胶囊滚动显隐 ──
-       规则：
-       - 首页（isHome）：永远显示，不隐藏
-       - 笔记页：向下滚动超阈值隐藏，向上滚动超阈值显示，顶部始终显示
-    ── */
+    /* ── 顶部胶囊滚动显隐 ── */
     var THRESHOLD = 10;
-    var barVisible = true; // 初始可见
+    var barVisible = true;
     var lastY = 0;
     var ticking = false;
 
-    // 初始化：首页不隐藏，笔记页初始隐藏（等第一次上划再显示）
     if (bar) {
         if (isHome) {
             bar.classList.remove("top-bar--hidden");
             barVisible = true;
         } else {
-            // 笔记页初始显示，向下滚动再隐藏
             bar.classList.remove("top-bar--hidden");
             barVisible = true;
         }
@@ -309,7 +347,6 @@
 
     function handleScroll(sy) {
         if (isHome) {
-            // 首页：永远显示
             setBarVisible(true);
             return;
         }
@@ -324,7 +361,6 @@
         lastY = sy;
     }
 
-    // capture 监听，捕获 div.page 的 scroll（不冒泡到 window）
     document.addEventListener(
         "scroll",
         function (e) {
@@ -347,7 +383,6 @@
         { capture: true, passive: true },
     );
 
-    // 直接绑 .page 双重保险
     function bindPage() {
         pageEl = document.querySelector(".page");
         if (!pageEl) return;
@@ -396,18 +431,210 @@
         initHighlight();
     }
 
-    /* ── 加载分类树（EJS 服务端内嵌，无需 fetch） ── */
+    /* ── 首页模块数据加载 ── */
+    /* 预处理脚本输出字段:
+       recommend: [{noteId, title, noteIcon, dateCreated, content}]
+       article: {noteId, title, noteIcon, dateCreated, content} | null
+       recentUpdate: [{noteId, title, noteIcon, dateCreated}]
+       announcement: {noteId, title, noteIcon, dateCreated, content} | null
+       stats: {article, recommend, recentUpdate, announcement}
+       heatmap: [{date, count}]
+       tree: [{noteId, title, noteIcon, category, children:[...]}]
+       about-tree: [{noteId, title, noteIcon, category, children:[...]}]
+    */
+
+    function renderModule(containerId, emptyMsg, renderFn) {
+        var el = document.getElementById(containerId);
+        if (!el) return;
+        el.innerHTML = '<div class="rec-empty">加载中…</div>';
+        return function (data) {
+            if (isEmpty(data)) {
+                el.innerHTML = '<div class="rec-empty">' + emptyMsg + '</div>';
+            } else {
+                el.innerHTML = renderFn(data);
+            }
+        };
+    }
+
+    function loadHomeModules() {
+        /* 推荐阅读 */
+        fetchJSON("/blog-recommend").then(function (data) {
+            var render = renderModule("mod-recommend", "暂无推荐", function (items) {
+                if (!items || !items.length) return '<div class="rec-empty">暂无推荐</div>';
+                var item = items[Math.floor(Math.random() * items.length)];
+                var html = "";
+                if (item.dateCreated) html += '<time class="rec-date">' + fmtDate(item.dateCreated) + '</time>';
+                html += '<h4 class="rec-title">';
+                if (item.noteIcon) html += '<i class="' + escapeHtml(item.noteIcon) + ' rec-item-icon"></i> ';
+                html += '<a href="/' + item.noteId + '">' + escapeHtml(item.title) + '</a></h4>';
+                if (item.content) html += '<p class="rec-summary">' + escapeHtml(item.content) + '</p>';
+                return html;
+            });
+            render(data);
+        });
+
+        /* 最近发布 */
+        fetchJSON("/blog-article").then(function (data) {
+            var render = renderModule("mod-article", "暂无文章", function (item) {
+                if (!item) return '<div class="rec-empty">暂无文章</div>';
+                var html = "";
+                if (item.dateCreated) html += '<time class="rec-date">' + fmtDate(item.dateCreated) + '</time>';
+                html += '<h4 class="rec-title">';
+                if (item.noteIcon) html += '<i class="' + escapeHtml(item.noteIcon) + ' rec-item-icon"></i> ';
+                html += '<a href="/' + item.noteId + '">' + escapeHtml(item.title) + '</a></h4>';
+                if (item.content) html += '<p class="rec-summary">' + escapeHtml(item.content) + '</p>';
+                return html;
+            });
+            render(data);
+        });
+
+        /* 最近动态 */
+        fetchJSON("/blog-recentUpdate").then(function (data) {
+            var el = document.getElementById("mod-updates");
+            if (!el) return;
+            if (isEmpty(data)) {
+                el.innerHTML = '<div class="rec-empty">暂无动态</div>';
+                return;
+            }
+            var html = "";
+            for (var i = 0; i < data.length; i++) {
+                var u = data[i];
+                html += '<div class="rec-upd-item">';
+                if (u.noteIcon) html += '<i class="' + escapeHtml(u.noteIcon) + ' upd-item-icon"></i> ';
+                html += '<time class="rec-date">' + fmtDate(u.dateCreated) + '</time>';
+                html += '<h4 class="rec-title"><a href="/' + u.noteId + '">' + escapeHtml(u.title) + '</a></h4>';
+                html += '</div>';
+            }
+            el.innerHTML = html;
+        });
+
+        /* 公告 */
+        fetchJSON("/blog-announcement").then(function (data) {
+            var render = renderModule("mod-announcement", "暂无公告", function (item) {
+                if (!item) return '<div class="rec-empty">暂无公告</div>';
+                var html = "";
+                if (item.dateCreated) html += '<time class="rec-date">' + fmtDate(item.dateCreated) + '</time>';
+                html += '<h4 class="rec-title">';
+                if (item.noteIcon) html += '<i class="' + escapeHtml(item.noteIcon) + ' rec-item-icon"></i> ';
+                html += '<a href="/' + item.noteId + '">' + escapeHtml(item.title) + '</a></h4>';
+                if (item.content) html += '<p class="rec-summary">' + escapeHtml(item.content) + '</p>';
+                return html;
+            });
+            render(data);
+        });
+
+        /* 统计 */
+        fetchJSON("/blog-stats").then(function (data) {
+            if (!data) return;
+            var m = function (id) { return document.getElementById(id); };
+            if (data.recommend !== undefined && m("stat-recommend")) m("stat-recommend").textContent = data.recommend;
+            if (data.article !== undefined && m("stat-article")) m("stat-article").textContent = data.article;
+            if (data.recentUpdate !== undefined && m("stat-recentUpdate")) m("stat-recentUpdate").textContent = data.recentUpdate;
+            if (data.announcement !== undefined && m("stat-announcement")) m("stat-announcement").textContent = data.announcement;
+        });
+
+        /* 热力图 */
+        fetchJSON("/blog-heatmap").then(function (data) {
+            renderHeatmap(data || []);
+        });
+    }
+
+    /* ── 热力图网格渲染 ── */
+    function renderHeatmap(dateFreqArr) {
+        var grid = document.getElementById("heatmap-grid");
+        if (!grid) return;
+
+        var dateFreq = {};
+        var hmMax = 1;
+        for (var i = 0; i < dateFreqArr.length; i++) {
+            dateFreq[dateFreqArr[i].date] = parseInt(dateFreqArr[i].count, 10) || 0;
+            if (dateFreq[dateFreqArr[i].date] > hmMax) hmMax = dateFreq[dateFreqArr[i].date];
+        }
+
+        var now = new Date();
+        now.setHours(0, 0, 0, 0);
+        var start = new Date(now);
+        start.setDate(start.getDate() - 363);
+        while (start.getDay() !== 1) { start.setDate(start.getDate() - 1); }
+
+        var cur = new Date(start);
+        var prevMonth = -1;
+        var hmWeeks = [];
+        var hmMonths = [];
+
+        while (cur <= now) {
+            if (cur.getMonth() !== prevMonth) {
+                if (prevMonth !== -1) {
+                    hmMonths.push({ label: (prevMonth + 1) + "月", start: monthStart, span: hmWeeks.length - monthStart });
+                }
+                prevMonth = cur.getMonth();
+                var monthStart = hmWeeks.length;
+            }
+            var week = [];
+            for (var d = 0; d < 7; d++) {
+                var key = cur.getFullYear() + "-" + String(cur.getMonth()+1).padStart(2,"0") + "-" + String(cur.getDate()).padStart(2,"0");
+                week.push({ date: key, count: dateFreq[key] || 0 });
+                cur.setDate(cur.getDate() + 1);
+            }
+            hmWeeks.push(week);
+        }
+        if (prevMonth !== -1) {
+            hmMonths.push({ label: (prevMonth + 1) + "月", start: monthStart, span: hmWeeks.length - monthStart });
+        }
+
+        for (var wi = 0; wi < hmWeeks.length; wi++) {
+            for (var di = 0; di < 7; di++) {
+                if (hmWeeks[wi][di].count > hmMax) hmMax = hmWeeks[wi][di].count;
+            }
+        }
+
+        var cols = hmWeeks.length;
+        grid.style.gridTemplateColumns = "28px repeat(" + cols + ", 13px)";
+        grid.style.gridTemplateRows = "18px repeat(7, 13px)";
+
+        var html = "";
+        for (var mi = 0; mi < hmMonths.length; mi++) {
+            var m = hmMonths[mi];
+            html += '<div class="hm-month" style="grid-column: ' + (2 + m.start) + ' / span ' + m.span + '; grid-row: 1">' + escapeHtml(m.label) + '</div>';
+        }
+
+        var wdays = ["一","二","三","四","五","六","日"];
+        for (var di = 0; di < 7; di++) {
+            html += '<div class="hm-wday" style="grid-column: 1; grid-row: ' + (di + 2) + '">' + wdays[di] + '</div>';
+            for (var wi = 0; wi < hmWeeks.length; wi++) {
+                var cell = hmWeeks[wi][di];
+                var level = 0;
+                if (cell.count > 0) { level = Math.ceil((cell.count / hmMax) * 4); if (level < 1) level = 1; if (level > 4) level = 4; }
+                html += '<div class="hm-cell hm-l' + level + '" style="grid-column: ' + (wi + 2) + '; grid-row: ' + (di + 2) + '" data-date="' + cell.date + '" data-count="' + cell.count + '"></div>';
+            }
+        }
+
+        grid.innerHTML = html;
+
+        /* 移动端默认滚动到最右侧 */
+        if (window.innerWidth <= 768) {
+            var wrap = document.querySelector(".hm-wrap");
+            if (wrap) wrap.scrollLeft = wrap.scrollWidth - wrap.clientWidth;
+        }
+    }
+
+    /* ── 加载分类树（fetch /blog-tree） ── */
     function loadCategoryTree() {
         var treeList = document.getElementById("tree-list");
         if (!treeList) return;
-        var currentId = getCurrentNoteId();
-        var data = window.__CATEGORY_TREE__;
-        if (data && data.length) {
-            renderTree(data, treeList, currentId);
-        } else {
-            treeList.innerHTML =
-                '<li class="tree-item"><span class="tag-chip">暂无分类</span></li>';
+        if (treeData) {
+            renderTree(treeData, treeList, getCurrentNoteId());
+            return;
         }
+        treeList.innerHTML = '<li class="tree-item" style="padding:8px;color:var(--text-muted)">加载中…</li>';
+        fetchJSON(TREE_JSON_URL).then(function (data) {
+            if (data && data.length) {
+                treeData = data;
+                renderTree(treeData, treeList, getCurrentNoteId());
+            } else {
+                treeList.innerHTML = '<li class="tree-item"><span class="tag-chip">暂无分类</span></li>';
+            }
+        });
     }
 
     function renderTree(items, container, currentId) {
@@ -427,7 +654,7 @@
             if (hasKids) toggle.addEventListener("click", toggleTree);
 
             var titleEl;
-            var iconCls = item.icon || "";
+            var iconCls = item.noteIcon || item.icon || "";
             if (item.category === true) {
                 titleEl = document.createElement("span");
                 titleEl.className = "tag-chip tag-chip--category";
@@ -496,11 +723,19 @@
         toggle.classList.toggle("expanded", !open);
     }
 
-    /* ── "关于"下拉菜单 ── */
+    /* ── "关于"下拉菜单（fetch /blog-about-tree） ── */
     var aboutBtn = document.getElementById("about-btn");
     var aboutDropdown = document.getElementById("about-dropdown");
     var aboutMenu = document.getElementById("about-menu");
-    var aboutData = window.__ABOUT_MENU__;
+    var aboutData = null;
+
+    function ensureAboutData(cb) {
+        if (aboutData) { if (cb) cb(); return; }
+        fetchJSON("/blog-about-tree").then(function (data) {
+            aboutData = data || [];
+            if (cb) cb();
+        });
+    }
 
     function renderAboutMenu(items, container) {
         if (!items || !items.length) {
@@ -523,7 +758,7 @@
                 toggle.addEventListener("click", toggleAboutSub);
 
             var titleEl;
-            var iconCls = item.icon || "";
+            var iconCls = item.noteIcon || item.icon || "";
             if (item.category === true) {
                 titleEl = document.createElement("span");
                 titleEl.className = "tag-chip tag-chip--category";
@@ -593,9 +828,14 @@
             closeAboutDropdown();
         } else {
             if (aboutMenu) {
-                aboutMenu.innerHTML = "";
-                renderAboutMenu(aboutData, aboutMenu);
+                aboutMenu.innerHTML = '<li class="tree-item" style="padding:8px;color:var(--text-muted)">加载中…</li>';
             }
+            ensureAboutData(function () {
+                if (aboutMenu) {
+                    aboutMenu.innerHTML = "";
+                    renderAboutMenu(aboutData, aboutMenu);
+                }
+            });
             aboutDropdown.classList.add("open");
         }
     }
@@ -630,9 +870,14 @@
             aboutDropdownM.classList.remove("open");
         } else {
             if (aboutMenuM) {
-                aboutMenuM.innerHTML = "";
-                renderAboutMenu(aboutData, aboutMenuM);
+                aboutMenuM.innerHTML = '<li class="tree-item" style="padding:8px;color:var(--text-muted)">加载中…</li>';
             }
+            ensureAboutData(function () {
+                if (aboutMenuM) {
+                    aboutMenuM.innerHTML = "";
+                    renderAboutMenu(aboutData, aboutMenuM);
+                }
+            });
             aboutDropdownM.classList.add("open");
         }
     }
@@ -785,46 +1030,39 @@
     }
 
     function escapeHtml(str) {
+        if (str === null || str === undefined) return "";
         var div = document.createElement("div");
-        div.appendChild(document.createTextNode(str));
+        div.appendChild(document.createTextNode(String(str)));
         return div.innerHTML;
     }
 
-    /* ── 移动端热力图：默认滚动到最右侧 ── */
-    function scrollHeatmapToEnd() {
-        var wrap = document.querySelector(".hm-wrap");
-        if (!wrap) return;
-        if (window.innerWidth <= 768) {
-            wrap.scrollLeft = wrap.scrollWidth - wrap.clientWidth;
+    /* ── 初始化 ── */
+    function init() {
+        initToc();
+        initTocMobile();
+        if (isHome) {
+            loadHomeModules();
         }
     }
 
-    /* ── 初始化 TOC ── */
     if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", function () {
-            initToc();
-            initTocMobile();
-            scrollHeatmapToEnd();
-        });
+        document.addEventListener("DOMContentLoaded", init);
     } else {
-        initToc();
-        initTocMobile();
-        scrollHeatmapToEnd();
+        init();
     }
 
     /* ── Trilium Internal Links 处理 ── */
     function processInternalLinks() {
-        /* 建立 noteId → icon 查找表（从分类树） */
         var iconMap = {};
-        var treeData = window.__CATEGORY_TREE__ || [];
-        function walkTree(arr) {
-            for (var i = 0; i < arr.length; i++) {
-                if (arr[i].icon) iconMap[arr[i].noteId] = arr[i].icon;
-                if (arr[i].children) walkTree(arr[i].children);
+        if (treeData) {
+            function walkTree(arr) {
+                for (var i = 0; i < arr.length; i++) {
+                    if (arr[i].icon || arr[i].noteIcon) iconMap[arr[i].noteId] = arr[i].icon || arr[i].noteIcon;
+                    if (arr[i].children) walkTree(arr[i].children);
+                }
             }
+            walkTree(treeData);
         }
-        walkTree(treeData);
-        /* 处理 note:// 格式的内部链接 */
         var noteLinks = document.querySelectorAll('.note-body a[href^="note://"]');
         noteLinks.forEach(function (link) {
             var href = link.getAttribute("href") || "";
@@ -837,7 +1075,6 @@
                 }
             }
         });
-        /* 处理已渲染为 reference-link 类的内部链接 */
         var refLinks = document.querySelectorAll('.note-body a.reference-link');
         refLinks.forEach(function (link) {
             if (!link.id) link.id = "ref-" + Math.random().toString(36).slice(2, 8);

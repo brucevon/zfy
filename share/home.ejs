@@ -289,19 +289,23 @@ if (homeNote) {
 
     function hmListen(grid) {
         grid.addEventListener('mouseover', function (e) {
+            if (isMobile) return;
             var cell = e.target.closest('.hm-cell');
             if (!cell) { hmDismiss(); return; }
             showTip(cell);
         });
-        grid.addEventListener('mouseleave', hmDismiss);
-        if (isMobile) {
-            grid.addEventListener('click', function (e) {
-                var cell = e.target.closest('.hm-cell');
-                if (!cell) return;
-                if (hmActiveCell === cell) { hmDismiss(); return; }
-                showTip(cell);
-            });
-        }
+        grid.addEventListener('mouseleave', function () {
+            if (isMobile) return;
+            hmDismiss();
+        });
+        grid.addEventListener('click', function (e) {
+            var cell = e.target.closest('.hm-cell');
+            if (!cell) return;
+            if (hmActiveCell === cell) { hmDismiss(); return; }
+            showTip(cell);
+        });
+        var scrollEl = document.querySelector('.page') || window;
+        scrollEl.addEventListener('scroll', hmDismiss, { passive: true });
     }
 
     // 观察热力图区域，渲染完成后绑定事件

@@ -1001,6 +1001,7 @@ body {
     border-radius: 3px;
     cursor: pointer;
     transition: opacity 0.15s;
+    touch-action: manipulation;
 }
 .hm-future {
     width: 13px;
@@ -1256,7 +1257,10 @@ html.mobile-view .menu-btn {
 }
 html.mobile-view .page {
     padding: 12px;
-    overflow-x: hidden;
+    overflow: hidden auto;
+    height: 100vh;
+    min-height: 0 !important;
+    box-sizing: border-box;
 }
 html.mobile-view .grid-4 {
     display: flex;

@@ -2109,6 +2109,7 @@ html.mobile-view .lightbox-close {
     -webkit-backdrop-filter: blur(20px);
     border: 1px solid var(--glass-border);
     box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    will-change: transform;
     color: var(--text);
     cursor: pointer;
     opacity: 0;

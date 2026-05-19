@@ -16,7 +16,6 @@ var MODULES = [
 export default function () {
     var runScript = async function (name) {
         try {
-            // 在 frontend 查出 needsRoot，避免后端回调引用 MODULES
             var needsRoot = false;
             for (var mi = 0; mi < MODULES.length; mi++) {
                 if (MODULES[mi].name === name) {
@@ -55,6 +54,8 @@ export default function () {
                         );
 
                     var code = await targetNote.getContent();
+
+                    // 读取脚本笔记上的配置标签
                     var targetId = targetNote.getLabelValue("saveNoteId");
                     if (!targetId)
                         throw new Error(childName + " 缺少 #saveNoteId");
@@ -66,6 +67,17 @@ export default function () {
                             throw new Error(childName + " 缺少 #rootNoteId");
                     }
 
+                    var contentLen = targetNote.getLabelValue("contentLen");
+                    if (contentLen) contentLen = parseInt(contentLen, 10);
+                    if (!contentLen || isNaN(contentLen)) contentLen = null;
+
+                    // 通过 api._syncConfig 向脚本传递配置，sync() 无参数读取
+                    api._syncConfig = {
+                        rootNoteId: rootId,
+                        targetNoteId: targetId,
+                        contentLen: contentLen,
+                    };
+
                     var _module = { exports: null };
                     try {
                         var fn = new Function("module", "exports", "api", code);
@@ -73,12 +85,13 @@ export default function () {
                     } catch (e) {
                         /* 自执行块可能因 api.currentNote 不对而报错，忽略 */
                     }
-                    if (typeof _module.exports === "function") {
-                        await _module.exports(api, rootId, targetId);
+                    var syncFn = _module.exports && _module.exports.sync;
+                    if (typeof syncFn === "function") {
+                        await syncFn();
                     } else {
                         throw new Error(
                             childName +
-                                " 未导出可执行函数 (typeof=" +
+                                " 未导出 sync 函数 (typeof=" +
                                 typeof _module.exports +
                                 ")",
                         );

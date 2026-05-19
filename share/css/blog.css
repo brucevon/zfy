@@ -586,7 +586,7 @@ body {
 .category-panel {
     position: fixed;
     inset: 0;
-    z-index: 150;
+    z-index: 210;
     background: rgba(0, 0, 0, 0.35);
     opacity: 0;
     visibility: hidden;
@@ -609,7 +609,7 @@ body {
     bottom: 0;
     width: 320px;
     max-width: 80vw;
-    z-index: 151;
+    z-index: 211;
     background: var(--glass-bg);
     backdrop-filter: blur(40px) saturate(150%);
     -webkit-backdrop-filter: blur(40px) saturate(150%);

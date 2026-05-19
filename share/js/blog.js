@@ -971,6 +971,21 @@
             node.appendChild(titleEl);
             li.appendChild(node);
 
+            li.addEventListener("click", function (e) {
+                e.stopPropagation();
+                if (e.target.closest(".tree-toggle") || e.target.closest("a") || e.target.closest("button")) return;
+                if (item.category === true) {
+                    if (!hasKids) return;
+                    toggleTree({
+                        currentTarget: toggle,
+                        preventDefault: function () {},
+                        stopPropagation: function () {},
+                    });
+                } else {
+                    window.location.href = "/" + item.noteId;
+                }
+            });
+
             if (hasKids) {
                 var ul = document.createElement("ul");
                 ul.className = "tree-children";
@@ -1069,6 +1084,21 @@
             node.appendChild(toggle);
             node.appendChild(titleEl);
             li.appendChild(node);
+
+            li.addEventListener("click", function (e) {
+                e.stopPropagation();
+                if (e.target.closest(".tree-toggle") || e.target.closest("a") || e.target.closest("button")) return;
+                if (item.category === true) {
+                    if (!hasKids) return;
+                    toggleAboutSub({
+                        currentTarget: toggle,
+                        preventDefault: function () {},
+                        stopPropagation: function () {},
+                    });
+                } else {
+                    window.location.href = "/" + item.noteId;
+                }
+            });
 
             if (hasKids) {
                 var ul = document.createElement("ul");

@@ -10,7 +10,13 @@
 
 var TREE_MAX_DEPTH = 50;
 
-async function generateAboutTree(api, rootNoteId, targetNoteId) {
+async function sync() {
+    var cfg = api._syncConfig || {};
+    var rootNoteId = cfg.rootNoteId;
+    var targetNoteId = cfg.targetNoteId;
+    if (!rootNoteId) throw new Error("缺少配置: rootNoteId");
+    if (!targetNoteId) throw new Error("缺少配置: targetNoteId");
+
     var startTime = Date.now();
 
     // 查找标题为「关于」的子笔记
@@ -85,7 +91,7 @@ async function generateAboutTree(api, rootNoteId, targetNoteId) {
             iconMap[labels[i].noteId] = labels[i].value;
         }
     }
-    // 补充查询 iconClass（仅当 icon 未设置时作为 fallback，与 _noteIcon 逻辑一致）
+    // 补充查询 iconClass（仅当 icon 未设置时作为 fallback）
     for (var i = 0; i < labels.length; i++) {
         if (labels[i].name === "iconClass" && !iconMap[labels[i].noteId]) {
             iconMap[labels[i].noteId] = labels[i].value;
@@ -106,6 +112,7 @@ async function generateAboutTree(api, rootNoteId, targetNoteId) {
         var result = [];
         for (var i = 0; i < children.length; i++) {
             var n = children[i];
+            if (n.noteId === aboutNote.noteId) continue;
             if (hiddenSet[n.noteId]) continue;
             result.push({
                 noteId: n.noteId,
@@ -130,25 +137,28 @@ async function generateAboutTree(api, rootNoteId, targetNoteId) {
 
     console.log(
         "关于目录树同步完成（" +
-            nodes.length +
-            " 节点，" +
+            result.length +
+            " 个一级节点，" +
             (Date.now() - startTime) +
             "ms）",
     );
-    return { nodeCount: nodes.length, elapsedMs: Date.now() - startTime };
+    return { count: result.length, elapsedMs: Date.now() - startTime };
 }
 
-module.exports = generateAboutTree;
+module.exports = { sync: sync };
 
 if (typeof api !== "undefined") {
     (async function () {
         try {
-            var rootId = api.currentNote.getLabelValue("rootNoteId");
-            var targetId = api.currentNote.getLabelValue("saveNoteId");
-            if (!rootId) throw new Error("缺少 #rootNoteId");
-            if (!targetId) throw new Error("缺少 #saveNoteId");
-            var r = await generateAboutTree(api, rootId, targetId);
-            console.log("✅ 关于目录树完成: " + r.nodeCount + " 节点");
+            api._syncConfig = api._syncConfig || {};
+            if (!api._syncConfig.rootNoteId)
+                api._syncConfig.rootNoteId = api.currentNote.getLabelValue("rootNoteId");
+            if (!api._syncConfig.targetNoteId)
+                api._syncConfig.targetNoteId = api.currentNote.getLabelValue("saveNoteId");
+            if (!api._syncConfig.rootNoteId) throw new Error("缺少 #rootNoteId");
+            if (!api._syncConfig.targetNoteId) throw new Error("缺少 #saveNoteId");
+            var r = await sync();
+            console.log("✅ 关于目录树完成: " + r.count + " 个一级节点");
         } catch (e) {
             console.error("❌ 关于目录树失败: " + e.message);
         }

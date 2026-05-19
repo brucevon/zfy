@@ -17,7 +17,11 @@
  *   saveNoteId = <目标笔记ID>  (必需，需设置 #shareRaw #shareAlias=blog-heatmap)
  */
 
-async function generateHeatmap(api, rootNoteId, targetNoteId) {
+async function sync() {
+    var cfg = api._syncConfig || {};
+    var targetNoteId = cfg.targetNoteId;
+    if (!targetNoteId) throw new Error("缺少配置: targetNoteId");
+
     var startTime = Date.now();
 
     var heatmap = [];
@@ -52,14 +56,16 @@ async function generateHeatmap(api, rootNoteId, targetNoteId) {
     return { days: heatmap.length, elapsedMs: Date.now() - startTime };
 }
 
-module.exports = generateHeatmap;
+module.exports = { sync: sync };
 
 if (typeof api !== "undefined") {
     (async function () {
         try {
-            var targetId = api.currentNote.getLabelValue("saveNoteId");
-            if (!targetId) throw new Error("缺少 #saveNoteId");
-            var r = await generateHeatmap(api, null, targetId);
+            api._syncConfig = api._syncConfig || {};
+            if (!api._syncConfig.targetNoteId)
+                api._syncConfig.targetNoteId = api.currentNote.getLabelValue("saveNoteId");
+            if (!api._syncConfig.targetNoteId) throw new Error("缺少 #saveNoteId");
+            var r = await sync();
             console.log("✅ 热度地图完成: " + r.days + " 天");
         } catch (e) {
             console.error("❌ 热度地图失败: " + e.message);

@@ -5,6 +5,7 @@
  *
  * 标签:
  *   saveNoteId = <目标笔记ID>  (必需，需设置 #shareRaw #shareAlias=blog-recommend)
+ *   contentLen = <截取长度>  (可选，默认 150)
  */
 
 function stripHtml(str) {
@@ -25,49 +26,68 @@ function truncate(str, maxLen) {
     return str.substring(0, maxLen) + "…";
 }
 
-async function generateRecommend(api, rootNoteId, targetNoteId) {
+async function sync() {
+    var cfg = api._syncConfig || {};
+    var targetNoteId = cfg.targetNoteId;
+    if (!targetNoteId) throw new Error("缺少配置: targetNoteId");
+
+    var contentLen = (cfg.contentLen && cfg.contentLen > 0) ? cfg.contentLen : 150;
+    // 查询时限制内容读取量，避免大笔记拖慢服务器（留余量给 HTML 标签）
+    var queryContentLimit = contentLen * 3 + 500;
+
     var startTime = Date.now();
 
-    var nodes = [];
+    var rows = [];
     try {
-        nodes = await api.sql.getRows(
-            "SELECT n.noteId, n.title, n.dateCreated, n.dateModified FROM notes n " +
-                "INNER JOIN attributes a ON n.noteId = a.noteId AND a.name = 'recommend' AND a.value = 'true' " +
-                "WHERE n.isDeleted = 0 " +
-                "ORDER BY n.dateCreated DESC",
+        rows = await api.sql.getRows(
+            "SELECT n.noteId, n.title, n.dateCreated, n.dateModified, " +
+            "  SUBSTR(COALESCE(b.content, ''), 1, ?) AS c " +
+            "FROM notes n " +
+            "INNER JOIN attributes a ON n.noteId = a.noteId AND a.name = 'recommend' AND a.value = 'true' " +
+            "LEFT JOIN blobs b ON n.blobId = b.blobId " +
+            "WHERE n.isDeleted = 0 " +
+            "ORDER BY n.dateCreated DESC",
+            [queryContentLimit],
         );
     } catch (e) {
         console.error("recommend 查询失败: " + e.message);
     }
 
-    var result = [];
-    for (var i = 0; i < nodes.length; i++) {
+    // 批量查询图标
+    var noteIds = rows.map(function (r) { return r.noteId; });
+    var iconMap = {};
+    if (noteIds.length > 0) {
+        var ph = noteIds.map(function () { return "?"; }).join(",");
         try {
-            var note = await api.getNote(nodes[i].noteId);
-            if (note && note.getContent) {
-                var content = note.getContent();
-                if (
-                    content &&
-                    typeof content === "string" &&
-                    content.trim().length > 0
-                ) {
-                    var plain = stripHtml(content);
-                    var icon =
-                        note.getLabelValue("icon") ||
-                        note.getLabelValue("iconClass") ||
-                        "";
-                    result.push({
-                        noteId: nodes[i].noteId,
-                        title: nodes[i].title,
-                        noteIcon: icon,
-                        dateCreated: nodes[i].dateCreated,
-                        dateModified: nodes[i].dateModified,
-                        content: truncate(plain, 150),
-                    });
-                }
+            var attrs = await api.sql.getRows(
+                "SELECT noteId, name, value FROM attributes " +
+                "WHERE isDeleted = 0 AND noteId IN (" + ph + ") AND name IN ('icon', 'iconClass')",
+                noteIds,
+            );
+            for (var i = 0; i < attrs.length; i++) {
+                if (attrs[i].name === "icon") iconMap[attrs[i].noteId] = attrs[i].value;
+            }
+            for (var i = 0; i < attrs.length; i++) {
+                if (attrs[i].name === "iconClass" && !iconMap[attrs[i].noteId]) iconMap[attrs[i].noteId] = attrs[i].value;
             }
         } catch (e) {
-            // 跳过内容读取失败的笔记
+            console.error("recommend 图标查询失败: " + e.message);
+        }
+    }
+
+    var result = [];
+    for (var i = 0; i < rows.length; i++) {
+        var content = rows[i].c;
+        if (content && content.trim().length > 0) {
+            var plain = stripHtml(content);
+            result.push({
+                noteId: rows[i].noteId,
+                title: rows[i].title,
+                noteIcon: iconMap[rows[i].noteId] || "",
+                dateCreated: rows[i].dateCreated,
+                dateModified: rows[i].dateModified,
+                content: truncate(plain, contentLen),
+            });
         }
     }
 
@@ -80,23 +100,28 @@ async function generateRecommend(api, rootNoteId, targetNoteId) {
     await targetNote.setContent(output);
 
     console.log(
-        "推荐阅读同步完成（" +
-            result.length +
-            " 条，" +
-            (Date.now() - startTime) +
-            "ms）",
+        "推荐阅读同步完成（" + result.length + " 条，" + (Date.now() - startTime) + "ms）",
     );
     return { count: result.length, elapsedMs: Date.now() - startTime };
 }
 
-module.exports = generateRecommend;
+module.exports = { sync: sync };
 
 if (typeof api !== "undefined") {
     (async function () {
         try {
-            var targetId = api.currentNote.getLabelValue("saveNoteId");
-            if (!targetId) throw new Error("缺少 #saveNoteId");
-            var r = await generateRecommend(api, null, targetId);
+            api._syncConfig = api._syncConfig || {};
+            if (!api._syncConfig.targetNoteId)
+                api._syncConfig.targetNoteId = api.currentNote.getLabelValue("saveNoteId");
+            if (!api._syncConfig.contentLen && !api._syncConfig.hasOwnProperty("contentLen")) {
+                var contentLenTag = api.currentNote.getLabelValue("contentLen");
+                if (contentLenTag) {
+                    var parsed = parseInt(contentLenTag, 10);
+                    if (!isNaN(parsed) && parsed > 0) api._syncConfig.contentLen = parsed;
+                }
+            }
+            if (!api._syncConfig.targetNoteId) throw new Error("缺少 #saveNoteId");
+            var r = await sync();
             console.log("✅ 推荐阅读完成: " + r.count + " 条");
         } catch (e) {
             console.error("❌ 推荐阅读失败: " + e.message);

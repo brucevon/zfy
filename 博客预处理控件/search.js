@@ -7,6 +7,7 @@
  * 标签:
  *   rootNoteId = <根笔记ID>  (必需)
  *   saveNoteId = <目标笔记ID>  (必需，需设置 #shareRaw #shareAlias=blog-search)
+ *   contentLen = <截取长度>  (可选，默认 500)
  */
 
 var SEARCH_MAX_DEPTH = 50;
@@ -29,7 +30,16 @@ function truncate(str, maxLen) {
     return str.substring(0, maxLen) + "…";
 }
 
-async function generateSearch(api, rootNoteId, targetNoteId) {
+async function sync() {
+    var cfg = api._syncConfig || {};
+    var rootNoteId = cfg.rootNoteId;
+    var targetNoteId = cfg.targetNoteId;
+    if (!rootNoteId) throw new Error("缺少配置: rootNoteId");
+    if (!targetNoteId) throw new Error("缺少配置: targetNoteId");
+
+    var contentLen = (cfg.contentLen && cfg.contentLen > 0) ? cfg.contentLen : 500;
+    var queryContentLimit = contentLen * 3 + 500;
+
     var startTime = Date.now();
 
     var nodes = [];
@@ -53,7 +63,7 @@ async function generateSearch(api, rootNoteId, targetNoteId) {
 
     if (nodes.length === 0) throw new Error("根笔记下未找到笔记");
 
-    // 批量查询标签
+    // 批量查询标签（排除 + 图标）
     var noteIds = nodes.map(function (n) {
         return n.noteId;
     });
@@ -91,25 +101,38 @@ async function generateSearch(api, rootNoteId, targetNoteId) {
         }
     }
 
-    // 过滤并读取内容的笔记
+    // 批量查询内容（避免循环中挨个 api.getNote），SUBSTR 限制读取量
+    var contentMap = {};
+    if (noteIds.length > 0) {
+        var ph = noteIds.map(function () { return "?"; }).join(",");
+        try {
+            var contentRows = await api.sql.getRows(
+                "SELECT n.noteId, SUBSTR(COALESCE(b.content, ''), 1, ?) AS c " +
+                "FROM notes n " +
+                "LEFT JOIN blobs b ON n.blobId = b.blobId " +
+                "WHERE n.isDeleted = 0 AND n.noteId IN (" + ph + ")",
+                [queryContentLimit].concat(noteIds),
+            );
+            for (var ci = 0; ci < contentRows.length; ci++) {
+                contentMap[contentRows[ci].noteId] = contentRows[ci].c;
+            }
+        } catch (e) {
+            console.error("search 内容查询失败: " + e.message);
+        }
+    }
+
+    // 过滤并截取内容
     var result = [];
     for (var i = 0; i < nodes.length; i++) {
         if (excludedIds[nodes[i].noteId]) continue;
-        try {
-            var note = await api.getNote(nodes[i].noteId);
-            if (note && note.getContent) {
-                var content = note.getContent();
-                if (content && typeof content === "string") {
-                    result.push({
-                        noteId: nodes[i].noteId,
-                        title: nodes[i].title,
-                        noteIcon: iconMap[nodes[i].noteId] || "",
-                        content: truncate(stripHtml(content), 500),
-                    });
-                }
-            }
-        } catch (e) {
-            // 跳过
+        var content = contentMap[nodes[i].noteId] || "";
+        if (content && content.trim().length > 0) {
+            result.push({
+                noteId: nodes[i].noteId,
+                title: nodes[i].title,
+                noteIcon: iconMap[nodes[i].noteId] || "",
+                content: truncate(stripHtml(content), contentLen),
+            });
         }
     }
 
@@ -127,16 +150,26 @@ async function generateSearch(api, rootNoteId, targetNoteId) {
     return { count: result.length, elapsedMs: Date.now() - startTime };
 }
 
-module.exports = generateSearch;
+module.exports = { sync: sync };
 
 if (typeof api !== "undefined") {
     (async function () {
         try {
-            var rootId = api.currentNote.getLabelValue("rootNoteId");
-            var targetId = api.currentNote.getLabelValue("saveNoteId");
-            if (!rootId) throw new Error("缺少 #rootNoteId");
-            if (!targetId) throw new Error("缺少 #saveNoteId");
-            var r = await generateSearch(api, rootId, targetId);
+            api._syncConfig = api._syncConfig || {};
+            if (!api._syncConfig.rootNoteId)
+                api._syncConfig.rootNoteId = api.currentNote.getLabelValue("rootNoteId");
+            if (!api._syncConfig.targetNoteId)
+                api._syncConfig.targetNoteId = api.currentNote.getLabelValue("saveNoteId");
+            if (!api._syncConfig.contentLen && !api._syncConfig.hasOwnProperty("contentLen")) {
+                var contentLenTag = api.currentNote.getLabelValue("contentLen");
+                if (contentLenTag) {
+                    var parsed = parseInt(contentLenTag, 10);
+                    if (!isNaN(parsed) && parsed > 0) api._syncConfig.contentLen = parsed;
+                }
+            }
+            if (!api._syncConfig.rootNoteId) throw new Error("缺少 #rootNoteId");
+            if (!api._syncConfig.targetNoteId) throw new Error("缺少 #saveNoteId");
+            var r = await sync();
             console.log("✅ 搜索索引完成: " + r.count + " 条");
         } catch (e) {
             console.error("❌ 搜索索引失败: " + e.message);

@@ -5,6 +5,7 @@
  *
  * 标签:
  *   saveNoteId = <目标笔记ID>  (必需，需设置 #shareRaw #shareAlias=blog-article)
+ *   contentLen = <截取长度>  (可选，默认 150)
  */
 
 function stripHtml(str) {
@@ -25,45 +26,64 @@ function truncate(str, maxLen) {
     return str.substring(0, maxLen) + "…";
 }
 
-async function generateArticle(api, rootNoteId, targetNoteId) {
+async function sync() {
+    var cfg = api._syncConfig || {};
+    var targetNoteId = cfg.targetNoteId;
+    if (!targetNoteId) throw new Error("缺少配置: targetNoteId");
+
+    var contentLen = (cfg.contentLen && cfg.contentLen > 0) ? cfg.contentLen : 150;
+    var queryContentLimit = contentLen * 3 + 500;
+
     var startTime = Date.now();
 
     var result = null;
     try {
-        var nodes = await api.sql.getRows(
-            "SELECT n.noteId, n.title, n.dateCreated, n.dateModified FROM notes n " +
-                "INNER JOIN attributes a ON n.noteId = a.noteId AND a.name = 'article' AND a.value = 'true' " +
-                "WHERE n.isDeleted = 0 " +
-                "ORDER BY n.dateCreated DESC",
+        var rows = await api.sql.getRows(
+            "SELECT n.noteId, n.title, n.dateCreated, n.dateModified, " +
+            "  SUBSTR(COALESCE(b.content, ''), 1, ?) AS c " +
+            "FROM notes n " +
+            "INNER JOIN attributes a ON n.noteId = a.noteId AND a.name = 'article' AND a.value = 'true' " +
+            "LEFT JOIN blobs b ON n.blobId = b.blobId " +
+            "WHERE n.isDeleted = 0 " +
+            "ORDER BY n.dateCreated DESC",
+            [queryContentLimit],
         );
 
-        for (var i = 0; i < nodes.length; i++) {
+        // 批量查询图标（避免循环 api.getNote）
+        var noteIds = rows.map(function (r) { return r.noteId; });
+        var iconMap = {};
+        if (noteIds.length > 0) {
+            var ph = noteIds.map(function () { return "?"; }).join(",");
             try {
-                var note = await api.getNote(nodes[i].noteId);
-                if (note && note.getContent) {
-                    var content = note.getContent();
-                    if (
-                        content &&
-                        typeof content === "string" &&
-                        content.trim().length > 0
-                    ) {
-                        var icon =
-                            note.getLabelValue("icon") ||
-                            note.getLabelValue("iconClass") ||
-                            "";
-                        result = {
-                            noteId: nodes[i].noteId,
-                            title: nodes[i].title,
-                            noteIcon: icon,
-                            content: truncate(stripHtml(content), 150),
-                            dateCreated: nodes[i].dateCreated,
-                            dateModified: nodes[i].dateModified,
-                        };
-                        break;
-                    }
+                var attrs = await api.sql.getRows(
+                    "SELECT noteId, name, value FROM attributes " +
+                    "WHERE isDeleted = 0 AND noteId IN (" + ph + ") AND name IN ('icon', 'iconClass')",
+                    noteIds,
+                );
+                for (var i = 0; i < attrs.length; i++) {
+                    if (attrs[i].name === "icon") iconMap[attrs[i].noteId] = attrs[i].value;
+                }
+                for (var i = 0; i < attrs.length; i++) {
+                    if (attrs[i].name === "iconClass" && !iconMap[attrs[i].noteId]) iconMap[attrs[i].noteId] = attrs[i].value;
                 }
             } catch (e) {
-                // 跳过内容读取失败的笔记
+                console.error("article 图标查询失败: " + e.message);
+            }
+        }
+
+        for (var i = 0; i < rows.length; i++) {
+            var content = rows[i].c;
+            if (content && content.trim().length > 0) {
+                var plain = stripHtml(content);
+                result = {
+                    noteId: rows[i].noteId,
+                    title: rows[i].title,
+                    noteIcon: iconMap[rows[i].noteId] || "",
+                    content: truncate(plain, contentLen),
+                    dateCreated: rows[i].dateCreated,
+                    dateModified: rows[i].dateModified,
+                };
+                break;
             }
         }
     } catch (e) {
@@ -78,21 +98,30 @@ async function generateArticle(api, rootNoteId, targetNoteId) {
         await api.protectNote(targetNoteId, false, false);
     await targetNote.setContent(output);
 
-    console.log("最近发布同步完成（" + (Date.now() - startTime) + "ms）");
-    return { found: !!result, elapsedMs: Date.now() - startTime };
+    console.log(
+        "最近发布同步完成（" + (Date.now() - startTime) + "ms）",
+    );
+    return { elapsedMs: Date.now() - startTime };
 }
 
-module.exports = generateArticle;
+module.exports = { sync: sync };
 
 if (typeof api !== "undefined") {
     (async function () {
         try {
-            var targetId = api.currentNote.getLabelValue("saveNoteId");
-            if (!targetId) throw new Error("缺少 #saveNoteId");
-            var r = await generateArticle(api, null, targetId);
-            console.log(
-                "✅ 最近发布完成" + (r.found ? "" : "（未找到匹配笔记）"),
-            );
+            api._syncConfig = api._syncConfig || {};
+            if (!api._syncConfig.targetNoteId)
+                api._syncConfig.targetNoteId = api.currentNote.getLabelValue("saveNoteId");
+            if (!api._syncConfig.contentLen && !api._syncConfig.hasOwnProperty("contentLen")) {
+                var contentLenTag = api.currentNote.getLabelValue("contentLen");
+                if (contentLenTag) {
+                    var parsed = parseInt(contentLenTag, 10);
+                    if (!isNaN(parsed) && parsed > 0) api._syncConfig.contentLen = parsed;
+                }
+            }
+            if (!api._syncConfig.targetNoteId) throw new Error("缺少 #saveNoteId");
+            var r = await sync();
+            console.log("✅ 最近发布完成");
         } catch (e) {
             console.error("❌ 最近发布失败: " + e.message);
         }

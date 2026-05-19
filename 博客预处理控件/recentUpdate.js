@@ -7,7 +7,11 @@
  *   saveNoteId = <目标笔记ID>  (必需，需设置 #shareRaw #shareAlias=blog-recentUpdate)
  */
 
-async function generateRecentUpdate(api, rootNoteId, targetNoteId) {
+async function sync() {
+    var cfg = api._syncConfig || {};
+    var targetNoteId = cfg.targetNoteId;
+    if (!targetNoteId) throw new Error("缺少配置: targetNoteId");
+
     var startTime = Date.now();
 
     var nodes = [];
@@ -22,21 +26,34 @@ async function generateRecentUpdate(api, rootNoteId, targetNoteId) {
         console.error("recentUpdate 查询失败: " + e.message);
     }
 
-    var result = [];
-    for (var i = 0; i < nodes.length; i++) {
-        var icon = "";
+    // 批量查询图标标签（避免循环中挨个 api.getNote）
+    var noteIds = nodes.map(function (n) { return n.noteId; });
+    var iconMap = {};
+    if (noteIds.length > 0) {
+        var ph = noteIds.map(function () { return "?"; }).join(",");
         try {
-            var note = await api.getNote(nodes[i].noteId);
-            if (note) {
-                icon = note.getLabelValue("icon") || note.getLabelValue("iconClass") || "";
+            var attrs = await api.sql.getRows(
+                "SELECT noteId, name, value FROM attributes " +
+                "WHERE isDeleted = 0 AND noteId IN (" + ph + ") AND name IN ('icon', 'iconClass')",
+                noteIds,
+            );
+            for (var i = 0; i < attrs.length; i++) {
+                if (attrs[i].name === "icon") iconMap[attrs[i].noteId] = attrs[i].value;
+            }
+            for (var i = 0; i < attrs.length; i++) {
+                if (attrs[i].name === "iconClass" && !iconMap[attrs[i].noteId]) iconMap[attrs[i].noteId] = attrs[i].value;
             }
         } catch (e) {
-            // 跳过
+            console.error("recentUpdate 图标查询失败: " + e.message);
         }
+    }
+
+    var result = [];
+    for (var i = 0; i < nodes.length; i++) {
         result.push({
             noteId: nodes[i].noteId,
             title: nodes[i].title,
-            noteIcon: icon,
+            noteIcon: iconMap[nodes[i].noteId] || "",
             dateCreated: nodes[i].dateCreated,
         });
     }
@@ -55,14 +72,16 @@ async function generateRecentUpdate(api, rootNoteId, targetNoteId) {
     return { count: result.length, elapsedMs: Date.now() - startTime };
 }
 
-module.exports = generateRecentUpdate;
+module.exports = { sync: sync };
 
 if (typeof api !== "undefined") {
     (async function () {
         try {
-            var targetId = api.currentNote.getLabelValue("saveNoteId");
-            if (!targetId) throw new Error("缺少 #saveNoteId");
-            var r = await generateRecentUpdate(api, null, targetId);
+            api._syncConfig = api._syncConfig || {};
+            if (!api._syncConfig.targetNoteId)
+                api._syncConfig.targetNoteId = api.currentNote.getLabelValue("saveNoteId");
+            if (!api._syncConfig.targetNoteId) throw new Error("缺少 #saveNoteId");
+            var r = await sync();
             console.log("✅ 最近动态完成: " + r.count + " 条");
         } catch (e) {
             console.error("❌ 最近动态失败: " + e.message);

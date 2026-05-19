@@ -1165,6 +1165,15 @@
         },
         true,
     );
+    document.addEventListener(
+        "scroll",
+        function () {
+            if (aboutDropdown && aboutDropdown.classList.contains("open")) {
+                closeAboutDropdown();
+            }
+        },
+        { passive: true, capture: true },
+    );
 
     /* ── 移动端"关于"下拉 ── */
     var aboutBtnM = document.getElementById("about-btn-mobile");

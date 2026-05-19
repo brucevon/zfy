@@ -298,8 +298,11 @@ body {
     padding: 8px;
 }
 [data-theme="dark"] .about-dropdown {
-    background: rgba(20, 22, 28, 0.9);
+    background: rgba(20, 22, 28, 0.96);
     border-color: rgba(255,255,255,0.1);
+}
+[data-theme="light"] .about-dropdown {
+    background: rgba(255, 255, 255, 0.96);
 }
 .about-dropdown.open {
     display: block;

@@ -574,11 +574,15 @@
         lb.className = "lightbox";
         lb.innerHTML =
             '<button class="lightbox-close" aria-label="关闭">&times;</button>' +
+            '<button class="lightbox-prev" aria-label="上一张">&#8249;</button>' +
+            '<button class="lightbox-next" aria-label="下一张">&#8250;</button>' +
             '<img class="lightbox-img" alt="">';
         document.body.appendChild(lb);
 
         var lbImg = lb.querySelector(".lightbox-img");
         var lbClose = lb.querySelector(".lightbox-close");
+        var lbPrev = lb.querySelector(".lightbox-prev");
+        var lbNext = lb.querySelector(".lightbox-next");
         var images = [];
         var currentIndex = -1;
 
@@ -597,10 +601,17 @@
             return -1;
         }
 
+        function updateNav() {
+            var len = images.length;
+            lbPrev.style.display = (len > 1 && currentIndex > 0) ? "" : "none";
+            lbNext.style.display = (len > 1 && currentIndex < len - 1) ? "" : "none";
+        }
+
         function open(src) {
             images = getImageList();
             currentIndex = findIndex(images, src);
             lbImg.src = src;
+            updateNav();
             lb.classList.add("active");
             document.body.style.overflow = "hidden";
         }
@@ -615,6 +626,7 @@
             if (currentIndex > 0) {
                 currentIndex--;
                 lbImg.src = images[currentIndex].src;
+                updateNav();
             }
         }
 
@@ -622,6 +634,7 @@
             if (currentIndex < images.length - 1) {
                 currentIndex++;
                 lbImg.src = images[currentIndex].src;
+                updateNav();
             }
         }
 
@@ -629,6 +642,8 @@
             if (e.target === lb) close();
         });
         lbClose.addEventListener("click", close);
+        lbPrev.addEventListener("click", function (e) { e.stopPropagation(); prev(); });
+        lbNext.addEventListener("click", function (e) { e.stopPropagation(); next(); });
         document.addEventListener("keydown", function (e) {
             if (e.key === "Escape") close();
             if (e.key === "ArrowLeft") prev();

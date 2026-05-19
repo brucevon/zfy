@@ -2104,6 +2104,39 @@ html.mobile-view #twikoo {
     background: rgba(0,0,0,0.6);
     color: #fff;
 }
+.lightbox-prev,
+.lightbox-next {
+    position: fixed;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 10000;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 36px;
+    color: rgba(255,255,255,0.7);
+    cursor: pointer;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.3);
+    border: none;
+    transition: background 0.2s, color 0.2s;
+    line-height: 1;
+    user-select: none;
+}
+.lightbox-prev:hover,
+.lightbox-next:hover {
+    background: rgba(0,0,0,0.6);
+    color: #fff;
+}
+.lightbox-prev { left: 16px; }
+.lightbox-next { right: 16px; }
+.lightbox-prev:active,
+.lightbox-next:active {
+    transform: translateY(-50%) scale(0.92);
+}
+
 html.mobile-view .lightbox-img {
     max-width: 96vw;
     max-height: 90vh;
@@ -2115,6 +2148,14 @@ html.mobile-view .lightbox-close {
     height: 36px;
     font-size: 24px;
 }
+html.mobile-view .lightbox-prev,
+html.mobile-view .lightbox-next {
+    width: 40px;
+    height: 40px;
+    font-size: 28px;
+}
+html.mobile-view .lightbox-prev { left: 6px; }
+html.mobile-view .lightbox-next { right: 6px; }
 
 /* 阅读进度条 */
 #reading-progress {

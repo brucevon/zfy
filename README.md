@@ -182,12 +182,12 @@ share/js/blog.js      # 客户端交互脚本
 
 从 `博客预处理控件/` 目录分别导入脚本文件：
 
-- **`BlogPreprocessRender.js`** → 导入为 **JS 前端笔记**（代码类型选 `JS Frontend`），用作渲染面板
-- 其余 9 个脚本（`tree.js`、`about-tree.js` 等）→ 导入为 **JS 后端脚本**（Backend Script）
+- **`BlogPreprocessRender.js`** → 导入为 **JSX 笔记**（代码类型选 `JSX`），新建一个笔记，类型选择 **渲染笔记** ，点击渲染笔记选择 `JSX` 笔记，然后打开渲染笔记就可以看见渲染面板
+- 其余 9 个脚本（`tree.js`、`about-tree.js` 等）→ 导入为 **JS 后端脚本**（Backend Script），建议导入为 `JSX` 笔记的子笔记，方便管理。
 
 导入后参照下文 [⚙️ 预处理脚本](#%EF%B8%8F-预处理脚本核心架构) 配置编排器。运行一次后，首页数据即预生成完毕。
 
-> 注意：10 个脚本**类型不同**，不能全部选同一类型导入。`BlogPreprocessRender.js` 必须是 **JS Frontend** 才能正常渲染面板。**`~renderNote` 也是 Relation**，需在 Relation Map 中链接。
+> 注意：10 个脚本**类型不同**，不能全部选同一类型导入。`BlogPreprocessRender.js` 必须是 **JSX** 才能正常渲染面板。**`~renderNote` 也是 Relation**，需在 Relation Map 中链接。
 
 ---
 

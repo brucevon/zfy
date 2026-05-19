@@ -114,7 +114,8 @@ async function sync() {
                 [queryContentLimit].concat(noteIds),
             );
             for (var ci = 0; ci < contentRows.length; ci++) {
-                contentMap[contentRows[ci].noteId] = contentRows[ci].c;
+                var raw = contentRows[ci].c;
+                contentMap[contentRows[ci].noteId] = (typeof raw === 'string') ? raw : (raw ? raw.toString() : "");
             }
         } catch (e) {
             console.error("search 内容查询失败: " + e.message);

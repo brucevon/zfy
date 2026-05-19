@@ -78,6 +78,7 @@ async function sync() {
     var result = [];
     for (var i = 0; i < rows.length; i++) {
         var content = rows[i].c;
+        if (typeof content !== 'string') content = content ? content.toString() : "";
         if (content && content.trim().length > 0) {
             var plain = stripHtml(content);
             result.push({

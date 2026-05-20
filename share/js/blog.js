@@ -315,7 +315,7 @@
                 }
             }
             if (categoryPanel && categoryPanel.classList.contains("open")) {
-                var inner = document.getElementById("cat-drawer");
+                var inner = document.getElementById("cat-mega");
                 var isInsideContent = inner && inner.contains(e.target);
                 var isOnCategoryBtn =
                     (categoryBtn && categoryBtn.contains(e.target)) ||
@@ -328,10 +328,31 @@
         true,
     );
 
+    /* 菜单内部触摸跟踪：菜单内触摸滚动时不关闭面板 */
+    var _catMenuInteracting = false;
+    document.addEventListener("touchstart", function (e) {
+        var inner = document.getElementById("cat-mega");
+        _catMenuInteracting = inner && inner.contains(e.target);
+        if (categoryPanel && categoryPanel.classList.contains("open")) {
+            var isOnBtn =
+                (categoryBtn && categoryBtn.contains(e.target)) ||
+                (categoryBtnM && categoryBtnM.contains(e.target));
+            if (!_catMenuInteracting && !isOnBtn) {
+                closeCategoryPanel();
+            }
+        }
+    }, { passive: true });
+    document.addEventListener("touchend", function () {
+        _catMenuInteracting = false;
+    }, { passive: true });
+
     document.addEventListener(
         "scroll",
-        function () {
+        function (e) {
             closeMobileMenu();
+            var mega = document.getElementById("cat-mega");
+            if (mega && mega.contains(e.target)) return;
+            closeCategoryPanel();
         },
         { capture: true, passive: true },
     );
@@ -346,13 +367,12 @@
         if (categoryPanel) {
             categoryPanel.classList.add("open");
             loadCategoryTree();
+            loadCategoryMegaData();
         }
     }
 
     if (categoryBtn) categoryBtn.addEventListener("click", openCategoryPanel);
     if (categoryBtnM) categoryBtnM.addEventListener("click", openCategoryPanel);
-    var closeBtn = document.getElementById("cat-drawer-close");
-    if (closeBtn) closeBtn.addEventListener("click", closeCategoryPanel);
     document.addEventListener("keydown", function (e) {
         if (e.key === "Escape") {
             closeMobileMenu();
@@ -401,6 +421,9 @@
     document.addEventListener(
         "scroll",
         function (e) {
+            /* 菜单内部滚动不触发胶囊显隐 */
+            var mega = document.getElementById("cat-mega");
+            if (mega && mega.contains(e.target)) return;
             if (ticking) return;
             ticking = true;
             requestAnimationFrame(function () {
@@ -427,6 +450,7 @@
         pageEl.addEventListener(
             "scroll",
             function () {
+                if (!_catMenuInteracting) closeCategoryPanel();
                 if (ticking) return;
                 ticking = true;
                 requestAnimationFrame(function () {
@@ -907,7 +931,7 @@
         if (!curId) return;
         var curLink = document.querySelector('#tree-list a[href="/' + curId + '"]');
         if (curLink) {
-            curLink.scrollIntoView({ behavior: "smooth", block: "center" });
+            curLink.scrollIntoView({ behavior: "smooth", block: "nearest" });
         }
     }
     function loadCategoryTree() {
@@ -928,6 +952,36 @@
             } else {
                 treeList.innerHTML = '<li class="tree-item"><span class="tag-chip">暂无分类</span></li>';
             }
+        });
+    }
+
+    /* ── 加载分类 Mega Menu 右侧数据（统计 + 最近更新） ── */
+    function loadCategoryMegaData() {
+        fetchJSON("/blog-stats").then(function (data) {
+            if (!data) return;
+            var s = function (id) { return document.getElementById(id); };
+            if (data.article !== undefined && s("cms-article")) s("cms-article").textContent = data.article;
+            if (data.recentUpdate !== undefined && s("cms-update")) s("cms-update").textContent = data.recentUpdate;
+            if (data.recommend !== undefined && s("cms-recommend")) s("cms-recommend").textContent = data.recommend;
+            if (data.announcement !== undefined && s("cms-announce")) s("cms-announce").textContent = data.announcement;
+        });
+        fetchJSON("/blog-recentUpdate").then(function (data) {
+            var el = document.getElementById("cms-updates");
+            if (!el) return;
+            if (isEmpty(data)) {
+                el.innerHTML = '<li class="cat-mega-update-item">暂无动态</li>';
+                return;
+            }
+            var html = "";
+            for (var i = 0; i < data.length; i++) {
+                var u = data[i];
+                html += '<li class="cat-mega-update-item">';
+                if (u.noteIcon) html += '<i class="' + escapeHtml(u.noteIcon) + '"></i> ';
+                html += '<a href="/' + u.noteId + '">' + escapeHtml(u.title) + '</a>';
+                html += '<time>' + fmtDate(u.dateCreated) + '</time>';
+                html += '</li>';
+            }
+            el.innerHTML = html;
         });
     }
 

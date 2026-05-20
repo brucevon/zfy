@@ -112,13 +112,29 @@ if (homeNote) {
 </div>
 
 <div class="category-panel" id="category-panel">
-    <div class="cat-drawer" id="cat-drawer">
-        <div class="cat-drawer-header">
-            <span class="cat-drawer-title">分类</span>
-            <button class="cat-drawer-close" id="cat-drawer-close" aria-label="关闭">✕</button>
-        </div>
-        <div class="category-tags" id="category-tags">
-            <ul class="tree-list" id="tree-list"></ul>
+    <div class="cat-mega" id="cat-mega">
+        <div class="cat-mega-inner">
+            <!-- 左侧：分类树 -->
+            <div class="cat-mega-left">
+                <div class="cat-mega-label">分类</div>
+                <ul class="tree-list" id="tree-list"></ul>
+            </div>
+            <!-- 右侧：统计简报 + 最近更新 -->
+            <div class="cat-mega-right">
+                <div class="cat-mega-section">
+                    <div class="cat-mega-label">统计</div>
+                    <div class="cat-mega-stats">
+                        <span class="cat-stat-item">文章 <em id="cms-article">-</em></span>
+                        <span class="cat-stat-item">动态 <em id="cms-update">-</em></span>
+                        <span class="cat-stat-item">推荐 <em id="cms-recommend">-</em></span>
+                        <span class="cat-stat-item">公告 <em id="cms-announce">-</em></span>
+                    </div>
+                </div>
+                <div class="cat-mega-section">
+                    <div class="cat-mega-label">最近更新</div>
+                    <ul class="cat-mega-updates" id="cms-updates"></ul>
+                </div>
+            </div>
         </div>
     </div>
 </div>

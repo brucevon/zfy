@@ -1013,7 +1013,17 @@
 
             var titleEl;
             var iconCls = item.noteIcon || item.icon || "";
-            if (item.category === true) {
+            if (item.shareExternalLink) {
+                titleEl = document.createElement("a");
+                titleEl.href = item.shareExternalLink;
+                titleEl.target = "_blank";
+                titleEl.rel = "noopener";
+                titleEl.className = "tag-chip";
+                titleEl.addEventListener("click", function (e) {
+                    e.stopPropagation();
+                    closeCategoryPanel();
+                });
+            } else if (item.category === true) {
                 titleEl = document.createElement("span");
                 titleEl.className = "tag-chip tag-chip--category";
                 titleEl.style.cursor = "pointer";
@@ -1062,6 +1072,9 @@
                         preventDefault: function () {},
                         stopPropagation: function () {},
                     });
+                } else if (item.shareExternalLink) {
+                    window.open(item.shareExternalLink, '_blank');
+                    closeCategoryPanel();
                 } else {
                     window.location.href = "/" + item.noteId;
                 }
@@ -1140,13 +1153,23 @@
 
             var titleEl;
             var iconCls = item.noteIcon || item.icon || "";
-            if (item.category === true) {
+            if (item.shareExternalLink) {
+                titleEl = document.createElement("a");
+                titleEl.href = item.shareExternalLink;
+                titleEl.target = "_blank";
+                titleEl.rel = "noopener";
+                titleEl.className = "tag-chip";
+                titleEl.addEventListener("click", function (e) {
+                    e.stopPropagation();
+                    closeCategoryPanel();
+                });
+            } else if (item.category === true) {
                 titleEl = document.createElement("span");
                 titleEl.className = "tag-chip tag-chip--category";
                 titleEl.style.cursor = "pointer";
                 titleEl.addEventListener("click", function (e) {
                     e.stopPropagation();
-                    toggleAboutSub({
+                    toggleTree({
                         currentTarget: toggle,
                         preventDefault: function () {},
                         stopPropagation: function () {},
@@ -1156,6 +1179,7 @@
                 titleEl = document.createElement("a");
                 titleEl.href = "/" + item.noteId;
                 titleEl.className = "tag-chip";
+                titleEl.addEventListener("click", closeCategoryPanel);
             }
             if (iconCls) {
                 var iconEl = document.createElement("i");
@@ -1186,6 +1210,9 @@
                         preventDefault: function () {},
                         stopPropagation: function () {},
                     });
+                } else if (item.shareExternalLink) {
+                    window.open(item.shareExternalLink, '_blank');
+                    closeCategoryPanel();
                 } else {
                     window.location.href = "/" + item.noteId;
                 }

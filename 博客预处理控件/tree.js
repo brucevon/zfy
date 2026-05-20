@@ -66,6 +66,7 @@ async function sync() {
     var catSet = {};
     var hiddenSet = {};
     var iconMap = {};
+    var colorMap = {};
     for (var i = 0; i < labels.length; i++) {
         if (labels[i].name === "category" && labels[i].value === "true") {
             catSet[labels[i].noteId] = true;
@@ -75,6 +76,9 @@ async function sync() {
         }
         if (labels[i].name === "icon") {
             iconMap[labels[i].noteId] = labels[i].value;
+        }
+        if (labels[i].name === "color") {
+            colorMap[labels[i].noteId] = labels[i].value;
         }
     }
     // 补充查询 iconClass（仅当 icon 未设置时作为 fallback，与 _noteIcon 逻辑一致）
@@ -104,6 +108,7 @@ async function sync() {
                 noteId: n.noteId,
                 title: n.title,
                 noteIcon: iconMap[n.noteId] || "",
+                color: colorMap[n.noteId] || "",
                 category: !!catSet[n.noteId],
                 children: buildChildren(n.noteId),
             });

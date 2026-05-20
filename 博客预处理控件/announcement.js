@@ -52,12 +52,13 @@ async function sync() {
         // 批量查询图标
         var noteIds = rows.map(function (r) { return r.noteId; });
         var iconMap = {};
+        var colorMap = {};
         if (noteIds.length > 0) {
             var ph = noteIds.map(function () { return "?"; }).join(",");
             try {
                 var attrs = await api.sql.getRows(
                     "SELECT noteId, name, value FROM attributes " +
-                    "WHERE isDeleted = 0 AND noteId IN (" + ph + ") AND name IN ('icon', 'iconClass')",
+                    "WHERE isDeleted = 0 AND noteId IN (" + ph + ") AND name IN ('icon', 'iconClass', 'color')",
                     noteIds,
                 );
                 for (var i = 0; i < attrs.length; i++) {
@@ -65,6 +66,9 @@ async function sync() {
                 }
                 for (var i = 0; i < attrs.length; i++) {
                     if (attrs[i].name === "iconClass" && !iconMap[attrs[i].noteId]) iconMap[attrs[i].noteId] = attrs[i].value;
+                }
+                for (var i = 0; i < attrs.length; i++) {
+                    if (attrs[i].name === "color") colorMap[attrs[i].noteId] = attrs[i].value;
                 }
             } catch (e) {
                 console.error("announcement 图标查询失败: " + e.message);
@@ -80,6 +84,7 @@ async function sync() {
                     noteId: rows[i].noteId,
                     title: rows[i].title,
                     noteIcon: iconMap[rows[i].noteId] || "",
+                    color: colorMap[rows[i].noteId] || "",
                     content: truncate(plain, contentLen),
                     dateCreated: rows[i].dateCreated,
                 };

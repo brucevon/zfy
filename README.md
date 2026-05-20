@@ -1,5 +1,11 @@
 # zfy — TriliumNext 博客主题
 
+<p align="center">
+  <a href="README.md">🇨🇳 中文</a> &nbsp;|&nbsp; <a href="README.en.md">🇺🇸 English</a>
+</p>
+
+> 🖊️ 本文档部分内容由 AI 辅助生成，已人工校对。
+
 ## 🎯 前言
 
 如果你在用 TriliumNext 做知识管理，大概率也想过把它变成博客——但默认共享页面太素了，又不想折腾 Hexo/WordPress 两套系统。

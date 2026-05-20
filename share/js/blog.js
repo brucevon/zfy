@@ -987,7 +987,9 @@
                 var u = data[i];
                 html += '<li class="cat-mega-update-item">';
                 if (u.noteIcon) html += '<i class="' + escapeHtml(u.noteIcon) + '"></i> ';
-                html += '<a href="/' + u.noteId + '">' + escapeHtml(u.title) + '</a>';
+                html += '<a href="/' + u.noteId + '"' +
+                    (u.color ? ' style="color:' + escapeHtml(u.color) + '"' : "") +
+                    '>' + escapeHtml(u.title) + '</a>';
                 html += '<time>' + fmtDate(u.dateCreated) + '</time>';
                 html += '</li>';
             }

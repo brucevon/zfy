@@ -174,7 +174,9 @@
                 '<a class="search-result-item" href="/' +
                 item.noteId +
                 '">' +
-                '<span class="search-result-title">' +
+                '<span class="search-result-title"' +
+                (item.color ? ' style="color:' + escapeHtml(item.color) + '"' : "") +
+                ">" +
                 titleHl +
                 "</span>" +
                 (snippet
@@ -772,7 +774,9 @@
                 if (item.dateCreated) html += '<time class="rec-date">' + fmtDate(item.dateCreated) + '</time>';
                 html += '<h4 class="rec-title">';
                 if (item.noteIcon) html += '<i class="' + escapeHtml(item.noteIcon) + ' rec-item-icon"></i> ';
-                html += '<a href="/' + item.noteId + '">' + escapeHtml(item.title) + '</a></h4>';
+                html += '<a href="/' + item.noteId + '"' +
+                    (item.color ? ' style="color:' + escapeHtml(item.color) + '"' : "") +
+                    ">" + escapeHtml(item.title) + '</a></h4>';
                 if (item.content) html += '<p class="rec-summary">' + escapeHtml(item.content) + '</p>';
                 return html;
             });
@@ -787,7 +791,9 @@
                 if (item.dateCreated) html += '<time class="rec-date">' + fmtDate(item.dateCreated) + '</time>';
                 html += '<h4 class="rec-title">';
                 if (item.noteIcon) html += '<i class="' + escapeHtml(item.noteIcon) + ' rec-item-icon"></i> ';
-                html += '<a href="/' + item.noteId + '">' + escapeHtml(item.title) + '</a></h4>';
+                html += '<a href="/' + item.noteId + '"' +
+                    (item.color ? ' style="color:' + escapeHtml(item.color) + '"' : "") +
+                    ">" + escapeHtml(item.title) + '</a></h4>';
                 if (item.content) html += '<p class="rec-summary">' + escapeHtml(item.content) + '</p>';
                 return html;
             });
@@ -808,7 +814,9 @@
                 html += '<div class="rec-upd-item">';
                 if (u.noteIcon) html += '<i class="' + escapeHtml(u.noteIcon) + ' upd-item-icon"></i> ';
                 html += '<time class="rec-date">' + fmtDate(u.dateCreated) + '</time>';
-                html += '<h4 class="rec-title"><a href="/' + u.noteId + '">' + escapeHtml(u.title) + '</a></h4>';
+                html += '<h4 class="rec-title"><a href="/' + u.noteId + '"' +
+                    (u.color ? ' style="color:' + escapeHtml(u.color) + '"' : "") +
+                    ">" + escapeHtml(u.title) + '</a></h4>';
                 html += '</div>';
             }
             el.innerHTML = html;
@@ -822,7 +830,9 @@
                 if (item.dateCreated) html += '<time class="rec-date">' + fmtDate(item.dateCreated) + '</time>';
                 html += '<h4 class="rec-title">';
                 if (item.noteIcon) html += '<i class="' + escapeHtml(item.noteIcon) + ' rec-item-icon"></i> ';
-                html += '<a href="/' + item.noteId + '">' + escapeHtml(item.title) + '</a></h4>';
+                html += '<a href="/' + item.noteId + '"' +
+                    (item.color ? ' style="color:' + escapeHtml(item.color) + '"' : "") +
+                    ">" + escapeHtml(item.title) + '</a></h4>';
                 if (item.content) html += '<p class="rec-summary">' + escapeHtml(item.content) + '</p>';
                 return html;
             });
@@ -1034,6 +1044,8 @@
                 titleEl.style.fontWeight = "bold";
                 titleEl.style.color = "var(--accent, #3b82f6)";
                 found = true;
+            } else if (item.color) {
+                titleEl.style.color = item.color;
             }
 
             node.appendChild(toggle);
@@ -1045,7 +1057,7 @@
                 if (e.target.closest(".tree-toggle") || e.target.closest("a") || e.target.closest("button")) return;
                 if (item.category === true) {
                     if (!hasKids) return;
-                    toggleTree({
+                    toggleAboutSub({
                         currentTarget: toggle,
                         preventDefault: function () {},
                         stopPropagation: function () {},
@@ -1059,18 +1071,24 @@
                 var ul = document.createElement("ul");
                 ul.className = "tree-children";
                 ul.style.display = "none";
-                var childFound = renderTree(item.children, ul, currentId);
-                if (childFound) {
-                    ul.style.display = "block";
-                    toggle.classList.add("expanded");
-                    toggle.textContent = "▼";
-                    found = true;
-                }
+                renderAboutMenu(item.children, ul);
                 li.appendChild(ul);
             }
             container.appendChild(li);
         });
-        return found;
+    }
+
+    function toggleAboutSub(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var toggle = e.currentTarget;
+        var item = toggle.closest(".tree-item");
+        var kids = item.querySelector(":scope > .tree-children");
+        if (!kids) return;
+        var open = kids.style.display !== "none" && kids.style.display !== "";
+        kids.style.display = open ? "none" : "block";
+        toggle.textContent = open ? "▶" : "▼";
+        toggle.classList.toggle("expanded", !open);
     }
 
     function toggleTree(e) {
@@ -1148,6 +1166,10 @@
                 );
             } else {
                 titleEl.textContent = item.title;
+            }
+
+            if (item.color) {
+                titleEl.style.color = item.color;
             }
 
             node.appendChild(toggle);

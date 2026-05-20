@@ -60,16 +60,10 @@ if (homeNote) {
 
 // -- 当前笔记图标 --
 var _noteIconCls = '';
-try { _noteIconCls = note.getLabelValue('iconNote') || note.getLabelValue('noteIcon') || ''; } catch(_e) {}
+try { _noteIconCls = note.getLabelValue('icon') || note.getLabelValue('iconClass') || ''; } catch(_e) {}
+if (_noteIconCls) _cfg.noteIcon = _noteIconCls;
 %>
 <title><%= _cfg.blogTitle || 'Bento Blog' %><%= isHome ? ' - 首页' : ' - ' + note.title %></title>
-<% if (!isHome && _noteIconCls) {
-   var _bxIcon = '';
-   var _parts = _noteIconCls.split(' ');
-   for (var _pi = 0; _pi < _parts.length; _pi++) { if (_parts[_pi].indexOf('bx-') === 0) { _bxIcon = _parts[_pi]; break; } }
-   if (_bxIcon) { %>
-<link rel="icon" type="image/svg+xml" href="https://unpkg.com/boxicons@2.1.4/svg/regular/<%= _bxIcon %>.svg">
-<% } } %>
 
 <script>window.__BLOG_CONFIG__ = <%- JSON.stringify(_cfg) %>;</script>
 <style>
@@ -202,7 +196,7 @@ try { _noteIconCls = note.getLabelValue('iconNote') || note.getLabelValue('noteI
     <main class="note-content">
         <div class="note-layout">
             <article class="mod" data-created="<%= note.dateCreated %>" data-modified="<%= note.dateModified %>">
-                <h1 class="note-title"<% try { var _noteC = note.getLabelValue('color'); if (_noteC) { %> style="color:<%= _noteC %>"<% } } catch(_e){} %>><% if (_noteIconCls) { %><i class="<%= _noteIconCls %>" style="margin-right:6px"></i> <% } %><%= note.title %><button class="share-btn" aria-label="分享链接" title="复制链接"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button></h1>
+                <h1 class="note-title"<% try { var _noteC = note.getLabelValue('color'); if (_noteC) { %> style="color:<%= _noteC %>"<% } } catch(_e){} %>><% if (_noteIconCls) { %><i class="<%= _noteIconCls %>"></i> <% } %><%= note.title %><button class="share-btn" aria-label="分享链接" title="复制链接"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button></h1>
                 <div class="note-meta"></div>
                 <div class="note-body">
                     <%- content.replace(/<img /g, '<img loading="lazy" ') %>

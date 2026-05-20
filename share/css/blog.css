@@ -1526,6 +1526,10 @@ html.mobile-view .site-footer {
     border-bottom: 1px solid var(--md-hr);
     letter-spacing: 0.02em;
 }
+.note-title i {
+    font-size: 1.6rem;
+    flex-shrink: 0;
+}
 
 /* 笔记元信息（字数、阅读时长） */
 .note-meta {

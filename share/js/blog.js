@@ -1537,4 +1537,25 @@
     } else {
         processInternalLinks();
     }
+
+    /* ── Favicon 动态设置 ── */
+    var _noteIconCls = _cfg.noteIcon;
+    if (_noteIconCls) {
+        var _bxClass = "";
+        var _parts = _noteIconCls.split(" ");
+        for (var _i = 0; _i < _parts.length; _i++) {
+            if (_parts[_i].indexOf("bx-") === 0) { _bxClass = _parts[_i]; break; }
+        }
+        if (_bxClass) {
+            var _oldIcons = document.querySelectorAll('link[rel*="icon"]');
+            for (var _oi = 0; _oi < _oldIcons.length; _oi++) {
+                _oldIcons[_oi].remove();
+            }
+            var _fav = document.createElement("link");
+            _fav.rel = "icon";
+            _fav.type = "image/svg+xml";
+            _fav.href = "https://unpkg.com/boxicons@2.1.4/svg/regular/" + _bxClass + ".svg";
+            document.head.appendChild(_fav);
+        }
+    }
 })();

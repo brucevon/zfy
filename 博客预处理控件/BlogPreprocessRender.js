@@ -11,6 +11,7 @@ var MODULES = [
     { name: "stats",         label: "同步统计摘要",     url: "/blog-stats",         icon: "📊", needsRoot: false },
     { name: "heatmap",       label: "同步热度地图",     url: "/blog-heatmap",       icon: "🔥", needsRoot: false },
     { name: "search",        label: "同步搜索索引",     url: "/blog-search",        icon: "🔍", needsRoot: true  },
+    { name: "tags",          label: "同步标签云",       url: "/blog-tag",           icon: "🏷️", needsRoot: true  },
 ];
 
 export default function () {

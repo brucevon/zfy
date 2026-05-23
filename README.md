@@ -150,6 +150,7 @@ share/js/blog.js      # 客户端交互脚本
 | `blog-stats` | `#shareHiddenFromTree` `#shareRaw` `#shareAlias=blog-stats` |
 | `blog-heatmap` | `#shareHiddenFromTree` `#shareRaw` `#shareAlias=blog-heatmap` |
 | `blog-search` | `#shareHiddenFromTree` `#shareRaw` `#shareAlias=blog-search` |
+| `blog-tag` | `#shareHiddenFromTree` `#shareRaw` `#shareAlias=blog-tag` |
 
 > 💡 每条笔记的 noteId（右键 → 复制 ID）在后面配置脚本标签时会用到，可以先统一记下来，后续加到对应脚本的 `#saveNoteId` 标签上。
 
@@ -227,6 +228,7 @@ share/js/blog.js      # 客户端交互脚本
 | `announcement.js` | 公告（单篇） | `#saveNoteId` `#contentLen(可选)` |
 | `search.js` | 搜索索引（全量笔记） | `#rootNoteId` `#saveNoteId` `#contentLen(可选)` |
 | `heatmap.js` | 热度年历数据 | `#rootNoteId` `#saveNoteId` |
+| `tags.js` | 标签云数据（标签→文章映射） | `#rootNoteId` `#saveNoteId` |
 
 > 每个脚本通过 `#saveNoteId` 标签指向之前创建的对应 json 笔记的 ID。编排器会从每个子脚本标签中读取此 ID，写入对应笔记。
 
@@ -258,6 +260,7 @@ share/js/blog.js      # 客户端交互脚本
    | `announcement.js` | `#saveNoteId=blog-announcement笔记ID` `#contentLen=200(可选)` |
    | `search.js` | `#saveNoteId=blog-search笔记ID` `#rootNoteId=博客根笔记ID` `#contentLen=500(可选)` |
    | `heatmap.js` | `#saveNoteId=blog-heatmap笔记ID` `#rootNoteId=博客根笔记ID` |
+| `tags.js` | `#saveNoteId=blog-tag笔记ID` `#rootNoteId=博客根笔记ID` |
 
    > 编排器读取子脚本笔记上的 `#saveNoteId` 标签确定写入目标。`#rootNoteId` 只给需要递归查询的脚本用（tree / about-tree / recentUpdate / search / heatmap）。`#contentLen` 覆盖默认截取长度。
 
@@ -526,8 +529,11 @@ server {
 | `#category=true` | 标记为分类节点，出现在分类树 |
 | `#shareHiddenFromTree=true` | 从分类树隐藏此节点 |
 | `#iconClass` | 图标 CSS class（如 `bx bx-code`）|
+| `#shareExternalLink` | 笔记作为外部链接跳转（取该标签值作为 URL）|
 | `#dateNote=YYYY-MM-DD` | 覆盖排序日期 |
 | `#shareAlias` | 笔记 URL 别名 |
+| `#blogDescription` | 覆盖当前笔记页面的副标题（若不设则使用根笔记的）|
+| `#color` | 笔记标题颜色，分类菜单最近更新也使用此颜色 |
 
 ---
 
@@ -563,6 +569,7 @@ share/
 ├── article.js               # 最新文章
 ├── announcement.js          # 公告
 ├── search.js                # 搜索索引
+├── tags.js                  # 标签云数据
 └── heatmap.js               # 热度地图
 ```
 

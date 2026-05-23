@@ -150,6 +150,7 @@ The preprocessing scripts write data to dedicated JSON notes, which need to be c
 | `blog-stats` | `#shareHiddenFromTree` `#shareRaw` `#shareAlias=blog-stats` |
 | `blog-heatmap` | `#shareHiddenFromTree` `#shareRaw` `#shareAlias=blog-heatmap` |
 | `blog-search` | `#shareHiddenFromTree` `#shareRaw` `#shareAlias=blog-search` |
+| `blog-tag` | `#shareHiddenFromTree` `#shareRaw` `#shareAlias=blog-tag` |
 
 > 💡 Each note's noteId (right-click → Copy ID) will be used when configuring script labels. Collect them in advance and add to each script's `#saveNoteId` label.
 
@@ -245,6 +246,7 @@ home.ejs / Frontend JS (static fetch)
 | announcement.js | Backend | Announcements JSON | ✅ `#contentLen` |
 | search.js | Backend | Search index JSON | ✅ `#contentLen` |
 | heatmap.js | Backend | Heatmap JSON | — |
+| tags.js | Backend | Tag cloud JSON (tag→article mapping) | — |
 
 > 💡 For first-time setup, run scripts **one by one** in Trilium's script editor to verify each works before configuring the orchestrator to run them all.
 
@@ -485,7 +487,10 @@ Everyday reference (without `#label:` PromotedAttributes syntax).
 | `#category=true` | Mark as category node, appears in category tree |
 | `#shareHiddenFromTree=true` | Hide from category tree |
 | `#iconClass` | Icon CSS class (e.g., `bx bx-code`) |
+| `#shareExternalLink` | External link — note redirects to this label's value as URL |
 | `#dateNote=YYYY-MM-DD` | Override sort date |
+| `#blogDescription` | Override page subtitle for this note (falls back to root note's) |
+| `#color` | Note title color; also used by category menu recent update titles |
 | `#shareAlias` | Note URL alias |
 
 ---
@@ -522,6 +527,7 @@ share/
 ├── article.js               # Latest articles
 ├── announcement.js          # Announcements
 ├── search.js                # Search index
+├── tags.js                  # Tag cloud data
 └── heatmap.js               # Heatmap calendar
 ```
 

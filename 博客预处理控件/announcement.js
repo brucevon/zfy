@@ -49,16 +49,17 @@ async function sync() {
             [queryContentLimit],
         );
 
-        // 批量查询图标
+        // 批量查询图标、标签
         var noteIds = rows.map(function (r) { return r.noteId; });
         var iconMap = {};
         var colorMap = {};
+        var tagsMap = {};
         if (noteIds.length > 0) {
             var ph = noteIds.map(function () { return "?"; }).join(",");
             try {
                 var attrs = await api.sql.getRows(
                     "SELECT noteId, name, value FROM attributes " +
-                    "WHERE isDeleted = 0 AND noteId IN (" + ph + ") AND name IN ('icon', 'iconClass', 'color')",
+                    "WHERE isDeleted = 0 AND noteId IN (" + ph + ") AND name IN ('icon', 'iconClass', 'color', 'noteTag')",
                     noteIds,
                 );
                 for (var i = 0; i < attrs.length; i++) {
@@ -70,8 +71,14 @@ async function sync() {
                 for (var i = 0; i < attrs.length; i++) {
                     if (attrs[i].name === "color") colorMap[attrs[i].noteId] = attrs[i].value;
                 }
+                for (var i = 0; i < attrs.length; i++) {
+                    if (attrs[i].name === "noteTag") {
+                        if (!tagsMap[attrs[i].noteId]) tagsMap[attrs[i].noteId] = [];
+                        if (tagsMap[attrs[i].noteId].indexOf(attrs[i].value) === -1) tagsMap[attrs[i].noteId].push(attrs[i].value);
+                    }
+                }
             } catch (e) {
-                console.error("announcement 图标查询失败: " + e.message);
+                console.error("announcement 图标/标签查询失败: " + e.message);
             }
         }
 
@@ -87,6 +94,7 @@ async function sync() {
                     color: colorMap[rows[i].noteId] || "",
                     content: truncate(plain, contentLen),
                     dateCreated: rows[i].dateCreated,
+                    tags: tagsMap[rows[i].noteId] || [],
                 };
                 break;
             }

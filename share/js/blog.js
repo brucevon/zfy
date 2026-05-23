@@ -778,6 +778,7 @@
                     (item.color ? ' style="color:' + escapeHtml(item.color) + '"' : "") +
                     ">" + escapeHtml(item.title) + '</a></h4>';
                 if (item.content) html += '<p class="rec-summary">' + escapeHtml(item.content) + '</p>';
+                if (item.tags && item.tags.length) html += renderModuleTags(item.tags);
                 return html;
             });
             render(data);
@@ -795,6 +796,7 @@
                     (item.color ? ' style="color:' + escapeHtml(item.color) + '"' : "") +
                     ">" + escapeHtml(item.title) + '</a></h4>';
                 if (item.content) html += '<p class="rec-summary">' + escapeHtml(item.content) + '</p>';
+                if (item.tags && item.tags.length) html += renderModuleTags(item.tags);
                 return html;
             });
             render(data);
@@ -817,6 +819,7 @@
                 html += '<h4 class="rec-title"><a href="/' + u.noteId + '"' +
                     (u.color ? ' style="color:' + escapeHtml(u.color) + '"' : "") +
                     ">" + escapeHtml(u.title) + '</a></h4>';
+                if (u.tags && u.tags.length) html += renderModuleTags(u.tags);
                 html += '</div>';
             }
             el.innerHTML = html;
@@ -834,6 +837,7 @@
                     (item.color ? ' style="color:' + escapeHtml(item.color) + '"' : "") +
                     ">" + escapeHtml(item.title) + '</a></h4>';
                 if (item.content) html += '<p class="rec-summary">' + escapeHtml(item.content) + '</p>';
+                if (item.tags && item.tags.length) html += renderModuleTags(item.tags);
                 return html;
             });
             render(data);
@@ -1054,9 +1058,9 @@
 
             if (item.noteId === currentId) {
                 titleEl.style.fontWeight = "bold";
-                titleEl.style.color = "var(--accent, #3b82f6)";
                 found = true;
-            } else if (item.color) {
+            }
+            if (item.color) {
                 titleEl.style.color = item.color;
             }
 
@@ -1508,12 +1512,219 @@
         return div.innerHTML;
     }
 
+    /* ── 标签 ── */
+    var tagData = null;
+    var tagDataLoading = false;
+    var _tagIcon = _cfg.tagCloudIconClass || "bx bx-purchase-tag-alt";
+    var _isTagCloudPage = !!document.getElementById("tagCloudPage");
+    var _tagCloudNoteId = _cfg.tagCloudNoteId || '';
+
+    var TAG_COLORS = [
+        '#e74c3c','#e67e22','#f1c40f','#2ecc71','#1abc9c',
+        '#3498db','#9b59b6','#e91e63','#00bcd4','#ff5722',
+        '#795548','#607d8b','#4caf50','#03a9f4','#cddc39',
+    ];
+    function tagStyle(name) {
+        var c = TAG_COLORS[Math.floor(Math.random() * TAG_COLORS.length)];
+        return 'color:' + c + ';--tag-color:' + c;
+    }
+
+    function ensureTagData(cb) {
+        if (tagData) { if (cb) cb(); return; }
+        if (tagDataLoading) { if (cb) setTimeout(function () { ensureTagData(cb); }, 100); return; }
+        tagDataLoading = true;
+        fetchJSON("/blog-tag").then(function (data) {
+            tagData = data || {};
+            tagDataLoading = false;
+            if (cb) cb();
+        });
+    }
+
+    function renderModuleTags(tags) {
+        if (!tags || !tags.length) return '';
+        var h = '<div class="module-tags">';
+        for (var i = 0; i < tags.length; i++) {
+            h += '<span class="tag-chip tag-chip--note" data-tag="' + escapeHtml(tags[i]) + '" style="' + tagStyle(tags[i]) + '"><i class="' + _tagIcon + '"></i> ' + escapeHtml(tags[i]) + '</span>';
+        }
+        return h + '</div>';
+    }
+
+    function renderNoteTags() {
+        var body = document.querySelector(".note-body");
+        if (!body || isHome) return;
+        var curId = getCurrentNoteId();
+        ensureTagData(function () {
+            var noteTags = [];
+            for (var k in tagData) {
+                if (tagData[k].noteId.indexOf(curId) !== -1) noteTags.push(k);
+            }
+            if (!noteTags.length) return;
+            var el = document.createElement("div");
+            el.className = "note-tags";
+            var h = '';
+            for (var i = 0; i < noteTags.length; i++) {
+                h += '<span class="tag-chip tag-chip--note" data-tag="' + escapeHtml(noteTags[i]) + '" style="' + tagStyle(noteTags[i]) + '"><i class="' + _tagIcon + '"></i> ' + escapeHtml(noteTags[i]) + '</span>';
+            }
+            el.innerHTML = h;
+            body.parentNode.insertBefore(el, body.nextSibling);
+        });
+    }
+
+    /* ── 标签云页面 ── */
+    function initTagCloud() {
+        var page = document.getElementById("tagCloudPage");
+        if (!page) return;
+
+        page.innerHTML = '';
+        var wrap = document.createElement("div");
+        wrap.className = "tagcloud-wrap";
+        wrap.innerHTML = '<div class="tagcloud-tags" id="tagCloudTags"></div>' +
+            '<div class="tagcloud-content" id="tagCloudContent"></div>';
+        page.appendChild(wrap);
+
+        var tagsEl = document.getElementById("tagCloudTags");
+        var contentEl = document.getElementById("tagCloudContent");
+        var activeTag = null;
+        var pageSize = 10;
+        var curPage = 0;
+
+        function getUrlTag() {
+            var m = window.location.search.match(/[?&]tag=([^&]+)/);
+            return m ? decodeURIComponent(m[1]) : null;
+        }
+
+        ensureTagData(function () {
+            var tagIndex = tagData || {};
+            renderCloud(tagIndex);
+            var urlTag = getUrlTag();
+            if (urlTag && tagIndex[urlTag]) selectTag(urlTag);
+        });
+
+        function renderCloud(tagIndex) {
+            var names = Object.keys(tagIndex);
+            if (!names.length) { tagsEl.innerHTML = '<div class="tagcloud-empty">暂无标签</div>'; return; }
+            var maxCount = 0;
+            names.forEach(function (n) { if (tagIndex[n].count > maxCount) maxCount = tagIndex[n].count; });
+            names.sort();
+            var h = '';
+            for (var i = 0; i < names.length; i++) {
+                var info = tagIndex[names[i]];
+                var ratio = maxCount > 1 ? info.count / maxCount : 1;
+                var size = 0.85 + ratio * 0.65;
+                var rot = (Math.random() - 0.5) * 6;
+                var delay = (Math.random() * 3).toFixed(1);
+                h += '<span class="tagcloud-tag' + (activeTag === names[i] ? ' active' : '') + '" ' +
+                    'style="font-size:' + size + 'em;' + tagStyle(names[i]) + ';' +
+                    '--rot:' + rot.toFixed(1) + 'deg;--float-delay:' + delay + 's" ' +
+                    'data-tag="' + escapeHtml(names[i]) + '">' +
+                    escapeHtml(names[i]) + '<sup class="tagcloud-count">' + info.count + '</sup></span>';
+            }
+            tagsEl.innerHTML = h;
+        }
+
+        tagsEl.addEventListener("click", function (e) {
+            var el = e.target.closest(".tagcloud-tag");
+            if (el) selectTag(el.getAttribute("data-tag"));
+        });
+
+        function selectTag(tag) {
+            activeTag = (activeTag === tag) ? null : tag;
+            tagsEl.querySelectorAll(".tagcloud-tag").forEach(function (el) {
+                el.classList.toggle("active", el.getAttribute("data-tag") === activeTag);
+            });
+            if (!activeTag) { contentEl.innerHTML = '<div class="tagcloud-empty">点击标签查看相关文章</div>'; curPage = 0; return; }
+            curPage = 0;
+            renderTagList();
+            var url = new URL(window.location);
+            url.searchParams.set("tag", activeTag);
+            history.replaceState(null, "", url.toString());
+        }
+        window._selectTagCloud = selectTag;
+
+        function renderTagList() {
+            var info = tagData[activeTag];
+            if (!info || !info.noteId || !info.noteId.length) {
+                contentEl.innerHTML = '<div class="tagcloud-empty">该标签下暂无文章</div>';
+                return;
+            }
+            ensureSearchData(function () {
+                var notes = [];
+                var sData = searchData || [];
+                for (var i = 0; i < info.noteId.length; i++) {
+                    for (var j = 0; j < sData.length; j++) {
+                        if (sData[j].noteId === info.noteId[i]) { notes.push(sData[j]); break; }
+                    }
+                }
+                var total = notes.length;
+                var totalPages = Math.ceil(total / pageSize) || 1;
+                var start = curPage * pageSize;
+                var pageItems = notes.slice(start, start + pageSize);
+
+                var h = '<h3 class="tagcloud-list-title" style="' + tagStyle(activeTag) + '"><i class="' + _tagIcon + '"></i> ' + escapeHtml(activeTag) +
+                    ' <span class="tagcloud-list-count">（' + total + ' 篇）</span></h3>';
+                h += '<div class="tagcloud-list">';
+                for (var i = 0; i < pageItems.length; i++) {
+                    var n = pageItems[i];
+                    var title = (n.title || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                    var icon = n.noteIcon ? '<i class="' + escapeHtml(n.noteIcon) + '"></i> ' : '';
+                    var snippet = n.content ? n.content.substring(0, 120).replace(/</g, "&lt;").replace(/>/g, "&gt;") : "";
+                    var noteOwnTags = [];
+                    for (var tk in tagData) {
+                        if (tagData[tk].noteId.indexOf(n.noteId) !== -1) noteOwnTags.push(tk);
+                    }
+                    var tagsHtml = '';
+                    if (noteOwnTags.length) {
+                        tagsHtml = '<div class="tagcloud-note-tags">';
+                        for (var t = 0; t < noteOwnTags.length; t++) {
+                            tagsHtml += '<span class="tag-chip tag-chip--note" data-tag="' + escapeHtml(noteOwnTags[t]) + '" style="' + tagStyle(noteOwnTags[t]) + '"><i class="' + _tagIcon + '"></i> ' + escapeHtml(noteOwnTags[t]) + '</span>';
+                        }
+                        tagsHtml += '</div>';
+                    }
+                    h += '<a class="tagcloud-note" href="/' + n.noteId + '">' +
+                        '<span class="tagcloud-note-title"' + (n.color ? ' style="color:' + escapeHtml(n.color) + '"' : '') + '>' + icon + title + '</span>' +
+                        (snippet ? '<span class="tagcloud-note-snippet">' + snippet + '</span>' : '') +
+                        tagsHtml +
+                        '</a>';
+                }
+                h += '</div>';
+                if (totalPages > 1) {
+                    h += '<div class="tagcloud-pager">';
+                    if (curPage > 0) h += '<button class="tagcloud-pager-btn" data-page="' + (curPage - 1) + '">上一页</button>';
+                    h += '<span class="tagcloud-pager-info">第 ' + (curPage + 1) + '/' + totalPages + ' 页</span>';
+                    if (curPage < totalPages - 1) h += '<button class="tagcloud-pager-btn" data-page="' + (curPage + 1) + '">下一页</button>';
+                    h += '</div>';
+                }
+                contentEl.innerHTML = h;
+                contentEl.querySelectorAll(".tagcloud-pager-btn").forEach(function (btn) {
+                    btn.addEventListener("click", function () { curPage = parseInt(this.getAttribute("data-page"), 10); renderTagList(); });
+                });
+            });
+        }
+    }
+
+    /* ── 标签点击：标签云页内切换 / 其他页跳转 ── */
+    document.addEventListener("click", function (e) {
+        var chip = e.target.closest(".tag-chip--note");
+        if (!chip) return;
+        var tag = chip.getAttribute("data-tag");
+        if (!tag) return;
+        if (_isTagCloudPage) {
+            e.stopPropagation();
+            e.preventDefault();
+            if (window._selectTagCloud) window._selectTagCloud(tag);
+        } else if (_tagCloudNoteId) {
+            e.preventDefault();
+            window.location.href = "/" + _tagCloudNoteId + "?tag=" + encodeURIComponent(tag);
+        }
+    });
+
     /* ── 初始化 ── */
     function init() {
+        initTagCloud();
+        renderNoteTags();
         initToc();
         initTocMobile();
         initBackTop();
-        /* 静默预加载搜索数据 */
         ensureSearchData();
         if (isHome) {
             loadHomeModules();

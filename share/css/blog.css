@@ -877,6 +877,87 @@ html.mobile-view .cat-mega-right {
     background: rgba(255, 255, 255, 0.06);
 }
 
+.note-tags {
+    margin-top: 16px; padding-top: 12px;
+    border-top: 1px solid var(--border, rgba(128,128,128,0.2));
+    display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+}
+.module-tags { display: flex; flex-wrap: wrap; gap: 3px 4px; margin-top: 6px; }
+.module-tags .tag-chip--note { font-size: .6rem; padding: 0 3px; }
+.rec-upd-item .module-tags { margin-top: 0; gap: 1px; }
+.tag-chip--note {
+    cursor: pointer; font-size: .7rem; padding: 2px 6px;
+    border-radius: 4px; transition: color .15s;
+    color: var(--tag-color, var(--muted, #888));
+}
+.tag-chip--note:hover {
+    color: var(--tag-color, var(--accent, #58a6ff)); opacity: .8;
+}
+
+/* ── 标签云页面（2D浮动效果） ── */
+@keyframes tagFloat {
+    0%, 100% { transform: translateY(0) rotate(var(--rot, 0deg)); }
+    50% { transform: translateY(-6px) rotate(var(--rot, 0deg)); }
+}
+#tagCloudPage { max-width: 960px; margin: 0 auto; padding: 0 20px 60px; min-height: 0; }
+.tagcloud-tags {
+    display: flex; flex-wrap: wrap; gap: 12px 16px; justify-content: center; align-content: center;
+    padding: 16px 56px 16px; border-radius: 16px; margin-bottom: 20px; min-height: 80px;
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--border, rgba(128,128,128,0.08));
+}
+.tagcloud-tag {
+    cursor: pointer; line-height: 1.4; padding: 6px 14px; border-radius: 20px;
+    color: var(--tag-color, var(--text, #ccc));
+    animation: tagFloat 4s ease-in-out infinite;
+    animation-delay: var(--float-delay, 0s);
+    transition: transform .2s, opacity .2s;
+    user-select: none;
+}
+.tagcloud-tag:hover {
+    transform: translateY(-4px) scale(1.05) rotate(var(--rot, 0deg));
+    opacity: .7;
+}
+.tagcloud-tag.active {
+    color: var(--tag-color, var(--accent, #58a6ff));
+    font-weight: 600;
+}
+.tagcloud-count { opacity: .6; margin-left: 4px; font-size: .6em; vertical-align: super; }
+.tagcloud-empty { text-align: center; opacity: .5; padding: 40px 0; font-size: .9rem; }
+.tagcloud-list-title { font-size: 1.05rem; font-weight: 500; margin: 0 0 12px; padding-left: 4px; border-left: 3px solid var(--tag-color, var(--accent, #58a6ff)); }
+.tagcloud-list-title i { margin: 0 8px 0 12px; }
+.tagcloud-list-count { opacity: .5; font-size: .85rem; font-weight: 400; }
+.tagcloud-note {
+    display: block; padding: 14px 16px; border-radius: 12px; margin-bottom: 10px;
+    background: var(--bg);
+    text-decoration: none; color: var(--text, #ccc);
+    transition: background .15s, transform .15s;
+}
+.tagcloud-note:hover { background: var(--glass-bg); transform: translateX(4px); }
+.tagcloud-note-title { font-weight: 500; font-size: 1rem; display: block; margin-bottom: 4px; }
+.tagcloud-note-title i { margin-right: 6px; }
+.tagcloud-note-snippet {
+    display: block; font-size: .85rem; opacity: .65; line-height: 1.5;
+    margin-top: 6px; overflow: hidden; text-overflow: ellipsis;
+}
+.tagcloud-note-tags {
+    display: flex; flex-wrap: wrap; gap: 4px 6px; margin-top: 8px; padding-top: 8px;
+    border-top: 1px solid var(--border, rgba(128,128,128,0.12));
+}
+.tagcloud-note-tags .tag-chip--note { font-size: .7rem; }
+.tagcloud-pager {
+    display: flex; align-items: center; justify-content: center; gap: 12px;
+    margin-top: 24px; padding-top: 16px;
+}
+.tagcloud-pager-btn {
+    padding: 6px 16px; border-radius: 8px; border: 1px solid var(--border, rgba(128,128,128,0.25));
+    background: var(--bg); color: var(--text); cursor: pointer; font-size: .85rem;
+    transition: background .15s;
+}
+.tagcloud-pager-btn:hover { background: var(--accent2); color: #fff; }
+.tagcloud-pager-info { font-size: .85rem; opacity: .6; }
+
 /* ================================ */
 /* Bento grid                        */
 /* ================================ */
@@ -976,18 +1057,15 @@ html.mobile-view .cat-mega-right {
 .mod-rec {
     cursor: default;
     position: relative;
-    padding-bottom: 16px;
+    display: flex; flex-direction: column;
+    padding-bottom: 20px;
 }
-/* 底部渐变遮罩，内容超出截断时柔和过渡，避免文字硬贴底部 */
-.mod-rec::after {
-    content: '';
-    position: absolute;
-    left: 0; right: 0; bottom: 0;
-    height: 40px;
-    background: linear-gradient(to bottom, transparent, var(--glass-bg));
-    pointer-events: none;
-    border-radius: 0 0 var(--radius) var(--radius);
-}
+.rec-card { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+#mod-recommend, #mod-article, #mod-announcement { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+#mod-recommend .module-tags,
+#mod-article .module-tags,
+#mod-announcement .module-tags { margin-top: auto; }
+#mod-updates { flex: 1; min-height: 0; }
 .mod-header-rec {
     display: flex;
     align-items: center;
@@ -1006,11 +1084,8 @@ html.mobile-view .cat-mega-right {
     font-size: 1.1rem;
 }
 
-.rec-card {
-    min-height: 0;
-}
 .rec-upd-item {
-    padding: 8px 0;
+    padding: 2px 0;
     border-bottom: 1px solid var(--glass-border);
 }
 .rec-title .rec-item-icon {
@@ -1020,9 +1095,9 @@ html.mobile-view .cat-mega-right {
     color: var(--accent);
 }
 .rec-upd-item .upd-item-icon {
-    font-size: 1rem;
+    font-size: .8rem;
     vertical-align: middle;
-    margin-right: 4px;
+    margin-right: 2px;
     color: var(--accent);
 }
 .rec-upd-item:first-child {
@@ -1060,12 +1135,12 @@ html.mobile-view .cat-mega-right {
     font-size: 0.78rem;
     font-family: var(--mono);
     color: var(--muted);
-    margin-bottom: 6px;
+    margin-bottom: 2px;
 }
 .rec-title {
     font-size: 0.95rem;
     font-weight: 600;
-    margin-bottom: 8px;
+    margin-bottom: 3px;
     line-height: 1.5;
     position: relative;
     padding-left: 10px;
@@ -1096,6 +1171,14 @@ html.mobile-view .cat-mega-right {
     font-size: 0.82rem;
     color: var(--muted);
     line-height: 1.7;
+    flex: 1; min-height: 0; overflow: hidden;
+    margin-bottom: 12px;
+    position: relative;
+}
+.rec-summary::after {
+    content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 2em;
+    background: linear-gradient(transparent, var(--glass-bg));
+    pointer-events: none;
 }
 
 /* ── 统计摘要模块 ── */

@@ -56,6 +56,23 @@ if (homeNote) {
     _cfg.footerBeianIcon = _cfgVal('footerBeianIcon', '/beian.png');
     _cfg.siteStartDate = _cfgVal('siteStartDate', '');
     _cfg.twikooVersion = _cfgVal('twikooVersion', '1.6.41');
+    _cfg.tagCloudIconClass = _cfgVal('tagCloudIconClass', 'bx bx-purchase-tag-alt');
+    // -- 自动检测标签云笔记 --
+    _cfg.tagCloudNoteId = '';
+    try {
+        if (note.hasLabel && note.hasLabel('tagCloud')) {
+            _cfg.tagCloudNoteId = note.noteId;
+            try { var _tci = note.getLabelValue('tagCloudIconClass'); if (_tci) _cfg.tagCloudIconClass = _tci; } catch(_e) {}
+        } else if (homeNote) {
+            var _kids = homeNote.getChildNotes();
+            if (_kids) for (var _k = 0; _k < _kids.length; _k++) {
+                if (_kids[_k].hasLabel && _kids[_k].hasLabel('tagCloud')) {
+                    _cfg.tagCloudNoteId = _kids[_k].noteId;
+                    break;
+                }
+            }
+        }
+    } catch(_e) {}
 }
 
 // -- 当前笔记图标 --
@@ -193,6 +210,8 @@ try { _pageDesc = note.getLabelValue('blogDescription') || _cfg.blogDescription 
             </div>
         </div>
     </main>
+    <% } else if (note.hasLabel && note.hasLabel('tagCloud')) { %>
+    <div id="tagCloudPage"><%- content %></div>
     <% } else { %>
     <div id="reading-progress"></div>
     <main class="note-content">

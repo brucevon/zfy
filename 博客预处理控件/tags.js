@@ -19,14 +19,17 @@ async function sync() {
 
     var labels = [];
     try {
-        labels = await api.sql.getRows(
-            "WITH RECURSIVE descendants AS (" +
-            "  SELECT noteId FROM branches WHERE parentNoteId = ? AND isDeleted = 0" +
-            "  UNION ALL" +
-            "  SELECT b.noteId FROM branches b INNER JOIN descendants d ON b.parentNoteId = d.noteId WHERE b.isDeleted = 0" +
-            ") SELECT a.noteId, a.value FROM attributes a " +
-            "INNER JOIN descendants d ON a.noteId = d.noteId " +
-            "WHERE a.type = 'label' AND a.name = 'noteTag' AND a.isDeleted = 0",
+        labels = await api.sql.getRows(`
+            WITH RECURSIVE descendants AS (
+              SELECT noteId FROM branches WHERE parentNoteId = ? AND isDeleted = 0
+              UNION ALL
+              SELECT b.noteId FROM branches b INNER JOIN descendants d ON b.parentNoteId = d.noteId WHERE b.isDeleted = 0
+            ) SELECT a.noteId, a.value FROM attributes a
+            INNER JOIN descendants d ON a.noteId = d.noteId
+            LEFT JOIN notes n ON n.noteId = d.noteId
+            WHERE a.type = 'label' AND a.name = 'noteTag' AND a.isDeleted = 0
+            ORDER BY n.dateCreated DESC
+            `,
             [rootNoteId],
         );
     } catch (e) {
@@ -51,24 +54,6 @@ async function sync() {
         if (noteTags[noteId].indexOf(tagName) === -1) {
             noteTags[noteId].push(tagName);
         }
-    }
-
-    // -- 查找标签云笔记 ID（供前端 JS 回退） --
-    var tagCloudNoteId = null;
-    try {
-        var rows = await api.sql.getRows(
-            "WITH RECURSIVE d AS (" +
-            "  SELECT noteId FROM branches WHERE parentNoteId = ? AND isDeleted = 0" +
-            "  UNION ALL" +
-            "  SELECT b.noteId FROM branches b INNER JOIN d ON b.parentNoteId = d.noteId WHERE b.isDeleted = 0" +
-            ") SELECT a.noteId FROM attributes a " +
-            "INNER JOIN d ON a.noteId = d.noteId " +
-            "WHERE a.type = 'label' AND a.name = 'tagCloud' AND (a.value = 'true' OR a.value = '') AND a.isDeleted = 0 LIMIT 1",
-            [rootNoteId],
-        );
-        if (rows && rows.length) tagCloudNoteId = rows[0].noteId;
-    } catch (e) {
-        console.error("tagCloud note lookup failed: " + e.message);
     }
 
     var output = JSON.stringify(tags);

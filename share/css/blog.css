@@ -935,10 +935,10 @@ html.mobile-view .cat-mega-right {
     transition: background .15s, transform .15s;
 }
 .tagcloud-note:hover { background: var(--glass-bg); transform: translateX(4px); }
-.tagcloud-note-title { font-weight: 500; font-size: 1rem; display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; gap: 12px; }
+.tagcloud-note-title { font-weight: 500; font-size: 1rem; display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; gap: 12px; min-width: 0; }
 .tagcloud-note-title i { margin-right: 6px; }
-.tagcloud-note-title-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.tagcloud-note-dates { font-size: .75rem; opacity: .45; white-space: nowrap; flex-shrink: 0; }
+.tagcloud-note-title-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.tagcloud-note-dates { font-size: .75rem; opacity: .25; white-space: nowrap; flex-shrink: 0; }
 .tagcloud-note-snippet {
     display: block; font-size: .85rem; opacity: .65; line-height: 1.5;
     margin-top: 6px; overflow: hidden; text-overflow: ellipsis;
@@ -1503,10 +1503,38 @@ html.mobile-view .menu-btn {
 }
 html.mobile-view .page {
     padding: 12px;
-    overflow: hidden auto;
+    padding-top: var(--topbar-bottom) !important;
     height: 100vh;
     min-height: 0 !important;
     box-sizing: border-box;
+    overflow: hidden auto;
+}
+html.mobile-view #tagCloudPage {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    flex: 1;
+    padding: 0;
+    overflow: hidden;
+}
+html.mobile-view .tagcloud-wrap {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    flex: 1;
+}
+html.mobile-view .tagcloud-note-title {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+}
+html.mobile-view .tagcloud-tags {
+    flex-shrink: 0;
+}
+html.mobile-view .tagcloud-content {
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
 }
 html.mobile-view .grid-4 {
     display: flex;

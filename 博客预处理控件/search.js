@@ -46,15 +46,15 @@ async function sync() {
     try {
         nodes = await api.sql.getRows(
             "WITH RECURSIVE subtree AS (" +
-            "  SELECT n.noteId, n.title, 0 AS depth" +
+            "  SELECT n.noteId, n.title, n.dateCreated, n.dateModified, 0 AS depth" +
             "  FROM notes n JOIN branches b ON n.noteId = b.noteId AND b.isDeleted = 0" +
             "  WHERE n.noteId = ? AND n.isDeleted = 0" +
             "  UNION ALL" +
-            "  SELECT n.noteId, n.title, s.depth + 1" +
+            "  SELECT n.noteId, n.title, n.dateCreated, n.dateModified, s.depth + 1" +
             "  FROM notes n JOIN branches b ON n.noteId = b.noteId AND b.isDeleted = 0" +
             "  JOIN subtree s ON b.parentNoteId = s.noteId" +
             "  WHERE n.isDeleted = 0 AND s.depth < ?" +
-            ") SELECT DISTINCT noteId, title FROM subtree WHERE depth > 0",
+            ") SELECT DISTINCT noteId, title, dateCreated, dateModified FROM subtree WHERE depth > 0",
             [rootNoteId, SEARCH_MAX_DEPTH],
         );
     } catch (e) {
@@ -135,6 +135,8 @@ async function sync() {
             result.push({
                 noteId: nodes[i].noteId,
                 title: nodes[i].title,
+                dateCreated: nodes[i].dateCreated || "",
+                dateModified: nodes[i].dateModified || "",
                 noteIcon: iconMap[nodes[i].noteId] || "",
                 color: colorMap[nodes[i].noteId] || "",
                 content: truncate(stripHtml(content), contentLen),

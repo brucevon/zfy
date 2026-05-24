@@ -1680,8 +1680,18 @@
                         }
                         tagsHtml += '</div>';
                     }
+                    var _dates = '';
+                    if (n.dateCreated || n.dateModified) {
+                        _dates = '<span class="tagcloud-note-dates">' +
+                            (n.dateCreated ? '创建:' + fmtDate(n.dateCreated) : '') +
+                            (n.dateCreated && n.dateModified ? ' · ' : '') +
+                            (n.dateModified ? '修改:' + fmtDate(n.dateModified) : '') +
+                            '</span>';
+                    }
                     h += '<a class="tagcloud-note" href="/' + n.noteId + '">' +
-                        '<span class="tagcloud-note-title"' + (n.color ? ' style="color:' + escapeHtml(n.color) + '"' : '') + '>' + icon + title + '</span>' +
+                        '<span class="tagcloud-note-title"' + (n.color ? ' style="color:' + escapeHtml(n.color) + '"' : '') + '>' +
+                        '<span class="tagcloud-note-title-text">' + icon + title + '</span>' + _dates +
+                        '</span>' +
                         (snippet ? '<span class="tagcloud-note-snippet">' + snippet + '</span>' : '') +
                         tagsHtml +
                         '</a>';

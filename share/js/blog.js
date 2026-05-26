@@ -235,9 +235,11 @@
         }
     });
 
-    /* 页面滚动自动关闭搜索 */
-    document.addEventListener("scroll", function () {
-        if (searchOpen) closeSearch();
+    /* 页面滚动自动关闭搜索（排除搜索框内部滚动） */
+    document.addEventListener("scroll", function (e) {
+        if (!searchOpen) return;
+        if (searchDropdown && searchDropdown.contains(e.target)) return;
+        closeSearch();
     }, { passive: true, capture: true });
 
     /* ── 当前笔记 ID ── */

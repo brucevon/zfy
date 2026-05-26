@@ -177,6 +177,9 @@
                 '<span class="search-result-title"' +
                 (item.color ? ' style="color:' + escapeHtml(item.color) + '"' : "") +
                 ">" +
+                (item.noteIcon
+                    ? '<i class="' + escapeHtml(item.noteIcon) + '"></i> '
+                    : "") +
                 titleHl +
                 "</span>" +
                 (snippet

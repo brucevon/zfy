@@ -756,6 +756,17 @@
        about-tree: [{noteId, title, noteIcon, category, children:[...]}]
     */
 
+    function updateRecClips() {
+        document.querySelectorAll(".grid-bento .rec-clip").forEach(function (clip) {
+            var summary = clip.querySelector(".rec-summary");
+            if (!summary) {
+                clip.classList.remove("rec-clip--overflow");
+                return;
+            }
+            clip.classList.toggle("rec-clip--overflow", summary.scrollHeight > clip.clientHeight + 1);
+        });
+    }
+
     function renderModule(containerId, emptyMsg, renderFn) {
         var el = document.getElementById(containerId);
         if (!el) return;
@@ -766,7 +777,32 @@
             } else {
                 el.innerHTML = renderFn(data);
             }
+            updateRecClips();
         };
+    }
+
+    function renderArticleCard(item, opts) {
+        opts = opts || {};
+        if (!item) return '<div class="rec-empty">暂无文章</div>';
+        var html = '<div class="rec-card-body';
+        if (opts.featured) html += ' rec-card-body--featured';
+        else if (opts.wide) html += ' rec-card-body--wide';
+        else if (opts.compact) html += ' rec-card-body--compact';
+        html += '">';
+        if (item.dateCreated) {
+            html += '<time class="rec-date' + (opts.featured ? ' rec-date--featured' : '') + '">' + fmtDate(item.dateCreated) + '</time>';
+        }
+        html += '<h4 class="rec-title">';
+        if (item.noteIcon) html += '<i class="' + escapeHtml(item.noteIcon) + ' rec-item-icon"></i> ';
+        html += '<a href="/' + item.noteId + '"' +
+            (item.color ? ' style="color:' + escapeHtml(item.color) + '"' : "") +
+            ">" + escapeHtml(item.title) + '</a></h4>';
+        if (item.content) {
+            html += '<div class="rec-clip"><p class="rec-summary">' + escapeHtml(item.content) + '</p></div>';
+        }
+        if (item.tags && item.tags.length) html += renderModuleTags(item.tags);
+        html += '</div>';
+        return html;
     }
 
     function loadHomeModules() {
@@ -775,16 +811,7 @@
             var render = renderModule("mod-recommend", "暂无推荐", function (items) {
                 if (!items || !items.length) return '<div class="rec-empty">暂无推荐</div>';
                 var item = items[Math.floor(Math.random() * items.length)];
-                var html = "";
-                if (item.dateCreated) html += '<time class="rec-date">' + fmtDate(item.dateCreated) + '</time>';
-                html += '<h4 class="rec-title">';
-                if (item.noteIcon) html += '<i class="' + escapeHtml(item.noteIcon) + ' rec-item-icon"></i> ';
-                html += '<a href="/' + item.noteId + '"' +
-                    (item.color ? ' style="color:' + escapeHtml(item.color) + '"' : "") +
-                    ">" + escapeHtml(item.title) + '</a></h4>';
-                if (item.content) html += '<p class="rec-summary">' + escapeHtml(item.content) + '</p>';
-                if (item.tags && item.tags.length) html += renderModuleTags(item.tags);
-                return html;
+                return renderArticleCard(item, { wide: true });
             });
             render(data);
         });
@@ -792,17 +819,7 @@
         /* 最近发布 */
         fetchJSON("/blog-article").then(function (data) {
             var render = renderModule("mod-article", "暂无文章", function (item) {
-                if (!item) return '<div class="rec-empty">暂无文章</div>';
-                var html = "";
-                if (item.dateCreated) html += '<time class="rec-date">' + fmtDate(item.dateCreated) + '</time>';
-                html += '<h4 class="rec-title">';
-                if (item.noteIcon) html += '<i class="' + escapeHtml(item.noteIcon) + ' rec-item-icon"></i> ';
-                html += '<a href="/' + item.noteId + '"' +
-                    (item.color ? ' style="color:' + escapeHtml(item.color) + '"' : "") +
-                    ">" + escapeHtml(item.title) + '</a></h4>';
-                if (item.content) html += '<p class="rec-summary">' + escapeHtml(item.content) + '</p>';
-                if (item.tags && item.tags.length) html += renderModuleTags(item.tags);
-                return html;
+                return renderArticleCard(item, { featured: true });
             });
             render(data);
         });
@@ -816,7 +833,8 @@
                 return;
             }
             var html = "";
-            for (var i = 0; i < data.length; i++) {
+            var limit = Math.min(data.length, 3);
+            for (var i = 0; i < limit; i++) {
                 var u = data[i];
                 html += '<div class="rec-upd-item">';
                 if (u.noteIcon) html += '<i class="' + escapeHtml(u.noteIcon) + ' upd-item-icon"></i> ';
@@ -833,17 +851,7 @@
         /* 公告 */
         fetchJSON("/blog-announcement").then(function (data) {
             var render = renderModule("mod-announcement", "暂无公告", function (item) {
-                if (!item) return '<div class="rec-empty">暂无公告</div>';
-                var html = "";
-                if (item.dateCreated) html += '<time class="rec-date">' + fmtDate(item.dateCreated) + '</time>';
-                html += '<h4 class="rec-title">';
-                if (item.noteIcon) html += '<i class="' + escapeHtml(item.noteIcon) + ' rec-item-icon"></i> ';
-                html += '<a href="/' + item.noteId + '"' +
-                    (item.color ? ' style="color:' + escapeHtml(item.color) + '"' : "") +
-                    ">" + escapeHtml(item.title) + '</a></h4>';
-                if (item.content) html += '<p class="rec-summary">' + escapeHtml(item.content) + '</p>';
-                if (item.tags && item.tags.length) html += renderModuleTags(item.tags);
-                return html;
+                return renderArticleCard(item, { compact: true });
             });
             render(data);
         });
@@ -862,7 +870,13 @@
         fetchJSON("/blog-heatmap").then(function (data) {
             renderHeatmap(data || []);
         });
+
+        setTimeout(updateRecClips, 0);
     }
+
+    window.addEventListener("resize", function () {
+        if (document.querySelector(".grid-bento")) updateRecClips();
+    });
 
     /* ── 热力图网格渲染 ── */
     function renderHeatmap(dateFreqArr) {

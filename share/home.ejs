@@ -73,6 +73,12 @@ if (homeNote) {
             }
         }
     } catch(_e) {}
+    _cfg.statTags = {
+        recommend: _cfgVal('statTagRecommend', '推荐阅读'),
+        article: _cfgVal('statTagArticle', '文章'),
+        recentUpdate: _cfgVal('statTagUpdate', '动态'),
+        announcement: _cfgVal('statTagAnnounce', '公告')
+    };
 }
 
 // -- 当前笔记图标 --
@@ -92,7 +98,7 @@ try { _pageDesc = note.getLabelValue('blogDescription') || _cfg.blogDescription 
   }
 </style>
 
-<div class="page">
+<div class="page<%= isHome ? ' page--home' : '' %>">
 
 <header class="top-bar">
     <div class="top-inner">
@@ -163,50 +169,84 @@ try { _pageDesc = note.getLabelValue('blogDescription') || _cfg.blogDescription 
     </div>
 </div>
 
-    <% if (isHome) { %>
-    <style>html { overflow-y: hidden; height: 100%; } body { height: 100%; }</style>
-    <main class="grid-4">
-        <div class="mod mod-rec">
-            <div class="mod-header-rec">
-                <div class="mod-icon mod-icon--rec">📕</div>
-                <h3 class="mod-title mod-title--rec">推荐阅读</h3>
+    <% if (isHome) {
+        function _tagListUrl(tag) {
+            if (!_cfg.tagCloudNoteId || !tag) return '#';
+            return '/' + _cfg.tagCloudNoteId + '?tag=' + encodeURIComponent(tag);
+        }
+        var _st = _cfg.statTags || { recommend: '推荐阅读', article: '文章', recentUpdate: '动态', announcement: '公告' };
+        var _statLink = !!_cfg.tagCloudNoteId;
+    %>
+    <style>
+      html.page-home-scroll-lock { overflow: hidden; height: 100%; }
+      html.page-home-scroll-lock body { overflow: hidden; height: 100vh; min-height: 0; }
+    </style>
+    <script>document.documentElement.classList.add('page-home-scroll-lock');</script>
+    <main class="grid-bento">
+        <div class="mod mod-rec mod-featured">
+            <div class="featured-grid-deco" aria-hidden="true"></div>
+            <div class="featured-orb featured-orb--1" aria-hidden="true"></div>
+            <div class="featured-orb featured-orb--2" aria-hidden="true"></div>
+            <div class="featured-inner">
+                <div class="mod-header-rec mod-header-rec--featured">
+                    <span class="mod-kicker"><i class="bx bx-edit-alt"></i> Latest Post</span>
+                    <span class="mod-badge">最新发布</span>
+                </div>
+                <div class="rec-card rec-card--featured" id="mod-article"></div>
             </div>
-            <div class="rec-card" id="mod-recommend"></div>
         </div>
-        <div class="mod mod-rec">
+        <div class="mod mod-rec mod-side mod-side--updates">
             <div class="mod-header-rec">
-                <div class="mod-icon mod-icon--rec">📰</div>
-                <h3 class="mod-title mod-title--rec">最近发布</h3>
-            </div>
-            <div class="rec-card" id="mod-article"></div>
-        </div>
-        <div class="mod mod-rec">
-            <div class="mod-header-rec">
-                <div class="mod-icon mod-icon--rec">⚡</div>
+                <span class="mod-head-icon mod-head-icon--updates"><i class="bx bx-pulse"></i></span>
                 <h3 class="mod-title mod-title--rec">最近动态</h3>
             </div>
-            <div class="rec-card" id="mod-updates"></div>
+            <div class="rec-card rec-card--timeline" id="mod-updates"></div>
         </div>
-        <div class="mod mod-rec">
+        <div class="mod mod-rec mod-side mod-side--announce">
             <div class="mod-header-rec">
-                <div class="mod-icon mod-icon--rec">📣</div>
+                <span class="mod-head-icon mod-head-icon--announce"><i class="bx bx-broadcast"></i></span>
                 <h3 class="mod-title mod-title--rec">公告</h3>
             </div>
             <div class="rec-card" id="mod-announcement"></div>
         </div>
+        <div class="mod mod-rec mod-wide">
+            <div class="mod-header-rec">
+                <span class="mod-head-icon mod-head-icon--recommend"><i class="bx bx-book-bookmark"></i></span>
+                <h3 class="mod-title mod-title--rec">推荐阅读</h3>
+            </div>
+            <div class="rec-card rec-card--wide" id="mod-recommend"></div>
+        </div>
         <div class="mod mod-stats">
-            <div class="mod-header-stats">
-                <div class="mod-icon">📊</div>
-                <h3 class="mod-title">统计摘要</h3>
+            <div class="stats-panel">
+                <div class="stats-panel__head"><i class="bx bx-pie-chart-alt-2"></i> 站点概览</div>
+                <div class="stats-dashboard">
+                <a class="stat-pill stat-pill--recommend<%= _statLink ? '' : ' stat-pill--static' %>" href="<%= _tagListUrl(_st.recommend) %>" title="查看推荐阅读">
+                    <i class="bx bx-star stat-pill__icon"></i>
+                    <span class="stat-pill__label">推荐</span>
+                    <em class="stat-pill__num" id="stat-recommend">--</em>
+                </a>
+                <a class="stat-pill stat-pill--article<%= _statLink ? '' : ' stat-pill--static' %>" href="<%= _tagListUrl(_st.article) %>" title="查看文章列表">
+                    <i class="bx bx-news stat-pill__icon"></i>
+                    <span class="stat-pill__label">文章</span>
+                    <em class="stat-pill__num" id="stat-article">--</em>
+                </a>
+                <a class="stat-pill stat-pill--update<%= _statLink ? '' : ' stat-pill--static' %>" href="<%= _tagListUrl(_st.recentUpdate) %>" title="查看动态">
+                    <i class="bx bx-time-five stat-pill__icon"></i>
+                    <span class="stat-pill__label">动态</span>
+                    <em class="stat-pill__num" id="stat-recentUpdate">--</em>
+                </a>
+                <a class="stat-pill stat-pill--announce<%= _statLink ? '' : ' stat-pill--static' %>" href="<%= _tagListUrl(_st.announcement) %>" title="查看公告">
+                    <i class="bx bx-bell stat-pill__icon"></i>
+                    <span class="stat-pill__label">公告</span>
+                    <em class="stat-pill__num" id="stat-announcement">--</em>
+                </a>
+                </div>
             </div>
-            <div class="stats-row" id="mod-stats">
-                <span class="stats-item">推荐阅读 <em id="stat-recommend">--</em></span>
-                <span class="stats-item">文章 <em id="stat-article">--</em></span>
-                <span class="stats-item">动态 <em id="stat-recentUpdate">--</em></span>
-                <span class="stats-item">公告 <em id="stat-announcement">--</em></span>
-            </div>
-            <div class="hm-wrap" id="mod-heatmap">
-                <div class="hm-grid" id="heatmap-grid"></div>
+            <div class="hm-panel">
+                <div class="hm-panel__head"><i class="bx bx-calendar"></i> 更新热力</div>
+                <div class="hm-wrap" id="mod-heatmap">
+                    <div class="hm-grid" id="heatmap-grid"></div>
+                </div>
             </div>
         </div>
     </main>

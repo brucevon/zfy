@@ -67,6 +67,23 @@
 
     function isEmpty(obj) { return obj === null || obj === undefined || (Array.isArray(obj) && obj.length === 0); }
 
+    function animateCount(el, target) {
+        if (!el || target === undefined || target === null) return;
+        target = parseInt(target, 10) || 0;
+        var start = 0;
+        var duration = 800;
+        var step = Math.max(1, Math.ceil(target / (duration / 16)));
+        var timer = setInterval(function () {
+            start += step;
+            if (start >= target) {
+                el.textContent = target;
+                clearInterval(timer);
+            } else {
+                el.textContent = start;
+            }
+        }, 16);
+    }
+
     /* ── 搜索 ── */
     var searchToggle = document.getElementById("search-toggle");
     var searchDropdown = document.getElementById("search-dropdown");
@@ -860,10 +877,10 @@
         fetchJSON("/blog-stats").then(function (data) {
             if (!data) return;
             var m = function (id) { return document.getElementById(id); };
-            if (data.recommend !== undefined && m("stat-recommend")) m("stat-recommend").textContent = data.recommend;
-            if (data.article !== undefined && m("stat-article")) m("stat-article").textContent = data.article;
-            if (data.recentUpdate !== undefined && m("stat-recentUpdate")) m("stat-recentUpdate").textContent = data.recentUpdate;
-            if (data.announcement !== undefined && m("stat-announcement")) m("stat-announcement").textContent = data.announcement;
+            animateCount(m("stat-recommend"), data.recommend);
+            animateCount(m("stat-article"), data.article);
+            animateCount(m("stat-recentUpdate"), data.recentUpdate);
+            animateCount(m("stat-announcement"), data.announcement);
         });
 
         /* 热力图 */

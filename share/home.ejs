@@ -1,19 +1,5 @@
 <link rel="stylesheet" href="/blog.css" />
 <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet" />
-<!-- highlight.js 代码高亮 -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" id="hljs-theme-dark" />
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css" id="hljs-theme-light" disabled />
-<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/bash.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/javascript.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/typescript.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/go.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/rust.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/yaml.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/json.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/sql.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/dockerfile.min.js"></script>
 
 <%
 // -- 标签化主页检测 --
@@ -253,6 +239,34 @@ try { _pageDesc = note.getLabelValue('blogDescription') || _cfg.blogDescription 
     <% } else if (note.hasLabel && note.hasLabel('tagCloud')) { %>
     <div id="tagCloudPage"><%- content %></div>
     <% } else { %>
+    <!-- highlight.js 代码高亮（仅文章页加载） -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" id="hljs-theme-dark" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css" id="hljs-theme-light" disabled />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/bash.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/typescript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/go.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/rust.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/yaml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/json.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/sql.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/dockerfile.min.js"></script>
+    <script>
+    (function () {
+        function syncHljsTheme() {
+            var isDark = document.documentElement.getAttribute("data-theme") === "dark";
+            var darkLink  = document.getElementById("hljs-theme-dark");
+            var lightLink = document.getElementById("hljs-theme-light");
+            if (darkLink)  darkLink.disabled  = !isDark;
+            if (lightLink) lightLink.disabled = isDark;
+        }
+        syncHljsTheme();
+        var observer = new MutationObserver(syncHljsTheme);
+        observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    })();
+    </script>
     <div id="reading-progress"></div>
     <main class="note-content">
         <div class="note-layout">
@@ -322,22 +336,6 @@ try { _pageDesc = note.getLabelValue('blogDescription') || _cfg.blogDescription 
         <a href="https://github.com/TriliumNext/Trilium" target="_blank" rel="noopener">Powered by TriliumNext</a>
     </footer>
 </div>
-
-<script>
-// 主题切换同步 highlight.js 样式
-(function () {
-    function syncHljsTheme() {
-        var isDark = document.documentElement.getAttribute("data-theme") === "dark";
-        var darkLink  = document.getElementById("hljs-theme-dark");
-        var lightLink = document.getElementById("hljs-theme-light");
-        if (darkLink)  darkLink.disabled  = !isDark;
-        if (lightLink) lightLink.disabled = isDark;
-    }
-    syncHljsTheme();
-    var observer = new MutationObserver(syncHljsTheme);
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-})();
-</script>
 
 <script>
 // 热力图 tooltip

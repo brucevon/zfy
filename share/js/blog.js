@@ -1847,4 +1847,63 @@
             document.head.appendChild(_fav);
         }
     }
+
+    /* ── Header 自动隐藏/显示 ── */
+    var header = document.querySelector(".header");
+    if (header) {
+        var lastScroll = 0;
+        var delta = 3;
+        var touchStartY = -1;
+
+        // 兼容任意滚动容器：window / html / body / .page，取最大值
+        function getScroll() {
+            var max = 0;
+            max = Math.max(max, window.scrollY || 0);
+            max = Math.max(max, document.documentElement.scrollTop || 0);
+            max = Math.max(max, document.body.scrollTop || 0);
+            var pageEl = document.querySelector(".page");
+            if (pageEl) max = Math.max(max, pageEl.scrollTop || 0);
+            return max;
+        }
+
+        function handleScroll() {
+            var curr = getScroll();
+            if (curr <= delta) {
+                header.classList.remove("hidden");         // 回到顶部 => 显示
+            } else if (curr > lastScroll) {
+                header.classList.add("hidden");            // 向下滚动 => 隐藏
+            } else if (curr < lastScroll) {
+                header.classList.remove("hidden");         // 向上滚动 => 显示
+            }
+            lastScroll = curr;
+        }
+
+        // 三路监听，覆盖 window 滚动与 .page 内部滚动
+        window.addEventListener("scroll", handleScroll, { passive: true });
+        document.addEventListener("scroll", handleScroll, { passive: true, capture: true });
+        var pageEl2 = document.querySelector(".page");
+        if (pageEl2) pageEl2.addEventListener("scroll", handleScroll, { passive: true });
+
+        // 移动端：触摸滑动方向判断
+        document.addEventListener(
+            "touchstart",
+            function (e) {
+                touchStartY = e.touches[0].clientY;
+            },
+            { passive: true }
+        );
+        document.addEventListener(
+            "touchmove",
+            function (e) {
+                if (touchStartY < 0) return;
+                var dy = e.touches[0].clientY - touchStartY;
+                touchStartY = e.touches[0].clientY;
+                var y = getScroll();
+                if (y <= delta) { header.classList.remove("hidden"); return; }
+                if (dy < -delta * 2) header.classList.add("hidden");       // 手指上滑 => 隐藏
+                else if (dy > delta * 2) header.classList.remove("hidden"); // 手指下滑 => 显示
+            },
+            { passive: true }
+        );
+    }
 })();

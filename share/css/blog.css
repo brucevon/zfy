@@ -2617,6 +2617,17 @@ a.stat-pill.stat-pill--static {
         max-height: none;
     }
 
+    /* 移动端标签云：标签区域限高可滚动（不依赖 mobile-view JS 类） */
+    .tagcloud-tags {
+        max-height: 24vh;
+        min-height: 80px;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        box-sizing: border-box;
+        padding: 10px 14px;
+        gap: 8px 10px;
+    }
+
     /* 移动端页脚自适应 */
     .site-footer {
         margin-top: auto !important;
@@ -2707,6 +2718,12 @@ html.mobile-view .tagcloud-note-title {
 }
 html.mobile-view .tagcloud-tags {
     flex-shrink: 0;
+    max-height: 24vh;
+    min-height: 80px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 10px 14px;
+    gap: 8px 10px;
 }
 html.mobile-view .tagcloud-content {
     overflow-y: auto;

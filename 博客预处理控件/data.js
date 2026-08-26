@@ -157,11 +157,12 @@ async function buildTags(rootId) {
             "  UNION ALL" +
             "  SELECT b.noteId FROM branches b INNER JOIN descendants d ON b.parentNoteId = d.noteId WHERE b.isDeleted = 0" +
             ") " +
-            "SELECT tag, COUNT(*) AS count, json_group_array(noteId) AS ids FROM (" +
-            "  SELECT DISTINCT a.noteId AS noteId, a.value AS tag" +
+            "SELECT tag, COUNT(*) AS count, json_group_array(noteId ORDER BY dateCreated DESC) AS ids FROM (" +
+            "  SELECT DISTINCT a.noteId AS noteId, a.value AS tag, n.dateCreated" +
             "  FROM attributes a" +
             "  INNER JOIN descendants d ON a.noteId = d.noteId" +
-            "  WHERE a.type = 'label' AND a.name = 'noteTag' AND a.isDeleted = 0" +
+            "  INNER JOIN notes n ON n.noteId = a.noteId" +
+            "  WHERE a.type = 'label' AND a.name = 'noteTag' AND a.isDeleted = 0 AND n.isDeleted = 0" +
             ") GROUP BY tag",
             [rootId],
         );

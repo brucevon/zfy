@@ -786,7 +786,7 @@
 
     function renderModule(containerId, emptyMsg, renderFn) {
         var el = document.getElementById(containerId);
-        if (!el) return;
+        if (!el) return function () {};
         el.innerHTML = '<div class="rec-empty">加载中…</div>';
         return function (data) {
             if (isEmpty(data)) {
@@ -806,18 +806,23 @@
         else if (opts.wide) html += ' rec-card-body--wide';
         else if (opts.compact) html += ' rec-card-body--compact';
         html += '">';
-        if (item.dateCreated) {
-            html += '<time class="rec-date' + (opts.featured ? ' rec-date--featured' : '') + '">' + fmtDate(item.dateCreated) + '</time>';
-        }
         html += '<h4 class="rec-title">';
         if (item.noteIcon) html += '<i class="' + escapeHtml(item.noteIcon) + ' rec-item-icon"></i> ';
         html += '<a href="/' + item.noteId + '"' +
             (item.color ? ' style="color:' + escapeHtml(item.color) + '"' : "") +
             ">" + escapeHtml(item.title) + '</a></h4>';
         if (item.content) {
-            html += '<div class="rec-clip"><p class="rec-summary">' + escapeHtml(item.content) + '</p></div>';
+            var excerpt = item.content.length > 60 ? item.content.slice(0, 60) + '…' : item.content;
+            html += '<div class="rec-clip"><p class="rec-summary">' + escapeHtml(excerpt) + '</p></div>';
         }
-        if (item.tags && item.tags.length) html += renderModuleTags(item.tags);
+        if (item.tags && item.tags.length || item.dateCreated) {
+            html += '<div class="rec-meta">';
+            if (item.tags && item.tags.length) html += renderModuleTags(item.tags);
+            if (item.dateCreated) {
+                html += '<time class="rec-date">' + fmtDate(item.dateCreated) + '</time>';
+            }
+            html += '</div>';
+        }
         html += '</div>';
         return html;
     }
@@ -968,11 +973,9 @@
 
         grid.innerHTML = html;
 
-        /* 移动端默认滚动到最右侧 */
-        if (window.innerWidth <= 768) {
-            var wrap = document.querySelector(".hm-wrap");
-            if (wrap) wrap.scrollLeft = wrap.scrollWidth - wrap.clientWidth;
-        }
+        /* 默认滚动到最右侧（最新日期） */
+        var wrap = document.querySelector(".hm-wrap");
+        if (wrap) wrap.scrollLeft = wrap.scrollWidth - wrap.clientWidth;
     }
 
     /* ── 加载分类树（fetch /blog-tree） ── */

@@ -3547,6 +3547,44 @@ html.mobile-view #twikoo {
     background: rgba(0,0,0,0.6);
     color: #fff;
 }
+/* 左右切换大按钮：半透明圆形，悬浮于图片两侧 */
+.lightbox-prev,
+.lightbox-next {
+    position: fixed;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 56px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 34px;
+    padding: 0;
+    color: rgba(255,255,255,0.85);
+    cursor: pointer;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.45);
+    border: none;
+    transition: background 0.2s, color 0.2s, transform 0.2s;
+    line-height: 1;
+    z-index: 10000;
+}
+.lightbox-prev { left: 24px; }
+.lightbox-next { right: 24px; }
+.lightbox-prev:hover,
+.lightbox-next:hover {
+    background: rgba(0,0,0,0.65);
+    color: #fff;
+    transform: translateY(-50%) scale(1.1);
+}
+html.mobile-view .lightbox-prev,
+html.mobile-view .lightbox-next {
+    width: 46px;
+    height: 46px;
+    font-size: 28px;
+}
+html.mobile-view .lightbox-prev { left: 12px; }
+html.mobile-view .lightbox-next { right: 12px; }
 html.mobile-view .lightbox-img {
     max-width: 96vw;
     max-height: 90vh;

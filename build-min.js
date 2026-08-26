@@ -23,6 +23,23 @@ const SRC = {
 };
 const OUT = path.join(SHARE, "blog.min.ejs");
 
+/** 获取版本信息：优先取 git 最近 tag（如 v1.0.0），否则取提交 hash；含构建时间 */
+function buildVersion() {
+    function git(args) {
+        const r = spawnSync("git", args, { encoding: "utf8", cwd: ROOT });
+        return r.status === 0 ? (r.stdout || "").trim() : "";
+    }
+    const tag = git(["describe", "--tags", "--abbrev=0"]);
+    const commit = git(["rev-parse", "--short", "HEAD"]);
+    const time = new Date().toISOString().replace("T", " ").slice(0, 19) + "Z";
+    const version = tag || commit || "unknown";
+    return {
+        version: version,
+        commit: commit || "",
+        time: time,
+    };
+}
+
 /** 压缩锚点（替换为内联块） */
 const ANCHORS = {
     css: `<link rel="stylesheet" href="/blog.css" />`,
@@ -65,19 +82,28 @@ function build() {
     const tpl = fs.readFileSync(SRC.ejs, "utf8");
     const cssMin = minify(SRC.css);
     const jsMin = minify(SRC.js);
+    const ver = buildVersion();
 
     if (!tpl.includes(ANCHORS.css) || !tpl.includes(ANCHORS.js))
         throw new Error("blog.ejs 中未找到 css/js 锚点，模板结构可能已变更");
 
+    // 版本头：HTML 注释 + meta 标签（便于在线查看 / 缓存排障）
+    const header =
+        `<!-- zfy build ${ver.version} | commit ${ver.commit} | ${ver.time} -->\n` +
+        `<meta name="generator" content="zfy blog build ${ver.version}" />\n`;
+
     // 注意：必须用函数形式的 replace，避免替换内容中的 "$&"、"$1" 等被当成特殊替换模式展开
-    const html = tpl
-        .replace(ANCHORS.css, function () { return `<style>\n${cssMin}\n</style>`; })
-        .replace(ANCHORS.js, function () { return `<script>\n${jsMin}\n</script>`; });
+    const html =
+        header +
+        tpl
+            .replace(ANCHORS.css, function () { return `<style>\n${cssMin}\n</style>`; })
+            .replace(ANCHORS.js, function () { return `<script>\n${jsMin}\n</script>`; });
 
     verify(html);
     fs.writeFileSync(OUT, html, "utf8");
     const kb = (s) => (fs.statSync(s).size / 1024).toFixed(1);
     console.log("已生成 " + path.relative(ROOT, OUT));
+    console.log(`  版本: ${ver.version} (commit ${ver.commit}) @ ${ver.time}`);
     console.log(
         `  css: ${kb(SRC.css)}KB -> ${(cssMin.length / 1024).toFixed(1)}KB` +
         ` | js: ${kb(SRC.js)}KB -> ${(jsMin.length / 1024).toFixed(1)}KB` +

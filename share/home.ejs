@@ -86,27 +86,32 @@ try { _pageDesc = note.getLabelValue('blogDescription') || _cfg.blogDescription 
 
 <div class="page<%= isHome ? ' page--home' : '' %>">
 
-<header class="top-bar">
-    <div class="top-inner">
-        <img class="top-avatar" src="/logo.icon" alt="" />
-        <div class="top-info">
-            <span class="top-name"><%= _cfg.blogTitle || '子非鱼' %></span>
-            <span class="top-subtitle"><%= _pageDesc || '流水不腐，户枢不蠹。' %></span>
-        </div>
-        <nav class="top-nav">
-            <a class="nav-item active" href="./">首页</a>
-            <a class="nav-item category-btn" id="category-btn" href="#">分类</a>
-            <div class="nav-item-wrap" id="about-wrap">
-                <a class="nav-item" href="#" id="about-btn">关于</a>
-                <div class="about-dropdown" id="about-dropdown">
-                    <ul class="about-menu" id="about-menu"></ul>
-                </div>
-            </div>
-        </nav>
-        <button class="icon-btn" id="search-toggle" aria-label="搜索"><i class="bx bx-search"></i></button>
-        <button class="icon-btn" id="theme-toggle" aria-label="切换主题">☀</button>
-        <button class="icon-btn menu-btn" id="menu-toggle" aria-label="菜单">☰</button>
+<header class="header">
+  <div class="header-inner">
+    <div class="logo-area">
+      <img class="logo-icon" src="/logo.icon" alt="" />
+      <span class="logo-text"><%= _cfg.blogTitle || 'ZFY' %></span>
     </div>
+
+    <nav class="nav-links">
+      <a class="nav-item<%= isHome ? ' active' : '' %>" href="./">首页</a>
+      <a class="nav-item category-btn" id="category-btn" href="#">分类</a>
+      <div class="nav-item-wrap" id="about-wrap">
+        <a class="nav-item" href="#" id="about-btn">关于</a>
+        <div class="about-dropdown" id="about-dropdown">
+          <ul class="about-menu" id="about-menu"></ul>
+        </div>
+      </div>
+    </nav>
+
+    <div class="header-actions">
+      <button class="btn-search" id="search-toggle" aria-label="搜索"><span><i class="bx bx-search"></i></span> 搜索 <kbd>⌘K</kbd></button>
+      <button class="btn-icon" id="theme-toggle" aria-label="切换主题">☀</button>
+      <button class="hamburger" id="menu-toggle" aria-label="菜单">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </div>
 </header>
 
 <div class="search-dropdown" id="search-dropdown">
@@ -117,14 +122,12 @@ try { _pageDesc = note.getLabelValue('blogDescription') || _cfg.blogDescription 
 </div>
 
 <div class="mobile-menu" id="mobile-menu">
-    <nav class="mobile-nav">
-        <a class="nav-item active" href="./">首页</a>
-        <a class="nav-item" id="category-btn-mobile" href="#">分类</a>
-        <a class="nav-item" id="about-btn-mobile" href="#">关于</a>
-        <div class="about-dropdown about-dropdown--mobile" id="about-dropdown-mobile">
-            <ul class="about-menu" id="about-menu-mobile"></ul>
-        </div>
-    </nav>
+  <a class="nav-item<%= isHome ? ' active' : '' %>" href="./">首页</a>
+  <a class="nav-item category-btn" id="category-btn-mobile" href="#">分类</a>
+  <a class="nav-item" id="about-btn-mobile" href="#">关于</a>
+  <div class="about-dropdown about-dropdown--mobile" id="about-dropdown-mobile">
+    <ul class="about-menu" id="about-menu-mobile"></ul>
+  </div>
 </div>
 
 <div class="category-panel" id="category-panel">
@@ -163,79 +166,41 @@ try { _pageDesc = note.getLabelValue('blogDescription') || _cfg.blogDescription 
         var _st = _cfg.statTags || { recommend: '推荐阅读', article: '文章', recentUpdate: '动态', announcement: '公告' };
         var _statLink = !!_cfg.tagCloudNoteId;
     %>
-    <style>
-      html.page-home-scroll-lock { overflow: hidden; height: 100%; }
-      html.page-home-scroll-lock body { overflow: hidden; height: 100vh; min-height: 0; }
-    </style>
-    <script>document.documentElement.classList.add('page-home-scroll-lock');</script>
-    <main class="grid-bento">
-        <div class="mod mod-rec mod-featured">
-            <div class="featured-grid-deco" aria-hidden="true"></div>
-            <div class="featured-orb featured-orb--1" aria-hidden="true"></div>
-            <div class="featured-orb featured-orb--2" aria-hidden="true"></div>
-            <div class="featured-inner">
-                <div class="mod-header-rec mod-header-rec--featured">
-                    <span class="mod-kicker"><i class="bx bx-edit-alt"></i> Latest Post</span>
-                    <span class="mod-badge">最新发布</span>
-                </div>
-                <div class="rec-card rec-card--featured" id="mod-article"></div>
-            </div>
+<div class="layout">
+  <aside class="sidebar-col">
+    <div class="panel">
+      <div class="panel-header">📢 公告</div>
+      <div class="panel-body">
+        <div class="notice-list" id="mod-announcement"></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-header">⚡ 动态</div>
+      <div class="panel-body">
+        <div class="notice-list" id="mod-updates"></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-header">📅 更新热力</div>
+      <div class="panel-body">
+        <div class="hm-wrap" id="mod-heatmap">
+          <div class="hm-grid" id="heatmap-grid"></div>
         </div>
-        <div class="mod mod-rec mod-side mod-side--updates">
-            <div class="mod-header-rec">
-                <span class="mod-head-icon mod-head-icon--updates"><i class="bx bx-pulse"></i></span>
-                <h3 class="mod-title mod-title--rec">最近动态</h3>
-            </div>
-            <div class="rec-card rec-card--timeline" id="mod-updates"></div>
-        </div>
-        <div class="mod mod-rec mod-side mod-side--announce">
-            <div class="mod-header-rec">
-                <span class="mod-head-icon mod-head-icon--announce"><i class="bx bx-broadcast"></i></span>
-                <h3 class="mod-title mod-title--rec">公告</h3>
-            </div>
-            <div class="rec-card" id="mod-announcement"></div>
-        </div>
-        <div class="mod mod-rec mod-wide">
-            <div class="mod-header-rec">
-                <span class="mod-head-icon mod-head-icon--recommend"><i class="bx bx-book-bookmark"></i></span>
-                <h3 class="mod-title mod-title--rec">推荐阅读</h3>
-            </div>
-            <div class="rec-card rec-card--wide" id="mod-recommend"></div>
-        </div>
-        <div class="mod mod-stats">
-            <div class="stats-panel">
-                <div class="stats-panel__head"><i class="bx bx-pie-chart-alt-2"></i> 站点概览</div>
-                <div class="stats-dashboard">
-                <a class="stat-pill stat-pill--recommend<%= _statLink ? '' : ' stat-pill--static' %>" href="<%= _tagListUrl(_st.recommend) %>" title="查看推荐阅读">
-                    <i class="bx bx-star stat-pill__icon"></i>
-                    <span class="stat-pill__label">推荐</span>
-                    <em class="stat-pill__num" id="stat-recommend">--</em>
-                </a>
-                <a class="stat-pill stat-pill--article<%= _statLink ? '' : ' stat-pill--static' %>" href="<%= _tagListUrl(_st.article) %>" title="查看文章列表">
-                    <i class="bx bx-news stat-pill__icon"></i>
-                    <span class="stat-pill__label">文章</span>
-                    <em class="stat-pill__num" id="stat-article">--</em>
-                </a>
-                <a class="stat-pill stat-pill--update<%= _statLink ? '' : ' stat-pill--static' %>" href="<%= _tagListUrl(_st.recentUpdate) %>" title="查看动态">
-                    <i class="bx bx-time-five stat-pill__icon"></i>
-                    <span class="stat-pill__label">动态</span>
-                    <em class="stat-pill__num" id="stat-recentUpdate">--</em>
-                </a>
-                <a class="stat-pill stat-pill--announce<%= _statLink ? '' : ' stat-pill--static' %>" href="<%= _tagListUrl(_st.announcement) %>" title="查看公告">
-                    <i class="bx bx-bell stat-pill__icon"></i>
-                    <span class="stat-pill__label">公告</span>
-                    <em class="stat-pill__num" id="stat-announcement">--</em>
-                </a>
-                </div>
-            </div>
-            <div class="hm-panel">
-                <div class="hm-panel__head"><i class="bx bx-calendar"></i> 更新热力</div>
-                <div class="hm-wrap" id="mod-heatmap">
-                    <div class="hm-grid" id="heatmap-grid"></div>
-                </div>
-            </div>
-        </div>
-    </main>
+      </div>
+    </div>
+  </aside>
+  <main class="main-col">
+    <div class="section-header">
+      <div class="section-title"><span class="icon">📝</span>最新文章</div>
+      <% if (_cfg.tagCloudNoteId) { %>
+      <a class="section-more" href="/<%= _cfg.tagCloudNoteId %>">查看全部 →</a>
+      <% } %>
+    </div>
+    <div class="article-panel">
+      <div class="article-list" id="mod-article"></div>
+    </div>
+  </main>
+</div>
     <% } else if (note.hasLabel && note.hasLabel('tagCloud')) { %>
     <div id="tagCloudPage"><%- content %></div>
     <% } else { %>
@@ -320,20 +285,18 @@ try { _pageDesc = note.getLabelValue('blogDescription') || _cfg.blogDescription 
 </script>
     <% } %>
 
-    <footer class="site-footer">
-        <% if (_cfg.footerCopyright) { %><span><%= _cfg.footerCopyright %></span><% } %>
-        <span>已运行 <strong id="run-days">--</strong> 天</span>
-        <% if (_cfg.footerPolice) { %>
-        <a class="beian-wrap"
-            href="<%= _cfg.footerPoliceUrl || '#' %>"
-            target="_blank" rel="noopener">
-            <img class="beian-icon" src="<%= _cfg.footerBeianIcon %>" alt="" aria-hidden="true" />
-            <%= _cfg.footerPolice %></a>
-        <% } %>
-        <% if (_cfg.footerIcp) { %>
-        <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener"><%= _cfg.footerIcp %></a>
-        <% } %>
-        <a href="https://github.com/TriliumNext/Trilium" target="_blank" rel="noopener">Powered by TriliumNext</a>
+    <footer class="footer">
+        <div class="footer-divider">
+            <% if (_cfg.footerCopyright) { %><span><%= _cfg.footerCopyright %></span> · <% } %>
+            <% if (_cfg.footerPolice) { %>
+            <a href="<%= _cfg.footerPoliceUrl || '#' %>" target="_blank" rel="noopener"><%= _cfg.footerPolice %></a> ·
+            <% } %>
+            <% if (_cfg.footerIcp) { %>
+            <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener"><%= _cfg.footerIcp %></a> ·
+            <% } %>
+            <a href="https://github.com/TriliumNext/Trilium" target="_blank" rel="noopener">Powered by TriliumNext</a>
+            · 已运行 <strong id="run-days">--</strong> 天
+        </div>
     </footer>
 </div>
 
@@ -395,7 +358,6 @@ try { _pageDesc = note.getLabelValue('blogDescription') || _cfg.blogDescription 
         scrollEl.addEventListener('scroll', hmDismiss, { passive: true });
     }
 
-    // 观察热力图区域，渲染完成后绑定事件
     var hmObs = new MutationObserver(function () {
         var grid = document.getElementById('heatmap-grid');
         if (grid && grid.children.length > 0) {
@@ -403,7 +365,8 @@ try { _pageDesc = note.getLabelValue('blogDescription') || _cfg.blogDescription 
             hmListen(grid);
         }
     });
-    hmObs.observe(document.getElementById('mod-heatmap'), { childList: true, subtree: true });
+    var hmTarget = document.getElementById('mod-heatmap');
+    if (hmTarget) hmObs.observe(hmTarget, { childList: true, subtree: true });
 })();
 </script>
 <script src="/blog.js" defer></script>

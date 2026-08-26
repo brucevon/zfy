@@ -4,13 +4,13 @@
   <a href="README.md">🇨🇳 中文</a> &nbsp;|&nbsp; <a href="README.en.md">🇺🇸 English</a>
 </p>
 
-> ℹ️ This document is AI-generated as an English reference. The [Chinese version](README.md) is the authoritative documentation.
+> ℹ️ This document is AI-assisted and reviewed against the source code; the [Chinese version](README.md) is the authoritative reference.
 
 ## 🎯 Preface
 
 If you use TriliumNext for knowledge management, you've probably considered turning it into a blog — but the default shared pages are too basic, and you don't want the hassle of maintaining two separate systems (Hexo/WordPress).
 
-**zfy** was built for exactly this: a TriliumNext blog theme based on a **server-side preprocessing + EJS output** architecture. **All content is pre-generated as JSON data on the server; `home.ejs` only reads static data**, making page loads instantaneous.
+**zfy** was built for exactly this: a TriliumNext blog theme based on a **server-side preprocessing + EJS output** architecture. **All content is pre-generated as JSON data on the server; the template only reads static data**, making page loads instantaneous.
 
 🖼️ Example blog → [brucevon.space](https://brucevon.space)
 
@@ -23,6 +23,7 @@ If you use TriliumNext for knowledge management, you've probably considered turn
 - [🗺️ Architecture Overview](#-architecture-overview)
 - [🚀 Quick Start](#-quick-start)
 - [⚙️ Preprocessing Scripts](#%EF%B8%8F-preprocessing-scripts)
+- [📦 Minified Deployment](#-minified-deployment)
 - [🌐 nginx Configuration](#-nginx-configuration)
 - [❓ FAQ](#-faq)
 - [📋 PromotedAttributes Reference](#-promotedattributes-reference)
@@ -36,15 +37,17 @@ If you use TriliumNext for knowledge management, you've probably considered turn
 
 | | |
 |---|---|
-| 🧩 **Bento Layout** | Grid-based card layout — 4 small + 1 wide in 2 rows, ditching the traditional long list |
-| 🏷️ **Tag-Driven** | 20+ tags covering theme, comments, footer, cover, and more — zero hardcoded values |
+| 🧩 **Two-Column Layout** | Announcements/updates/heatmap on the left, latest articles on the right; single column on mobile |
+| 🏷️ **Tag-Driven** | 20+ labels covering theme, comments, footer, cover, and more — zero hardcoded values |
 | 🌓 **Dark/Light Themes** | CSS variables + `data-theme` toggle, one-click switch |
 | 📱 **Responsive** | 768px breakpoint adapts to mobile with single-column layout |
 | 💬 **Twikoo Comments** | CDN-loaded, purely tag-configured, theme auto-follows |
 | 🔍 **Full-Text Search** | Server-side pre-built index, real-time client-side search with keyword highlighting |
 | 🔥 **Heatmap** | Yearly article heat distribution map |
-| 🖼️ **Lightbox** | Click-to-enlarge images, adaptive prev/next button visibility |
-| ⚡ **High Performance** | Fully static output + SQL batch preprocessing, `home.ejs` does near-zero computation |
+| 📄 **Article Pagination** | One card per article on the homepage, 5 per page |
+| 🖼️ **Lightbox** | Click-to-enlarge images with large prev/next buttons and keyboard navigation |
+| 📦 **Single-File Deployment** | Build script inlines compressed CSS/JS into one EJS — deploy a single shared note |
+| ⚡ **High Performance** | Fully static output + SQL batch preprocessing; one aggregated request loads all module data |
 
 ---
 
@@ -61,7 +64,7 @@ If you use TriliumNext for knowledge management, you've probably considered turn
 ```text
 Root Note (note with #isHome=true)
   │
-  │  home.ejs reads labels → _cfg object
+  │  blog.ejs reads labels → _cfg object
   │
   ├─→ Server-side: theme, cover, category root, About lookup
   │
@@ -74,19 +77,13 @@ Root Note (note with #isHome=true)
 
 ```text
 BlogPreprocessRender.js (Orchestrator)
-  ├─ tree.js          ─→ Category tree JSON
-  ├─ about-tree.js    ─→ About menu tree JSON
-  ├─ stats.js         ─→ Statistics JSON
-  ├─ recentUpdate.js  ─→ Recent updates JSON
-  ├─ recommend.js     ─→ Recommended articles JSON (with content truncation)
-  ├─ article.js       ─→ Latest articles JSON (with content truncation)
-  ├─ announcement.js  ─→ Announcements JSON (with content truncation)
-  ├─ search.js        ─→ Search index JSON (all notes)
-  └─ heatmap.js       ─→ Heatmap calendar JSON
+  ├─ data.js   ─→ Aggregated data (tree / aboutTree / tags / article /
+  │               recentUpdate / announcement / recommend / stats / heatmap)
+  └─ search.js ─→ Search index JSON (all notes)
         │
-        └─→ Written to intermediate notes (#shareRaw + #shareAlias=blog-*)
+        └─→ Written to intermediate notes (#shareRaw + #shareAlias=blog-data / blog-search)
                │
-               └─→ Read by home.ejs / frontend JS
+               └─→ Frontend JS fetches /blog-data (aggregated) + /blog-search (search)
 ```
 
 > 💡 Understanding this overall flow before diving into the steps will give you better context.
@@ -99,27 +96,41 @@ BlogPreprocessRender.js (Orchestrator)
 
 ### 1️⃣ Download Resource Files
 
-Download the following 3 files from the `share/` directory of this repo:
+Download from the `share/` directory of this repo (template + styles + script sources, **or** the single minified file):
 
 ```text
-share/home.ejs        # Blog template (main entry)
-share/css/blog.css    # All blog styles
-share/js/blog.js      # Client-side interaction script
+share/blog.ejs         # Blog template (main entry)
+share/css/blog.css     # All blog styles
+share/js/blog.js       # Client-side interaction script
+# Or the single-file build (contains minified css/js inline):
+share/blog.min.ejs     # ★ Minified single file (generated by build-min.js, recommended)
 ```
 
 > Twikoo is loaded via CDN — **no need to upload `twikoo.min.js`**.
 
 ### 2️⃣ Import into Trilium (Templates & Styles)
 
-First, ensure you have a `分享` (Shared) parent note in Trilium (created automatically when you first share a note, or you can create it manually). Create 3 **file notes** under or alongside it, each **enabled for sharing**:
+First, ensure you have a `分享` (Shared) parent note in Trilium (created automatically when you first share a note, or create one manually). Create resource notes under or alongside it, each **enabled for sharing**:
+
+**Option A: Single minified file (recommended)**
 
 | File | Required Labels |
 |------|----------------|
-| `home.ejs` | `~shareTemplate(inheritable)=home.ejs` (This is a **Relation** — must be linked via Relation Map on the root note) |
+| `blog.min.ejs` | `~shareTemplate(inheritable)=blog.min.ejs` (This is a **Relation** — link via Relation Map on the root note) |
+
+One shared note deploys the entire template + styles + scripts.
+
+**Option B: Source files (three notes)**
+
+| File | Required Labels |
+|------|----------------|
+| `blog.ejs` | `~shareTemplate(inheritable)=blog.ejs` (**Relation**, link via Relation Map) |
 | `blog.css` | `#shareAlias=blog.css` `#shareRaw` |
 | `blog.js` | `#shareAlias=blog.js` `#shareRaw` |
 
 > Static assets are served at `/blog.css`, `/blog.js`, assuming nginx hides the `/share/` prefix. Adjust if not hidden (see nginx config below).
+>
+> Choose either option. After source updates, run `node build-min.js` to regenerate the single-file build.
 
 ### 3️⃣ Create Image Assets
 
@@ -137,22 +148,16 @@ The blog needs 5 images. Create **image notes** (Upload file) in Trilium, each *
 
 ### 4️⃣ Create Shared Data Notes
 
-The preprocessing scripts write data to dedicated JSON notes, which need to be created in advance. Create a note (e.g., `home-data`) under the `分享` parent, **enable sharing**. Below it, create 9 `json`-type child notes with the following label configuration:
+The preprocessing scripts write data to dedicated JSON notes. Create a note (e.g., `home-data`) under the `分享` parent, **enable sharing**. Below it, create 2 `json`-type child notes:
 
 | Child Note | Required Labels |
 |------------|-----------------|
-| `blog-tree` | `#shareHiddenFromTree` `#shareRaw` `#shareAlias=blog-tree` |
-| `blog-about-tree` | `#shareHiddenFromTree` `#shareRaw` `#shareAlias=blog-about-tree` |
-| `blog-recommend` | `#shareHiddenFromTree` `#shareRaw` `#shareAlias=blog-recommend` |
-| `blog-article` | `#shareHiddenFromTree` `#shareRaw` `#shareAlias=blog-article` |
-| `blog-recentUpdate` | `#shareHiddenFromTree` `#shareRaw` `#shareAlias=blog-recentUpdate` |
-| `blog-announcement` | `#shareHiddenFromTree` `#shareRaw` `#shareAlias=blog-announcement` |
-| `blog-stats` | `#shareHiddenFromTree` `#shareRaw` `#shareAlias=blog-stats` |
-| `blog-heatmap` | `#shareHiddenFromTree` `#shareRaw` `#shareAlias=blog-heatmap` |
+| `blog-data` | `#shareHiddenFromTree` `#shareRaw` `#shareAlias=blog-data` |
 | `blog-search` | `#shareHiddenFromTree` `#shareRaw` `#shareAlias=blog-search` |
-| `blog-tag` | `#shareHiddenFromTree` `#shareRaw` `#shareAlias=blog-tag` |
 
-> 💡 Each note's noteId (right-click → Copy ID) will be used when configuring script labels. Collect them in advance and add to each script's `#saveNoteId` label.
+> 💡 The aggregated endpoint `/blog-data` returns category tree, about tree, tag cloud, articles, updates, announcements, recommendations, stats, and heatmap in one request. `/blog-search` is kept separate since it's large and frequently updated.
+>
+> Each note's noteId (right-click → Copy ID) is used later for `#saveNoteId` labels — collect them in advance.
 
 ### 5️⃣ Configure Root Note
 
@@ -161,7 +166,7 @@ Create a **root note** (e.g., `我的博客`), **enable sharing**. Add PromotedA
 - `#isHome=true` — Declares this note as the blog homepage
 - `#homeId=<currentNoteId>` — The root note's own noteId (right-click → Copy ID)
 - `#blogTitle=xxx`, `#blogDescription=xxx` — Blog title and subtitle
-- `~shareTemplate(inheritable)=home.ejs` — **Relation**: search for the `home.ejs` note in Relation Map and link it
+- `~shareTemplate(inheritable)=blog.ejs` (or `blog.min.ejs`) — **Relation**: search for the template note in Relation Map and link it
 - `~shareFavicon(inheritable)=favicon.ico` — Link to favicon image note
 - `~shareLogo(inheritable)=logo.icon` — Link to logo image note
 
@@ -169,9 +174,9 @@ Create a **root note** (e.g., `我的博客`), **enable sharing**. Add PromotedA
 
 ### 6️⃣ Create the "About" Note
 
-If using the "About" menu (generated by about-tree.js), create a note titled **「关于」** (or "About") under the root note, can contain child notes with the `#category=true` label. about-tree.js searches for this note under the root note to build the menu tree.
+The About menu tree is built by data.js from the「关于」note under the root note. Create a note titled **「关于」** (or "About") under the root note; it may contain child notes with the `#category=true` label.
 
-> 💡 If you don't need the About menu yet, create an empty note titled "关于" to prevent errors from about-tree.js.
+> 💡 If you don't need the About menu yet, create an empty note titled "关于" to avoid an empty aboutTree in data.js output.
 
 ### 7️⃣ Publish Articles
 
@@ -189,70 +194,92 @@ Create child notes under the root note as needed. Add labels to control display 
 
 Import script files from the `博客预处理控件/` directory:
 
-- **`BlogPreprocessRender.js`** → Import as **JS Frontend** note (rendering panel)
-- Remaining 9 scripts (`tree.js`, `about-tree.js`, etc.) → Import as **Backend Script** notes
+- **`BlogPreprocessRender.js`** → Import as **JSX** note (render panel). Create a new note with type **Render Note**, link it to the JSX note, then open it to see the panel.
+- **`data.js`**, **`search.js`** → Import as **Backend Script** notes, ideally as child notes of the JSX note.
 
 After importing, configure the orchestrator as described in [⚙️ Preprocessing Scripts](#%EF%B8%8F-preprocessing-scripts). After running once, homepage data is pre-generated.
 
-> Note: The 10 scripts have **different types** — don't import them all as the same type. `BlogPreprocessRender.js` must be **JS Frontend** to render the panel properly. **`~renderNote` is also a Relation** — must be linked via Relation Map.
+> Note: The 3 scripts have **different types** — don't import them all as the same type. `BlogPreprocessRender.js` must be **JSX** to render the panel properly. **`~renderNote` is also a Relation** — must be linked via Relation Map.
 
 ---
 
 ## ⚙️ Preprocessing Scripts (Core Architecture)
 
-Homepage data isn't queried in real-time by EJS — instead, **backend preprocessing scripts** generate JSON data at runtime, writing it to dedicated shared notes. `home.ejs` and the frontend JS only read static data.
+Homepage data isn't queried in real-time by EJS — instead, **backend preprocessing scripts** generate JSON data at runtime, writing it to dedicated shared notes. The template and frontend JS only read static data.
 
 ### Data Flow
 
 ```
 Preprocessing Scripts (batch SQL + SUBSTR truncation)
     ↓ api.note.setContent()
-Dedicated Shared JSON Notes (#shareRaw + #shareAlias)
+Dedicated Shared JSON Notes (#shareRaw + #shareAlias=blog-data / blog-search)
     ↓
-home.ejs / Frontend JS (static fetch)
+Frontend JS (fetch('/blog-data') aggregated data; fetch('/blog-search') search index)
 ```
-
-### Orchestrator Setup
-
-1. Import `BlogPreprocessRender.js` as a **JS Frontend** note
-2. Open this note in Trilium, set its **Render Note** Relation to the root note
-3. Add labels to `BlogPreprocessRender.js`:
-
-| Label | Purpose |
-|-------|---------|
-| `~renderNote(inheritable)=<rootNoteId>` | Relation → link to root note |
-| `~renderAggregator(inheritable)=<noteId>` | Relation → link to this script note itself (triggers sub-scripts) |
-
-4. Add labels to each child script note (tree.js, stats.js, etc.):
-
-| Label | Purpose |
-|-------|---------|
-| `#rootNoteId=<id>` | Root note ID (for category tree, article search, etc.) |
-| `#saveNoteId=<id>` | Target JSON note ID (where this script writes its output) |
-| `#contentLen=<number>` | _(Optional)_ Max content length. Default: 150 (cards), 500 (search) |
-
-> 💡 You collected noteIds in Step 4 — use them now for `#saveNoteId`.
 
 ### Script List
 
-| Script | Type | Produces | Content Truncation |
-|--------|------|----------|-------------------|
-| tree.js | Backend | Category tree JSON | — |
-| about-tree.js | Backend | About menu tree JSON | — |
-| stats.js | Backend | Statistics JSON | — |
-| recentUpdate.js | Backend | Recent updates JSON | — |
-| recommend.js | Backend | Recommended articles JSON | ✅ `#contentLen` |
-| article.js | Backend | Latest articles JSON | ✅ `#contentLen` |
-| announcement.js | Backend | Announcements JSON | ✅ `#contentLen` |
-| search.js | Backend | Search index JSON | ✅ `#contentLen` |
-| heatmap.js | Backend | Heatmap JSON | — |
-| tags.js | Backend | Tag cloud JSON (tag→article mapping) | — |
+| Script | Purpose | Required Labels |
+|--------|---------|-----------------|
+| `BlogPreprocessRender.js` | **Orchestrator** — JSX render panel with one-click sync buttons | linked via `~renderNote` |
+| `data.js` | **Aggregator**: category tree / about tree / tag cloud / articles / updates / announcements / recommendations / stats / heatmap in one script | `#rootNoteId` `#saveNoteId` `#contentLen(optional)` |
+| `search.js` | Search index (all notes) | `#rootNoteId` `#saveNoteId` `#contentLen(optional)` |
 
-> 💡 For first-time setup, run scripts **one by one** in Trilium's script editor to verify each works before configuring the orchestrator to run them all.
+> Each script writes to its target JSON note via the `#saveNoteId` label. The orchestrator reads this label from each child script.
+
+### ⚡ Performance Notes
+
+- **Batch SQL**: scripts use `JOIN blobs + SUBSTR` to truncate content at the SQLite level, avoiding N × `api.getNote()` full-blob fetches
+- **One aggregated query**: `data.js` merges all modules into 2–3 SQL queries (notes + attribute aggregation + conditional stats), aggregating tags in SQL
+- **Single conditional aggregation**: stats use `COUNT(DISTINCT CASE WHEN ...)` in one query
+- **Transfer control**: only 2 frontend requests (`/blog-data` + `/blog-search`), content truncated to ~150 chars by default
+
+### Orchestrator Setup
+
+1. Confirm the 2 shared data notes (`blog-data`, `blog-search`) exist with `#shareHiddenFromTree` `#shareRaw` `#shareAlias=blog-xxx` labels (Quick Start step 4)
+2. Create a note (e.g., `博客预处理面板`) linked to `BlogPreprocessRender.js` as its render note:
+   - Import `BlogPreprocessRender.js` as a **JS Frontend** note
+   - Add relation `~renderNote=BlogPreprocessRender.js` (search & link in Relation Map)
+   - Open the render note to see the sync button panel
+3. Make `BlogPreprocessRender.js` the parent; add `data.js`, `search.js` as its child notes (titles must match the "Script" column, e.g., `data.js`)
+4. Add labels to each child script:
+
+   | Child Script | Required Labels |
+   |--------------|-----------------|
+   | `data.js` | `#saveNoteId=blog-data笔记ID` `#rootNoteId=博客根笔记ID` `#contentLen=150(optional)` |
+   | `search.js` | `#saveNoteId=blog-search笔记ID` `#rootNoteId=博客根笔记ID` `#contentLen=500(optional)` |
+
+   > The orchestrator reads `#saveNoteId` from each child script. `#rootNoteId` is used for recursive queries (trees/tags). `#contentLen` overrides the default truncation length.
+
+5. Open the render note and click one-click sync or run scripts individually; check console output
+
+> 💡 On first run, execute scripts **one by one** to verify output. After success, use one-click sync for all.
+
+### Automatic Execution
+
+Orchestrator and child scripts support `#run` labels for automatic execution. See [Trilium backend script events](https://docs.triliumnotes.org/user-guide/scripts/backend-basics/events). E.g., `#run=sync` triggers preprocessing after sync.
 
 ### Running Scripts Standalone (without Orchestrator)
 
-If you don't want to use the orchestrator, run each backend script directly in Trilium's script editor. The scripts will auto-detect standalone mode and read labels from the note they're attached to.
+1. Import as **Backend Script**, add required labels (`#rootNoteId`, `#saveNoteId`, `#contentLen`)
+2. Right-click the script note → **Execute script**
+
+> The standalone block auto-detects whether `api._syncConfig` was set by the orchestrator; if not, it reads labels from the note itself.
+
+---
+
+## 📦 Minified Deployment
+
+To avoid maintaining multiple shared notes in Trilium, the repo provides a minify build script:
+
+- Sources (readable): `share/blog.ejs` + `share/css/blog.css` + `share/js/blog.js`
+- Output (minified & inlined): `share/blog.min.ejs` (esbuild minifies css/js and inlines them; self-checked)
+
+```bash
+node build-min.js   # Requires Node.js ≥ 16; pulls esbuild automatically on first run
+```
+
+See [压缩部署说明.md](压缩部署说明.md) for details.
 
 ---
 
@@ -346,13 +373,13 @@ server {
 ### Blank page or errors
 
 - Check if the root note has **sharing enabled** (right-click → Share)
-- Verify the `~shareTemplate` Relation for `home.ejs` is correctly linked
+- Verify the `~shareTemplate` Relation for `blog.ejs` (or `blog.min.ejs`) is correctly linked
 - Verify all resource notes (css/js/images) have **sharing enabled**
 
 ### Category tree / About menu not showing
 
-- Confirm `#rootNoteId` points to the correct blog root note ID
-- Confirm a note titled **「关于」** exists under the root note (for about-tree.js)
+- Confirm `#rootNoteId` points to the correct blog root note ID (required by data.js)
+- Confirm a note titled **「关于」** exists under the root note
 - Confirm `#category=true` is added to notes that should appear in the category tree
 
 ### Search returns no results
@@ -363,7 +390,7 @@ server {
 ### Broken styles
 
 - Clear browser cache (hard refresh with `Ctrl+F5`)
-- Confirm `blog.css` and `blog.js` sharing status is correct
+- When using source files, confirm `blog.css` and `blog.js` sharing status is correct
 - Check nginx static resource path mapping
 
 ### Script error "content.trim is not a function"
@@ -383,8 +410,10 @@ Define the blog's label system on the **root note** in Trilium's PromotedAttribu
 ### 1. Relations
 
 ```text
-~shareTemplate(inheritable)=home.ejs  ~shareFavicon(inheritable)=favicon.ico  ~shareLogo(inheritable)=logo.icon
+~shareTemplate(inheritable)=blog.ejs  ~shareFavicon(inheritable)=favicon.ico  ~shareLogo(inheritable)=logo.icon
 ```
+
+> If deploying the minified single file, replace `blog.ejs` with `blog.min.ejs`.
 
 ### 2. Root Note Labels (non-inheritable)
 
@@ -505,7 +534,7 @@ At render time, the template traverses the parent chain (max 50 levels) from the
 
 ### Category Tree
 
-Built with the root note as root. `#category=true` marks category nodes, `#shareHiddenFromTree=true` controls visibility.
+Built with the root note as root. `#category=true` marks category nodes, `#shareHiddenFromTree=true` controls visibility. Generated by `buildTree` recursive SQL in data.js.
 
 ---
 
@@ -513,22 +542,18 @@ Built with the root note as root. `#category=true` marks category nodes, `#share
 
 ```text
 share/
-├── home.ejs          # Trilium EJS template — blog entry point
-├── css/blog.css      # All blog styles
-└── js/blog.js        # Client-side interaction script
+├── blog.ejs          # Trilium EJS template — blog entry (source, readable)
+├── blog.min.ejs      # ★ Minified single-file build (deploy this; generated by build-min.js)
+├── css/blog.css      # All blog styles (source)
+└── js/blog.js        # Client-side interaction script (source)
 
-博客预处理控件/          # Backend preprocessing scripts (10 total)
-├── BlogPreprocessRender.js  # Orchestrator entry
-├── tree.js                  # Category tree
-├── about-tree.js            # About menu tree
-├── stats.js                 # Statistics
-├── recentUpdate.js          # Recent updates
-├── recommend.js             # Recommended articles
-├── article.js               # Latest articles
-├── announcement.js          # Announcements
-├── search.js                # Search index
-├── tags.js                  # Tag cloud data
-└── heatmap.js               # Heatmap calendar
+博客预处理控件/          # Backend preprocessing scripts (3 total)
+├── BlogPreprocessRender.js  # Orchestrator (JSX render panel)
+├── data.js                  # Aggregated data (tree/about/tags/articles/updates/announcements/recommendations/stats/heatmap)
+└── search.js                # Search index
+
+build-min.js          # Minify build script (generates blog.min.ejs)
+压缩部署说明.md        # Minified deployment docs
 ```
 
 ---
@@ -549,4 +574,4 @@ Feedback and discussion:
 
 ---
 
-> 📝 This English documentation is AI-generated, translated from the [Chinese version](README.md). The Chinese version is the authoritative reference.
+> 📝 This English documentation is AI-assisted, translated from the [Chinese version](README.md). The Chinese version is the authoritative reference.

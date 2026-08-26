@@ -4,13 +4,13 @@
   <a href="README.md">🇨🇳 中文</a> &nbsp;|&nbsp; <a href="README.en.md">🇺🇸 English</a>
 </p>
 
-> 🖊️ 本文档部分内容由 AI 辅助生成，已人工校对。
+> 🖊️ 本文档由 AI 辅助编写与修订，已结合项目源码人工校对；如有出入以实际代码为准。
 
 ## 🎯 前言
 
 如果你在用 TriliumNext 做知识管理，大概率也想过把它变成博客——但默认共享页面太素了，又不想折腾 Hexo/WordPress 两套系统。
 
-**zfy** 就是为这个做的：一个 TriliumNext 博客主题，基于 **后端预处理 + EJS 输出** 架构，**所有内容在服务端预先生成 JSON 数据，home.ejs 只需读取静态数据**，打开页面零等待。
+**zfy** 就是为这个做的：一个 TriliumNext 博客主题，基于 **后端预处理 + EJS 输出** 架构，**所有内容在服务端预先生成 JSON 数据，模板只需读取静态数据**，打开页面零等待。
 
 🖼️ 示例博客 → [brucevon.space](https://brucevon.space)
 
@@ -23,6 +23,7 @@
 - [🗺️ 架构速览](#-架构速览)
 - [🚀 快速上手](#-快速上手)
 - [⚙️ 预处理脚本](#️-预处理脚本)
+- [📦 压缩部署](#-压缩部署)
 - [🌐 nginx 配置参考](#-nginx-配置参考)
 - [❓ 常见问题](#-常见问题)
 - [📋 PromotedAttributes 完整配置](#-promotedattributes-完整配置)
@@ -36,15 +37,17 @@
 
 | | |
 |---|---|
-| 🧩 **Bento 布局** | 栅格式卡片排版，4 小 1 宽两行排列，告别传统长列表 |
+| 🧩 **双栏布局** | 左侧公告/动态/更新热力，右侧最新文章，PC 双栏、移动端单列 |
 | 🏷️ **全标签驱动** | 20+ 个标签覆盖主题、评论、页脚、封面等全部配置，零硬编码 |
 | 🌓 **深色/浅色双主题** | CSS 变量 + `data-theme` 切换，一键切换 |
 | 📱 **响应式** | 768px 断点适配移动端，移动端单列布局 |
 | 💬 **Twikoo 评论** | CDN 加载，纯标签配置，主题自动跟随 |
 | 🔍 **全文搜索** | 服务端预生成索引，客户端实时全文检索，支持关键词高亮标记 |
 | 🔥 **热度地图** | 按年展示文章热力分布 |
-| 🖼️ **图片灯箱** | 点击放大，首/末张自适应隐藏按钮 |
-| ⚡ **高性能** | 全静态输出 + SQL 批量化预处理，home.ejs 几乎零计算 |
+| 📄 **文章分页** | 首页最新文章一卡一篇，每页 5 篇分页浏览 |
+| 🖼️ **图片灯箱** | 点击放大，大号左右切换按钮，支持键盘方向键 |
+| 📦 **单文件部署** | 提供压缩构建脚本，CSS/JS 内联合并为单个 EJS，部署只需同步一个笔记 |
+| ⚡ **高性能** | 全静态输出 + SQL 批量化预处理，模板几乎零计算，一次聚合请求拉全站数据 |
 
 ---
 
@@ -61,7 +64,7 @@
 ```text
 根笔记（#isHome=true 的笔记）
   │
-  │  home.ejs 读取标签 → _cfg 对象
+  │  blog.ejs 读取标签 → _cfg 对象
   │
   ├─→ 服务端使用：主题、封面、分类树根、About 查找
   │
@@ -74,19 +77,13 @@
 
 ```text
 BlogPreprocessRender.js (编排器)
-  ├─ tree.js          ─→ 分类树 JSON
-  ├─ about-tree.js    ─→ 关于菜单树 JSON
-  ├─ stats.js         ─→ 统计数据 JSON
-  ├─ recentUpdate.js  ─→ 最近更新 JSON
-  ├─ recommend.js     ─→ 推荐文章 JSON（含内容截取）
-  ├─ article.js       ─→ 最新文章 JSON（含内容截取）
-  ├─ announcement.js  ─→ 公告 JSON（含内容截取）
-  ├─ search.js        ─→ 搜索索引 JSON（全量笔记）
-  └─ heatmap.js       ─→ 热度年历 JSON
+  ├─ data.js   ─→ 聚合数据（tree / aboutTree / tags / article /
+  │               recentUpdate / announcement / recommend / stats / heatmap）
+  └─ search.js ─→ 搜索索引 JSON（全量笔记）
         │
-        └─→ 写入中间笔记（#shareRaw + #shareAlias=blog-*）
+        └─→ 写入中间笔记（#shareRaw + #shareAlias=blog-data / blog-search）
                │
-               └─→ home.ejs / 前端 JS 读取渲染
+               └─→ 前端 JS 一次性拉取 /blog-data（聚合）+ /blog-search（搜索）
 ```
 
 > 💡 理解这个整体流程后再按下方步骤操作，会更有方向感。
@@ -99,27 +96,41 @@ BlogPreprocessRender.js (编排器)
 
 ### 1️⃣ 下载资源文件
 
-从本仓库的 `share/` 目录下载以下 3 个文件：
+从本仓库的 `share/` 目录下载以下文件（模板 + 样式 + 脚本三个源文件，或直接用压缩后的单文件）：
 
 ```text
-share/home.ejs        # 博客模板（主入口）
-share/css/blog.css    # 全部博客样式
-share/js/blog.js      # 客户端交互脚本
+share/blog.ejs         # 博客模板（主入口）
+share/css/blog.css     # 全部博客样式
+share/js/blog.js       # 客户端交互脚本
+# 或使用单文件产物（内含压缩后的 css/js）：
+share/blog.min.ejs     # ★ 压缩单文件（由 build-min.js 生成，推荐部署用）
 ```
 
 > Twikoo 使用 CDN，**无需上传 `twikoo.min.js`**。
 
 ### 2️⃣ 导入 Trilium（模板与样式）
 
-首先 Trilium 中需要有一个 `分享` 主笔记（首次开启分享时自动创建，也可手动创建）。在其下或平级位置创建 3 个**文件笔记**，每个**右键 → 开启分享**：
+首先 Trilium 中需要有一个 `分享` 主笔记（首次开启分享时自动创建，也可手动创建）。在其下或平级位置创建资源笔记，每个**右键 → 开启分享**：
+
+**方式 A：使用单文件产物（推荐）**
 
 | 文件 | 必配标签 |
 |------|----------|
-| `home.ejs` | `~shareTemplate(inheritable)=home.ejs`（这是 **关系 Relation**，需在根笔记上通过 Relation Map 链接到此笔记） |
+| `blog.min.ejs` | `~shareTemplate(inheritable)=blog.min.ejs`（这是 **关系 Relation**，需在根笔记上通过 Relation Map 链接到此笔记） |
+
+只需 1 个分享笔记即可完成整站模板 + 样式 + 脚本部署。
+
+**方式 B：使用三件套源文件**
+
+| 文件 | 必配标签 |
+|------|----------|
+| `blog.ejs` | `~shareTemplate(inheritable)=blog.ejs`（**关系 Relation**，在根笔记 Relation Map 链接） |
 | `blog.css` | `#shareAlias=blog.css` `#shareRaw` |
 | `blog.js` | `#shareAlias=blog.js` `#shareRaw` |
 
 > 静态资源路径为 `/blog.css`、`/blog.js`，假设 nginx 已隐藏 `/share/` 前缀。若未隐藏需相应调整（见下文 nginx 示例）。
+>
+> 两种方式二选一。源码更新后可用 `node build-min.js` 重新生成单文件产物。
 
 ### 3️⃣ 创建图片资源
 
@@ -137,22 +148,16 @@ share/js/blog.js      # 客户端交互脚本
 
 ### 4️⃣ 创建共享数据笔记
 
-预处理脚本会把数据写入专用的 JSON 笔记，需要提前建好。在 `分享` 笔记下新建一个笔记（如 `home-data`），**单独开启分享**。在其下创建 9 个 `json` 类型子笔记，按以下标签配置：
+预处理脚本会把数据写入专用的 JSON 笔记，需要提前建好。在 `分享` 笔记下新建一个笔记（如 `home-data`），**单独开启分享**。在其下创建 2 个 `json` 类型子笔记：
 
 | 子笔记 | 必需标签 |
 |--------|----------|
-| `blog-tree` | `#shareHiddenFromTree` `#shareRaw` `#shareAlias=blog-tree` |
-| `blog-about-tree` | `#shareHiddenFromTree` `#shareRaw` `#shareAlias=blog-about-tree` |
-| `blog-recommend` | `#shareHiddenFromTree` `#shareRaw` `#shareAlias=blog-recommend` |
-| `blog-article` | `#shareHiddenFromTree` `#shareRaw` `#shareAlias=blog-article` |
-| `blog-recentUpdate` | `#shareHiddenFromTree` `#shareRaw` `#shareAlias=blog-recentUpdate` |
-| `blog-announcement` | `#shareHiddenFromTree` `#shareRaw` `#shareAlias=blog-announcement` |
-| `blog-stats` | `#shareHiddenFromTree` `#shareRaw` `#shareAlias=blog-stats` |
-| `blog-heatmap` | `#shareHiddenFromTree` `#shareRaw` `#shareAlias=blog-heatmap` |
+| `blog-data` | `#shareHiddenFromTree` `#shareRaw` `#shareAlias=blog-data` |
 | `blog-search` | `#shareHiddenFromTree` `#shareRaw` `#shareAlias=blog-search` |
-| `blog-tag` | `#shareHiddenFromTree` `#shareRaw` `#shareAlias=blog-tag` |
 
-> 💡 每条笔记的 noteId（右键 → 复制 ID）在后面配置脚本标签时会用到，可以先统一记下来，后续加到对应脚本的 `#saveNoteId` 标签上。
+> 💡 聚合接口 `/blog-data` 一次性返回分类树、关于树、标签云、文章、动态、公告、推荐、统计、热力全部数据；`/blog-search` 单独承载搜索索引（数据量大、更新频繁，故独立）。
+>
+> 每条笔记的 noteId（右键 → 复制 ID）在后面配置脚本标签时会用到，先统一记下来，后续加到对应脚本的 `#saveNoteId` 标签上。
 
 ### 5️⃣ 配置根笔记
 
@@ -161,7 +166,7 @@ share/js/blog.js      # 客户端交互脚本
 - `#isHome=true` — 声明此笔记为博客主页
 - `#homeId=当前笔记ID` — 填入根笔记自身的 noteId（右键 → 复制 ID）
 - `#blogTitle=xxx`、`#blogDescription=xxx` — 博客标题与副标题
-- `~shareTemplate(inheritable)=home.ejs` — **关系 Relation**，在 Relation Map 中搜索 `home.ejs` 笔记并链接
+- `~shareTemplate(inheritable)=blog.ejs`（或 `blog.min.ejs`） — **关系 Relation**，在 Relation Map 中搜索模板笔记并链接
 - `~shareFavicon(inheritable)=favicon.ico` — 关联 favicon 图片笔记
 - `~shareLogo(inheritable)=logo.icon` — 关联 logo 图片笔记
 
@@ -169,9 +174,9 @@ share/js/blog.js      # 客户端交互脚本
 
 ### 6️⃣ 创建「关于」笔记
 
-如果使用"关于"菜单（about-tree.js 生成），需在根笔记下创建一个标题为 **「关于」** 的笔记，可包含子笔记并添加 `#category=true` 标签。about-tree.js 会在根笔记下查找此笔记来构建菜单树。
+"关于"菜单树由 data.js 从根笔记下的「关于」笔记构建。需在根笔记下创建一个标题为 **「关于」** 的笔记，可包含子笔记并添加 `#category=true` 标签。
 
-> 💡 如果暂时不需要"关于"菜单，建议至少创建一个空白的"关于"笔记，否则 about-tree.js 会报错。
+> 💡 如果暂时不需要"关于"菜单，建议至少创建一个空白的"关于"笔记，否则 data.js 会输出空的 aboutTree。
 
 ### 7️⃣ 发布文章
 
@@ -187,82 +192,66 @@ share/js/blog.js      # 客户端交互脚本
 
 ### 8️⃣ 导入预处理脚本（可选但强推荐）
 
-从 `博客预处理控件/` 目录分别导入脚本文件：
+从 `博客预处理控件/` 目录导入脚本文件：
 
-- **`BlogPreprocessRender.js`** → 导入为 **JSX 笔记**（代码类型选 `JSX`），新建一个笔记，类型选择 **渲染笔记** ，点击渲染笔记选择 `JSX` 笔记，然后打开渲染笔记就可以看见渲染面板
-- 其余 9 个脚本（`tree.js`、`about-tree.js` 等）→ 导入为 **JS 后端脚本**（Backend Script），建议导入为 `JSX` 笔记的子笔记，方便管理。
+- **`BlogPreprocessRender.js`** → 导入为 **JSX 笔记**（代码类型选 `JSX`），新建一个笔记，类型选择 **渲染笔记**，点击渲染笔记选择 `JSX` 笔记，然后打开渲染笔记就可以看见渲染面板
+- **`data.js`**、**`search.js`** → 导入为 **JS 后端脚本**（Backend Script），建议导入为 `JSX` 笔记的子笔记，方便管理。
 
 导入后参照下文 [⚙️ 预处理脚本](#%EF%B8%8F-预处理脚本核心架构) 配置编排器。运行一次后，首页数据即预生成完毕。
 
-> 注意：10 个脚本**类型不同**，不能全部选同一类型导入。`BlogPreprocessRender.js` 必须是 **JSX** 才能正常渲染面板。**`~renderNote` 也是 Relation**，需在 Relation Map 中链接。
+> 注意：3 个脚本**类型不同**，不能全部选同一类型导入。`BlogPreprocessRender.js` 必须是 **JSX** 才能正常渲染面板。**`~renderNote` 也是 Relation**，需在 Relation Map 中链接。
 
 ---
 
 ## ⚙️ 预处理脚本（核心架构）
 
-首页的数据并非由 EJS 实时查询——而是通过 **后端预处理脚本** 在运行时一次性生成 JSON，写入独立的共享笔记，`home.ejs` / 前端 JS 只做静态读取。
+首页的数据并非由 EJS 实时查询——而是通过 **后端预处理脚本** 在运行时一次性生成 JSON，写入独立的共享笔记，模板 / 前端 JS 只做静态读取。
 
 ### 数据流
 
 ```
 预处理脚本（批量 SQL + SUBSTR 截取）
     ↓ api.note.setContent()
-独立共享 JSON 笔记（#shareRaw + #shareAlias=blog-xxx）
+独立共享 JSON 笔记（#shareRaw + #shareAlias=blog-data / blog-search）
     ↓ 浏览器通过自定义路由获取
-前端 JS（fetch('/blog-tree') → 渲染分类树等）
+前端 JS（fetch('/blog-data') 一次性拉取聚合数据；fetch('/blog-search') 加载搜索索引）
 ```
 
-### 导入脚本
+### 脚本列表
 
 从 `博客预处理控件/` 目录下载全部文件，在各笔记中粘贴为 **JS 后端脚本**（Backend Script）。每个脚本通过 `#saveNoteId` 标签指向对应的 json 目标笔记：
 
 | 脚本 | 功能 | 必需标签 |
 |------|------|----------|
 | `BlogPreprocessRender.js` | **编排入口**，JSX 渲染笔记，显示一键同步按钮面板 | 需通过 `~renderNote` 关联（见下文） |
-| `tree.js` | 生成分类树（目录 + 笔记数） | `#rootNoteId` `#saveNoteId` |
-| `about-tree.js` | 生成关于菜单树 | `#rootNoteId` `#saveNoteId` |
-| `stats.js` | 统计文章/推荐/动态/公告数量 | `#saveNoteId` |
-| `recentUpdate.js` | 最近更新列表（含图标） | `#rootNoteId` `#saveNoteId` |
-| `recommend.js` | 推荐阅读卡片（内容截取） | `#saveNoteId` `#contentLen(可选)` |
-| `article.js` | 最新文章（单篇） | `#saveNoteId` `#contentLen(可选)` |
-| `announcement.js` | 公告（单篇） | `#saveNoteId` `#contentLen(可选)` |
+| `data.js` | **聚合脚本**：一次生成分类树 / 关于树 / 标签云 / 文章 / 动态 / 公告 / 推荐 / 统计 / 热力全部数据 | `#rootNoteId` `#saveNoteId` `#contentLen(可选)` |
 | `search.js` | 搜索索引（全量笔记） | `#rootNoteId` `#saveNoteId` `#contentLen(可选)` |
-| `heatmap.js` | 热度年历数据 | `#rootNoteId` `#saveNoteId` |
-| `tags.js` | 标签云数据（标签→文章映射） | `#rootNoteId` `#saveNoteId` |
 
 > 每个脚本通过 `#saveNoteId` 标签指向之前创建的对应 json 笔记的 ID。编排器会从每个子脚本标签中读取此 ID，写入对应笔记。
 
 ### ⚡ 性能优化说明
 
 - **SQL 批量化**：脚本使用 `JOIN blobs + SUBSTR` 在 SQLite 层面截取内容，避免 N 次 `api.getNote()` 循环拉取完整大 blob
-- **单次条件聚合**：`stats.js` 将 4 次独立 COUNT 合并为 1 次查询
-- **批量查图标**：`recentUpdate.js` 用 `SELECT ... IN (...)` 一次查出全部图标标签
-- **传输量控制**：每篇笔记默认只读 ~650 字节（内容截断 + HTML 标签余量），百篇笔记总传输仍控制在 ~65KB
+- **一次聚合查询**：`data.js` 将全部模块合并为 2~3 条 SQL 查询（笔记查询 + 属性聚合 + 条件统计），并在 SQL 内完成标签 JSON 聚合
+- **单次条件聚合**：统计项用 `COUNT(DISTINCT CASE WHEN ...)` 一次查询得出
+- **传输量控制**：前端仅 2 个请求（`/blog-data` 聚合 + `/blog-search` 搜索），每篇笔记内容默认截断 ~150 字
 
 ### 设置编排器
 
-1. 确认已按 **快速上手 → 第 4 步** 创建好 9 个共享数据笔记（`blog-tree` ~ `blog-search`），每个均已正确添加 `#shareHiddenFromTree` `#shareRaw` `#shareAlias=blog-xxx` 标签
+1. 确认已按 **快速上手 → 第 4 步** 创建好 2 个共享数据笔记（`blog-data`、`blog-search`），每个均已正确添加 `#shareHiddenFromTree` `#shareRaw` `#shareAlias=blog-xxx` 标签
 2. 新建一个笔记（如 `博客预处理面板`），关联 `BlogPreprocessRender.js` 作为渲染笔记：
    - 将 `BlogPreprocessRender.js` 导入为 **JS 前端笔记**（代码类型选 `JS Frontend`）
    - 在新笔记上添加关系 `~renderNote=BlogPreprocessRender.js`（在 Relation Map 中搜索并链接）
    - 打开此渲染笔记即可看到一键同步按钮面板
-3. 将 `BlogPreprocessRender.js` 设为父笔记，其他 9 个脚本作为其子笔记（子脚本笔记的标题须与上表"脚本"列一致，例如 `tree.js`）
+3. 将 `BlogPreprocessRender.js` 设为父笔记，`data.js`、`search.js` 作为其子笔记（子脚本笔记的标题须与上表"脚本"列一致，例如 `data.js`）
 4. 在每个**子脚本笔记**上添加标签：
 
    | 子脚本 | 必需标签 |
    |--------|----------|
-   | `tree.js` | `#saveNoteId=blog-tree笔记ID` `#rootNoteId=博客根笔记ID` |
-   | `about-tree.js` | `#saveNoteId=blog-about-tree笔记ID` `#rootNoteId=博客根笔记ID` |
-   | `stats.js` | `#saveNoteId=blog-stats笔记ID` |
-   | `recentUpdate.js` | `#saveNoteId=blog-recentUpdate笔记ID` `#rootNoteId=博客根笔记ID` |
-   | `recommend.js` | `#saveNoteId=blog-recommend笔记ID` `#contentLen=200(可选)` |
-   | `article.js` | `#saveNoteId=blog-article笔记ID` `#contentLen=200(可选)` |
-   | `announcement.js` | `#saveNoteId=blog-announcement笔记ID` `#contentLen=200(可选)` |
+   | `data.js` | `#saveNoteId=blog-data笔记ID` `#rootNoteId=博客根笔记ID` `#contentLen=150(可选)` |
    | `search.js` | `#saveNoteId=blog-search笔记ID` `#rootNoteId=博客根笔记ID` `#contentLen=500(可选)` |
-   | `heatmap.js` | `#saveNoteId=blog-heatmap笔记ID` `#rootNoteId=博客根笔记ID` |
-| `tags.js` | `#saveNoteId=blog-tag笔记ID` `#rootNoteId=博客根笔记ID` |
 
-   > 编排器读取子脚本笔记上的 `#saveNoteId` 标签确定写入目标。`#rootNoteId` 只给需要递归查询的脚本用（tree / about-tree / recentUpdate / search / heatmap）。`#contentLen` 覆盖默认截取长度。
+   > 编排器读取子脚本笔记上的 `#saveNoteId` 标签确定写入目标。`#rootNoteId` 用于树/标签等需要递归查询的数据。`#contentLen` 覆盖默认截取长度。
 
 5. 打开渲染笔记，点击一键同步或逐个运行，检查各脚本控制台输出是否通过
 
@@ -280,6 +269,21 @@ share/js/blog.js      # 客户端交互脚本
 2. 在 Trilium 中右键脚本笔记 → **Execute script**，脚本会读取自身标签运行
 
 > 脚本的 standalone 块会自动检测 `api._syncConfig` 是否已由编排器设置，如果未设置则从自身标签读取，无需额外配置。
+
+---
+
+## 📦 压缩部署
+
+为避免部署时在 Trilium 中维护多个分享笔记，仓库提供压缩构建脚本：
+
+- 源码（可读）：`share/blog.ejs` + `share/css/blog.css` + `share/js/blog.js`
+- 产物（压缩内联）：`share/blog.min.ejs`（esbuild 压缩 css/js 后内联进模板，自检通过）
+
+```bash
+node build-min.js   # 需要 Node.js ≥ 16，首次运行自动拉取 esbuild
+```
+
+详细说明见 [压缩部署说明.md](压缩部署说明.md)。
 
 ---
 
@@ -388,13 +392,13 @@ server {
 ### 页面空白或报错
 
 - 检查根笔记是否已**开启分享**（右键 → Share）
-- 检查 `home.ejs` 的 `~shareTemplate` 关系是否正确链接
+- 检查 `blog.ejs`（或 `blog.min.ejs`）的 `~shareTemplate` 关系是否正确链接
 - 检查所有资源笔记（css/js/图片）是否已**开启分享**
 
 ### 分类树/关于菜单不显示
 
-- 确认 `#rootNoteId` 标签指向正确的博客根笔记 ID
-- 确认根笔记下存在标题为 **「关于」** 的笔记（for about-tree.js）
+- 确认 `#rootNoteId` 标签指向正确的博客根笔记 ID（data.js 需要）
+- 确认根笔记下存在标题为 **「关于」** 的笔记
 - 确认 `#category=true` 已添加到需要展示的分类笔记上
 
 ### 搜索无结果
@@ -405,7 +409,7 @@ server {
 ### 样式错乱
 
 - 清除浏览器缓存（`Ctrl+F5` 硬刷新）
-- 确认 `blog.css` 和 `blog.js` 的分享状态正常
+- 使用源码三件套时，确认 `blog.css` 和 `blog.js` 的分享状态正常
 - 检查 nginx 配置中静态资源路径是否映射正确
 
 ### 脚本报错 "content.trim is not a function"
@@ -425,8 +429,10 @@ server {
 ### 一、关系 Relations
 
 ```text
-~shareTemplate(inheritable)=home.ejs  ~shareFavicon(inheritable)=favicon.ico  ~shareLogo(inheritable)=logo.icon
+~shareTemplate(inheritable)=blog.ejs  ~shareFavicon(inheritable)=favicon.ico  ~shareLogo(inheritable)=logo.icon
 ```
+
+> 若使用压缩单文件部署，将 `blog.ejs` 替换为 `blog.min.ejs`。
 
 ### 二、根笔记专属标签（不继承）
 
@@ -547,7 +553,7 @@ server {
 
 ### 分类树
 
-以主页为根构建，`#category=true` 标签标注分类节点，`#shareHiddenFromTree=true` 控制显隐。
+以主页为根构建，`#category=true` 标签标注分类节点，`#shareHiddenFromTree=true` 控制显隐。由 data.js 的 `buildTree` 递归 SQL 生成。
 
 ---
 
@@ -555,22 +561,18 @@ server {
 
 ```text
 share/
-├── home.ejs          # Trilium EJS 模板——博客入口
-├── css/blog.css      # 全部博客样式
-└── js/blog.js        # 客户端交互脚本
+├── blog.ejs          # Trilium EJS 模板——博客入口（源码，可读）
+├── blog.min.ejs      # ★ 压缩单文件产物（部署用，build-min.js 生成）
+├── css/blog.css      # 全部博客样式（源码）
+└── js/blog.js        # 客户端交互脚本（源码）
 
-博客预处理控件/          # 后端预处理脚本（共 10 个）
-├── BlogPreprocessRender.js  # 编排入口
-├── tree.js                  # 分类树
-├── about-tree.js            # 关于菜单树
-├── stats.js                 # 统计
-├── recentUpdate.js          # 最近更新
-├── recommend.js             # 推荐阅读
-├── article.js               # 最新文章
-├── announcement.js          # 公告
-├── search.js                # 搜索索引
-├── tags.js                  # 标签云数据
-└── heatmap.js               # 热度地图
+博客预处理控件/          # 后端预处理脚本（共 3 个）
+├── BlogPreprocessRender.js  # 编排入口（JSX 渲染面板）
+├── data.js                  # 聚合数据（分类树/关于树/标签/文章/动态/公告/推荐/统计/热力）
+└── search.js                # 搜索索引
+
+build-min.js          # 压缩构建脚本（生成 blog.min.ejs）
+压缩部署说明.md        # 压缩部署文档
 ```
 
 ---

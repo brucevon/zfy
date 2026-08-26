@@ -51,6 +51,20 @@
             });
     }
 
+    /* ── 聚合数据加载（/blog-data 一次性拉取除 search 外的全部模块数据） ── */
+    var blogData = null;
+    var blogDataLoading = false;
+    function ensureBlogData(cb) {
+        if (blogData) { if (cb) cb(); return; }
+        if (blogDataLoading) { if (cb) setTimeout(function () { ensureBlogData(cb); }, 100); return; }
+        blogDataLoading = true;
+        fetchJSON("/blog-data").then(function (data) {
+            blogData = data || {};
+            blogDataLoading = false;
+            if (cb) cb();
+        });
+    }
+
     function fmtDate(iso) {
         if (!iso) return "";
         try {
@@ -382,7 +396,6 @@
     );
 
     /* ── 分类面板 ── */
-    var TREE_JSON_URL = "/blog-tree";
     var treeData = null;
     function openCategoryPanel(e) {
         if (e) { e.preventDefault(); }
@@ -828,72 +841,69 @@
     }
 
     function loadHomeModules() {
-        /* 推荐阅读 */
-        fetchJSON("/blog-recommend").then(function (data) {
-            var render = renderModule("mod-recommend", "暂无推荐", function (items) {
+        ensureBlogData(function () {
+            /* 推荐阅读 */
+            var recRender = renderModule("mod-recommend", "暂无推荐", function (items) {
                 if (!items || !items.length) return '<div class="rec-empty">暂无推荐</div>';
                 var item = items[Math.floor(Math.random() * items.length)];
                 return renderArticleCard(item, { wide: true });
             });
-            render(data);
-        });
+            recRender(blogData.recommend || []);
 
-        /* 最近发布 */
-        fetchJSON("/blog-article").then(function (data) {
-            var render = renderModule("mod-article", "暂无文章", function (item) {
-                return renderArticleCard(item, { featured: true });
+            /* 最新文章（全量数组，时间倒序） */
+            var artRender = renderModule("mod-article", "暂无文章", function (items) {
+                if (!items || !items.length) return '<div class="rec-empty">暂无文章</div>';
+                var html = "";
+                for (var i = 0; i < items.length; i++) {
+                    html += renderArticleCard(items[i], { wide: true });
+                }
+                return html;
             });
-            render(data);
-        });
+            artRender(blogData.article || []);
 
-        /* 最近动态 */
-        fetchJSON("/blog-recentUpdate").then(function (data) {
+            /* 最近动态 */
             var el = document.getElementById("mod-updates");
-            if (!el) return;
-            if (isEmpty(data)) {
-                el.innerHTML = '<div class="rec-empty">暂无动态</div>';
-                return;
+            if (el) {
+                var updates = blogData.recentUpdate || [];
+                if (isEmpty(updates)) {
+                    el.innerHTML = '<div class="rec-empty">暂无动态</div>';
+                } else {
+                    var html = "";
+                    var limit = Math.min(updates.length, 3);
+                    for (var i = 0; i < limit; i++) {
+                        var u = updates[i];
+                        html += '<div class="rec-upd-item">';
+                        if (u.noteIcon) html += '<i class="' + escapeHtml(u.noteIcon) + ' upd-item-icon"></i> ';
+                        html += '<time class="rec-date">' + fmtDate(u.dateCreated) + '</time>';
+                        html += '<h4 class="rec-title"><a href="/' + u.noteId + '"' +
+                            (u.color ? ' style="color:' + escapeHtml(u.color) + '"' : "") +
+                            ">" + escapeHtml(u.title) + '</a></h4>';
+                        if (u.tags && u.tags.length) html += renderModuleTags(u.tags);
+                        html += '</div>';
+                    }
+                    el.innerHTML = html;
+                }
             }
-            var html = "";
-            var limit = Math.min(data.length, 3);
-            for (var i = 0; i < limit; i++) {
-                var u = data[i];
-                html += '<div class="rec-upd-item">';
-                if (u.noteIcon) html += '<i class="' + escapeHtml(u.noteIcon) + ' upd-item-icon"></i> ';
-                html += '<time class="rec-date">' + fmtDate(u.dateCreated) + '</time>';
-                html += '<h4 class="rec-title"><a href="/' + u.noteId + '"' +
-                    (u.color ? ' style="color:' + escapeHtml(u.color) + '"' : "") +
-                    ">" + escapeHtml(u.title) + '</a></h4>';
-                if (u.tags && u.tags.length) html += renderModuleTags(u.tags);
-                html += '</div>';
-            }
-            el.innerHTML = html;
-        });
 
-        /* 公告 */
-        fetchJSON("/blog-announcement").then(function (data) {
-            var render = renderModule("mod-announcement", "暂无公告", function (item) {
+            /* 公告 */
+            var annRender = renderModule("mod-announcement", "暂无公告", function (item) {
                 return renderArticleCard(item, { compact: true });
             });
-            render(data);
-        });
+            annRender(blogData.announcement);
 
-        /* 统计 */
-        fetchJSON("/blog-stats").then(function (data) {
-            if (!data) return;
+            /* 统计 */
+            var st = blogData.stats || {};
             var m = function (id) { return document.getElementById(id); };
-            animateCount(m("stat-recommend"), data.recommend);
-            animateCount(m("stat-article"), data.article);
-            animateCount(m("stat-recentUpdate"), data.recentUpdate);
-            animateCount(m("stat-announcement"), data.announcement);
-        });
+            animateCount(m("stat-recommend"), st.recommend);
+            animateCount(m("stat-article"), st.article);
+            animateCount(m("stat-recentUpdate"), st.recentUpdate);
+            animateCount(m("stat-announcement"), st.announcement);
 
-        /* 热力图 */
-        fetchJSON("/blog-heatmap").then(function (data) {
-            renderHeatmap(data || []);
-        });
+            /* 热力图 */
+            renderHeatmap(blogData.heatmap || []);
 
-        setTimeout(updateRecClips, 0);
+            setTimeout(updateRecClips, 0);
+        });
     }
 
     window.addEventListener("resize", function () {
@@ -978,7 +988,7 @@
         if (wrap) wrap.scrollLeft = wrap.scrollWidth - wrap.clientWidth;
     }
 
-    /* ── 加载分类树（fetch /blog-tree） ── */
+    /* ── 加载分类树（blogData.tree） ── */
     function scrollToCurrentNote() {
         var curId = getCurrentNoteId();
         if (!curId) return;
@@ -996,9 +1006,9 @@
             return;
         }
         treeList.innerHTML = '<li class="tree-item" style="padding:8px;color:var(--muted)">加载中…</li>';
-        fetchJSON(TREE_JSON_URL).then(function (data) {
-            if (data && data.length) {
-                treeData = data;
+        ensureBlogData(function () {
+            treeData = blogData.tree || [];
+            if (treeData.length) {
                 processInternalLinks();
                 renderTree(treeData, treeList, getCurrentNoteId());
                 scrollToCurrentNote();
@@ -1010,17 +1020,19 @@
 
     /* ── 加载分类 Mega Menu 右侧数据（统计 + 最近更新） ── */
     function loadCategoryMegaData() {
-        fetchJSON("/blog-stats").then(function (data) {
-            if (!data) return;
+        ensureBlogData(function () {
+            /* 统计 */
+            var st = blogData.stats || {};
             var s = function (id) { return document.getElementById(id); };
-            if (data.article !== undefined && s("cms-article")) s("cms-article").textContent = data.article;
-            if (data.recentUpdate !== undefined && s("cms-update")) s("cms-update").textContent = data.recentUpdate;
-            if (data.recommend !== undefined && s("cms-recommend")) s("cms-recommend").textContent = data.recommend;
-            if (data.announcement !== undefined && s("cms-announce")) s("cms-announce").textContent = data.announcement;
-        });
-        fetchJSON("/blog-recentUpdate").then(function (data) {
+            if (st.article !== undefined && s("cms-article")) s("cms-article").textContent = st.article;
+            if (st.recentUpdate !== undefined && s("cms-update")) s("cms-update").textContent = st.recentUpdate;
+            if (st.recommend !== undefined && s("cms-recommend")) s("cms-recommend").textContent = st.recommend;
+            if (st.announcement !== undefined && s("cms-announce")) s("cms-announce").textContent = st.announcement;
+
+            /* 最近更新 */
             var el = document.getElementById("cms-updates");
             if (!el) return;
+            var data = blogData.recentUpdate || [];
             if (isEmpty(data)) {
                 el.innerHTML = '<li class="cat-mega-update-item">暂无动态</li>';
                 return;
@@ -1162,7 +1174,7 @@
         toggle.classList.toggle("expanded", !open);
     }
 
-    /* ── "关于"下拉菜单（fetch /blog-about-tree） ── */
+    /* ── "关于"下拉菜单（blogData.aboutTree） ── */
     var aboutBtn = document.getElementById("about-btn");
     var aboutDropdown = document.getElementById("about-dropdown");
     var aboutMenu = document.getElementById("about-menu");
@@ -1170,8 +1182,8 @@
 
     function ensureAboutData(cb) {
         if (aboutData) { if (cb) cb(); return; }
-        fetchJSON("/blog-about-tree").then(function (data) {
-            aboutData = data || [];
+        ensureBlogData(function () {
+            aboutData = blogData.aboutTree || [];
             if (cb) cb();
         });
     }
@@ -1572,8 +1584,8 @@
         if (tagData) { if (cb) cb(); return; }
         if (tagDataLoading) { if (cb) setTimeout(function () { ensureTagData(cb); }, 100); return; }
         tagDataLoading = true;
-        fetchJSON("/blog-tag").then(function (data) {
-            tagData = data || {};
+        ensureBlogData(function () {
+            tagData = blogData.tags || {};
             tagDataLoading = false;
             if (cb) cb();
         });

@@ -2,16 +2,8 @@ import { Button } from "trilium:preact";
 import { showMessage } from "trilium:api";
 
 var MODULES = [
-    { name: "tree",          label: "同步目录树",       url: "/blog-tree",          icon: "📂", needsRoot: true  },
-    { name: "about-tree",    label: "同步关于目录树",   url: "/blog-about-tree",    icon: "🧭", needsRoot: true  },
-    { name: "recommend",     label: "同步推荐阅读",     url: "/blog-recommend",     icon: "⭐", needsRoot: false },
-    { name: "article",       label: "同步最近发布",     url: "/blog-article",       icon: "📰", needsRoot: false },
-    { name: "recentUpdate",  label: "同步最近动态",     url: "/blog-recentUpdate",  icon: "⚡", needsRoot: false },
-    { name: "announcement",  label: "同步公告",         url: "/blog-announcement",  icon: "📣", needsRoot: false },
-    { name: "stats",         label: "同步统计摘要",     url: "/blog-stats",         icon: "📊", needsRoot: false },
-    { name: "heatmap",       label: "同步热度地图",     url: "/blog-heatmap",       icon: "🔥", needsRoot: false },
-    { name: "search",        label: "同步搜索索引",     url: "/blog-search",        icon: "🔍", needsRoot: true  },
-    { name: "tags",          label: "同步标签云",       url: "/blog-tag",           icon: "🏷️", needsRoot: true  },
+    { name: "data",   label: "同步聚合数据", url: "/blog-data",   icon: "📦", needsRoot: true },
+    { name: "search", label: "同步搜索索引", url: "/blog-search", icon: "🔍", needsRoot: true },
 ];
 
 export default function () {

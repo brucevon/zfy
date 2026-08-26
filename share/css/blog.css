@@ -330,10 +330,10 @@ a { color: inherit; text-decoration: none; }
 }
 
 .article-panel {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 24px;
+    background: none;
+    border: none;
+    border-radius: 0;
+    padding: 0;
 }
 
 /* Section Header */
@@ -356,11 +356,53 @@ a { color: inherit; text-decoration: none; }
 }
 .section-more:hover { color: var(--primary); }
 
-/* Article list */
-.article-list {
+/* Article list: 一篇文章一个模块，每页最多 5 篇 */
+.article-list,
+#mod-article {
     display: flex;
     flex-direction: column;
     gap: 14px;
+}
+
+.article-mod {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+    transition: all .3s;
+}
+.article-mod:hover {
+    box-shadow: var(--shadow-lg);
+    border-color: transparent;
+    transform: translateY(-2px);
+}
+
+.article-pager {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 4px 0;
+}
+.article-pager-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 13px;
+    padding: 8px 18px;
+    cursor: pointer;
+    transition: all .2s;
+}
+.article-pager-btn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+.article-pager-info {
+    font-size: 13px;
+    color: var(--text-faint);
+    font-family: var(--mono);
 }
 
 .article-card {

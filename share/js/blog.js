@@ -777,7 +777,7 @@
     /* ── 首页模块数据加载 ── */
     /* 预处理脚本输出字段:
        recommend: [{noteId, title, noteIcon, dateCreated, content}]
-       article: {noteId, title, noteIcon, dateCreated, content} | null
+       article: [{noteId, title, noteIcon, dateCreated, content}] 全量按创建时间倒序
        recentUpdate: [{noteId, title, noteIcon, dateCreated}]
        announcement: {noteId, title, noteIcon, dateCreated, content} | null
        stats: {article, recommend, recentUpdate, announcement}
@@ -840,6 +840,43 @@
         return html;
     }
 
+    /* ── 最新文章分页模块（一篇文章为一个模块，每页最多 5 篇） ── */
+    var articlePage = 0;
+    var ARTICLE_PAGE_SIZE = 5;
+    function renderArticleModules() {
+        var el = document.getElementById("mod-article");
+        if (!el) return;
+        var items = blogData.article || [];
+        if (!items.length) {
+            el.innerHTML = '<div class="rec-empty">暂无文章</div>';
+            return;
+        }
+        var totalPages = Math.ceil(items.length / ARTICLE_PAGE_SIZE);
+        if (articlePage >= totalPages) articlePage = totalPages - 1;
+        if (articlePage < 0) articlePage = 0;
+        var start = articlePage * ARTICLE_PAGE_SIZE;
+        var html = "";
+        for (var i = start; i < start + ARTICLE_PAGE_SIZE && i < items.length; i++) {
+            html += '<div class="article-mod">' + renderArticleCard(items[i], { wide: true }) + '</div>';
+        }
+        el.innerHTML = html;
+        if (totalPages > 1) {
+            var pager = '<div class="article-pager">';
+            if (articlePage > 0) pager += '<button class="article-pager-btn" data-page="' + (articlePage - 1) + '">上一页</button>';
+            pager += '<span class="article-pager-info">' + (articlePage + 1) + ' / ' + totalPages + ' 页</span>';
+            if (articlePage < totalPages - 1) pager += '<button class="article-pager-btn" data-page="' + (articlePage + 1) + '">下一页</button>';
+            pager += '</div>';
+            el.insertAdjacentHTML("beforeend", pager);
+            el.querySelectorAll(".article-pager-btn").forEach(function (btn) {
+                btn.addEventListener("click", function () {
+                    articlePage = parseInt(btn.getAttribute("data-page"), 10);
+                    renderArticleModules();
+                });
+            });
+        }
+        updateRecClips();
+    }
+
     function loadHomeModules() {
         ensureBlogData(function () {
             /* 推荐阅读 */
@@ -850,16 +887,10 @@
             });
             recRender(blogData.recommend || []);
 
-            /* 最新文章（全量数组，时间倒序） */
-            var artRender = renderModule("mod-article", "暂无文章", function (items) {
-                if (!items || !items.length) return '<div class="rec-empty">暂无文章</div>';
-                var html = "";
-                for (var i = 0; i < items.length; i++) {
-                    html += renderArticleCard(items[i], { wide: true });
-                }
-                return html;
-            });
-            artRender(blogData.article || []);
+            /* 最新文章（一篇文章一个模块，每页最多 5 篇，分页展示） */
+            var articleEl = document.getElementById("mod-article");
+            if (articleEl) articleEl.innerHTML = '<div class="rec-empty">加载中…</div>';
+            renderArticleModules();
 
             /* 最近动态 */
             var el = document.getElementById("mod-updates");

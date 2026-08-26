@@ -1052,13 +1052,12 @@
     /* ── 加载分类 Mega Menu 右侧数据（统计 + 最近更新） ── */
     function loadCategoryMegaData() {
         ensureBlogData(function () {
-            /* 统计 */
+            /* 统计（原站点统计动画效果） */
             var st = blogData.stats || {};
-            var s = function (id) { return document.getElementById(id); };
-            if (st.article !== undefined && s("cms-article")) s("cms-article").textContent = st.article;
-            if (st.recentUpdate !== undefined && s("cms-update")) s("cms-update").textContent = st.recentUpdate;
-            if (st.recommend !== undefined && s("cms-recommend")) s("cms-recommend").textContent = st.recommend;
-            if (st.announcement !== undefined && s("cms-announce")) s("cms-announce").textContent = st.announcement;
+            animateCount(document.getElementById("cms-article"), st.article);
+            animateCount(document.getElementById("cms-update"), st.recentUpdate);
+            animateCount(document.getElementById("cms-recommend"), st.recommend);
+            animateCount(document.getElementById("cms-announce"), st.announcement);
 
             /* 最近更新 */
             var el = document.getElementById("cms-updates");

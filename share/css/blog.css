@@ -1163,23 +1163,12 @@ a { color: inherit; text-decoration: none; }
     grid-template-columns: 1fr 1fr;
     gap: 8px;
 }
-.cat-stat-item {
-    font-size: 0.8rem;
-    color: var(--muted);
-    font-family: var(--mono);
-    background: var(--glass-border);
-    border-radius: 8px;
-    padding: 8px 10px;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
+/* 分类菜单内的站点统计：数字文本不换行 */
+.cat-mega-stats .stat-pill {
+    min-width: 0;
 }
-.cat-stat-item em {
-    font-style: normal;
-    font-size: 1.2rem;
-    font-weight: 700;
-    color: var(--text);
-    line-height: 1.2;
+.cat-mega-stats .stat-pill__num {
+    white-space: nowrap;
 }
 .cat-mega-updates {
     list-style: none;

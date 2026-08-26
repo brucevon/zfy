@@ -73,6 +73,14 @@ try { _noteIconCls = note.getLabelValue('icon') || note.getLabelValue('iconClass
 if (_noteIconCls) _cfg.noteIcon = _noteIconCls;
 var _pageDesc = '';
 try { _pageDesc = note.getLabelValue('blogDescription') || _cfg.blogDescription || ''; } catch(_e) { _pageDesc = _cfg.blogDescription || ''; }
+
+// -- 站点统计点击跳转（分类菜单/首页通用） --
+function _tagListUrl(tag) {
+    if (!_cfg.tagCloudNoteId || !tag) return '#';
+    return '/' + _cfg.tagCloudNoteId + '?tag=' + encodeURIComponent(tag);
+}
+var _st = _cfg.statTags || { recommend: '推荐阅读', article: '文章', recentUpdate: '动态', announcement: '公告' };
+var _statLink = !!_cfg.tagCloudNoteId;
 %>
 <title><%= _cfg.blogTitle || 'Bento Blog' %><%= isHome ? ' - 首页' : ' - ' + note.title %></title>
 
@@ -142,11 +150,27 @@ try { _pageDesc = note.getLabelValue('blogDescription') || _cfg.blogDescription 
             <div class="cat-mega-right">
                 <div class="cat-mega-section">
                     <div class="cat-mega-label">统计</div>
-                    <div class="cat-mega-stats">
-                        <span class="cat-stat-item">文章 <em id="cms-article">-</em></span>
-                        <span class="cat-stat-item">动态 <em id="cms-update">-</em></span>
-                        <span class="cat-stat-item">推荐 <em id="cms-recommend">-</em></span>
-                        <span class="cat-stat-item">公告 <em id="cms-announce">-</em></span>
+                    <div class="cat-mega-stats stats-dashboard">
+                        <a class="stat-pill stat-pill--article<%= _statLink ? '' : ' stat-pill--static' %>" href="<%= _tagListUrl(_st.article) %>" title="查看文章列表">
+                            <i class="bx bx-news stat-pill__icon"></i>
+                            <span class="stat-pill__label">文章</span>
+                            <em class="stat-pill__num" id="cms-article">--</em>
+                        </a>
+                        <a class="stat-pill stat-pill--update<%= _statLink ? '' : ' stat-pill--static' %>" href="<%= _tagListUrl(_st.recentUpdate) %>" title="查看动态">
+                            <i class="bx bx-time-five stat-pill__icon"></i>
+                            <span class="stat-pill__label">动态</span>
+                            <em class="stat-pill__num" id="cms-update">--</em>
+                        </a>
+                        <a class="stat-pill stat-pill--recommend<%= _statLink ? '' : ' stat-pill--static' %>" href="<%= _tagListUrl(_st.recommend) %>" title="查看推荐阅读">
+                            <i class="bx bx-star stat-pill__icon"></i>
+                            <span class="stat-pill__label">推荐</span>
+                            <em class="stat-pill__num" id="cms-recommend">--</em>
+                        </a>
+                        <a class="stat-pill stat-pill--announce<%= _statLink ? '' : ' stat-pill--static' %>" href="<%= _tagListUrl(_st.announcement) %>" title="查看公告">
+                            <i class="bx bx-bell stat-pill__icon"></i>
+                            <span class="stat-pill__label">公告</span>
+                            <em class="stat-pill__num" id="cms-announce">--</em>
+                        </a>
                     </div>
                 </div>
                 <div class="cat-mega-section">
@@ -158,14 +182,7 @@ try { _pageDesc = note.getLabelValue('blogDescription') || _cfg.blogDescription 
     </div>
 </div>
 
-    <% if (isHome) {
-        function _tagListUrl(tag) {
-            if (!_cfg.tagCloudNoteId || !tag) return '#';
-            return '/' + _cfg.tagCloudNoteId + '?tag=' + encodeURIComponent(tag);
-        }
-        var _st = _cfg.statTags || { recommend: '推荐阅读', article: '文章', recentUpdate: '动态', announcement: '公告' };
-        var _statLink = !!_cfg.tagCloudNoteId;
-    %>
+    <% if (isHome) { %>
 <div class="layout">
   <aside class="sidebar-col">
     <div class="panel">

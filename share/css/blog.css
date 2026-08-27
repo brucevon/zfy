@@ -1375,17 +1375,60 @@ html.mobile-view .cat-mega-right {
 }
 
 .note-tags {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    position: fixed;
+    left: max(16px, calc((100vw - 1060px) / 2 - 200px));
+    top: 78px;
+    width: 170px;
+    flex-direction: column;
+    align-items: flex-end;
+    z-index: 50;
+}
+/* 窄屏：标签回到文章末尾 */
+@media (max-width: 1400px) {
+    .note-tags {
+        position: static;
+        width: auto;
+        flex-direction: row;
+        align-items: center;
+        background: none;
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+        border: none;
+        border-radius: 0;
+        padding: 0;
+        margin-top: 16px; padding-top: 12px;
+        border-top: 1px solid var(--border, rgba(128,128,128,0.2));
+    }
+}
+/* 移动端：标签在文章末尾，不被 header 遮挡 */
+html.mobile-view .note-tags {
+    position: static;
+    width: auto;
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: flex-start;
+    margin-left: 14px;
+    background: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border: none;
+    border-radius: 0;
+    padding: 0;
     margin-top: 16px; padding-top: 12px;
     border-top: 1px solid var(--border, rgba(128,128,128,0.2));
-    display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
 }
 .module-tags { display: flex; flex-wrap: wrap; gap: 3px 4px; margin-top: 6px; }
 .module-tags .tag-chip--note { font-size: .6rem; padding: 0 3px; }
 .rec-upd-item .module-tags { margin-top: 0; gap: 1px; }
 .tag-chip--note {
     cursor: pointer; font-size: .7rem; padding: 2px 6px;
-    border-radius: 4px; transition: color .15s;
+    border-radius: 4px; transition: color .15s, background .15s;
     color: var(--tag-color, var(--muted, #888));
+    background: var(--glass-bg);
+    backdrop-filter: blur(40px) saturate(150%);
+    -webkit-backdrop-filter: blur(40px) saturate(150%);
+    border: 1px solid var(--glass-border);
 }
 .tag-chip--note:hover {
     color: var(--tag-color, var(--accent, #58a6ff)); opacity: .8;

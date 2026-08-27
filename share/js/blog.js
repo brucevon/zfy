@@ -1678,6 +1678,7 @@
     function renderNoteTags() {
         var body = document.querySelector(".note-body");
         if (!body || isHome) return;
+        var layout = document.querySelector(".note-layout");
         var curId = getCurrentNoteId();
         ensureTagData(function () {
             var noteTags = [];
@@ -1692,7 +1693,16 @@
                 h += '<span class="tag-chip tag-chip--note" data-tag="' + escapeHtml(noteTags[i]) + '" style="' + tagStyle(noteTags[i]) + '"><i class="' + _tagIcon + '"></i> ' + escapeHtml(noteTags[i]) + '</span>';
             }
             el.innerHTML = h;
-            body.parentNode.insertBefore(el, body.nextSibling);
+            if (layout) {
+                var article = layout.querySelector('article.mod');
+                if (article && article.nextSibling) {
+                    layout.insertBefore(el, article.nextSibling);
+                } else if (layout) {
+                    layout.appendChild(el);
+                }
+            } else {
+                body.parentNode.insertBefore(el, body.nextSibling);
+            }
         });
     }
 

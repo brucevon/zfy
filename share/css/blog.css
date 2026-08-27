@@ -3492,6 +3492,102 @@ html.mobile-view .admonition {
     color: var(--text) !important;
     font-family: var(--serif) !important;
 }
+/* Twikoo 管理页面主题覆盖 */
+.tk-admin {
+    background: var(--surface) !important;
+    color: var(--text) !important;
+    border-radius: var(--radius) !important;
+    border: 1px solid var(--border) !important;
+}
+.tk-panel {
+    background: var(--surface) !important;
+    color: var(--text) !important;
+}
+.tk-panel-title {
+    color: var(--text) !important;
+    border-bottom: 1px solid var(--border) !important;
+}
+.tk-panel-title a {
+    color: var(--primary) !important;
+}
+.tk-tabs {
+    border-bottom: 1px solid var(--border) !important;
+}
+.tk-tab {
+    color: var(--text-dim) !important;
+}
+.tk-tab.__active {
+    color: var(--primary) !important;
+    border-bottom-color: var(--primary) !important;
+}
+.tk-tab:hover {
+    color: var(--primary) !important;
+}
+/* 搜索框 */
+.tk-admin .el-input__inner {
+    background: var(--bg) !important;
+    color: var(--text) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: var(--radius-sm) !important;
+}
+.tk-admin .el-input__inner:focus {
+    border-color: var(--primary) !important;
+}
+/* 下拉选择 */
+.tk-admin select {
+    background: var(--bg) !important;
+    color: var(--text) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: var(--radius-sm) !important;
+}
+/* 按钮 */
+.tk-admin .el-button--primary {
+    background: var(--primary) !important;
+    color: #fff !important;
+    border-color: var(--primary) !important;
+    border-radius: var(--radius-sm) !important;
+}
+.tk-admin .el-button--text {
+    background: transparent !important;
+    color: var(--primary) !important;
+    border: none !important;
+}
+.tk-admin .el-button--text:hover {
+    color: var(--md-link-hover, #1d4ed8) !important;
+}
+/* 评论列表项 */
+.tk-admin-comment-item {
+    border-bottom: 1px solid var(--border) !important;
+}
+.tk-admin-comment-meta {
+    color: var(--text-dim) !important;
+}
+.tk-admin-comment-meta a {
+    color: var(--primary) !important;
+}
+.tk-admin-comment-meta .tk-time {
+    color: var(--text-faint) !important;
+}
+.tk-admin-actions {
+    border-top: 1px solid var(--border) !important;
+}
+/* 评论内容 */
+.tk-admin .tk-content {
+    color: var(--text) !important;
+}
+.tk-admin .tk-content a {
+    color: var(--primary) !important;
+}
+.tk-admin .tk-content h4 {
+    color: var(--md-h-color, var(--text)) !important;
+}
+/* 关闭按钮 */
+.tk-admin-close {
+    color: var(--text-dim) !important;
+}
+.tk-admin-close:hover {
+    color: var(--text) !important;
+}
 
 html.mobile-view #twikoo {
     padding: 20px 14px;

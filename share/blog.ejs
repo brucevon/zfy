@@ -83,6 +83,40 @@ var _st = _cfg.statTags || { recommend: '推荐阅读', article: '文章', recen
 var _statLink = !!_cfg.tagCloudNoteId;
 %>
 <title><%= _cfg.blogTitle || 'Bento Blog' %><%= isHome ? ' - 首页' : ' - ' + note.title %></title>
+<%
+// -- Meta/OG 标签 --
+var _ogTitle = isHome ? (_cfg.blogTitle || 'Bento Blog') : note.title;
+var _ogDesc = _pageDesc;
+if (!_ogDesc) {
+    try {
+        var _raw = (typeof content === 'string') ? content : '';
+        _ogDesc = _raw.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/\s+/g, ' ').trim();
+        if (_ogDesc.length > 160) _ogDesc = _ogDesc.substring(0, 160) + '…';
+    } catch(_e) { _ogDesc = ''; }
+}
+var _ogImage = '';
+if (!isHome) {
+    try {
+        var _raw2 = (typeof content === 'string') ? content : '';
+        var _imgMatch = _raw2.match(/<img[^>]+src=["']([^"']+)["']/i);
+        if (_imgMatch) _ogImage = _imgMatch[1];
+    } catch(_e) {}
+}
+if (!_ogImage) _ogImage = _cfg.defaultCover || '';
+var _ogUrl = '/' + note.noteId;
+var _ogType = isHome ? 'website' : 'article';
+var _twCard = _ogImage ? 'summary_large_image' : 'summary';
+%>
+<meta property="og:title" content="<%= _ogTitle %>">
+<meta property="og:description" content="<%= _ogDesc %>">
+<meta property="og:type" content="<%= _ogType %>">
+<meta property="og:url" content="<%= _ogUrl %>">
+<% if (_ogImage) { %><meta property="og:image" content="<%= _ogImage %>"><% } %>
+<meta name="description" content="<%= _ogDesc %>">
+<meta name="twitter:card" content="<%= _twCard %>">
+<meta name="twitter:title" content="<%= _ogTitle %>">
+<meta name="twitter:description" content="<%= _ogDesc %>">
+<% if (_ogImage) { %><meta name="twitter:image" content="<%= _ogImage %>"><% } %>
 
 <script>window.__BLOG_CONFIG__ = <%- JSON.stringify(_cfg) %>;</script>
 <style>

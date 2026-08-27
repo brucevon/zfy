@@ -410,6 +410,14 @@
 
     if (categoryBtn) categoryBtn.addEventListener("click", openCategoryPanel);
     if (categoryBtnM) categoryBtnM.addEventListener("click", openCategoryPanel);
+    /* ── Logo 点击跳转首页 ── */
+    var logoArea = document.querySelector(".logo-area");
+    if (logoArea) {
+        logoArea.style.cursor = "pointer";
+        logoArea.addEventListener("click", function () {
+            window.location.href = "./";
+        });
+    }
     document.addEventListener("keydown", function (e) {
         if (e.key === "Escape") {
             closeMobileMenu();
@@ -1023,16 +1031,50 @@
     function scrollToCurrentNote() {
         var curId = getCurrentNoteId();
         if (!curId) return;
-        var curLink = document.querySelector('#tree-list a[href="/' + curId + '"]');
+        var curLink = document.querySelector('#tree-list li[data-note-id="' + curId + '"] a');
         if (curLink) {
             curLink.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        }
+    }
+    /* 查找目标笔记在树中的路径 */
+    function findPathToNote(items, targetId, path) {
+        path = path || [];
+        for (var i = 0; i < items.length; i++) {
+            var item = items[i];
+            if (item.noteId === targetId) {
+                return path.concat([item.noteId]);
+            }
+            if (item.children && item.children.length > 0) {
+                var found = findPathToNote(item.children, targetId, path.concat([item.noteId]));
+                if (found) return found;
+            }
+        }
+        return null;
+    }
+    /* 展开路径上的所有父节点 */
+    function expandToNote(path) {
+        if (!path || path.length <= 1) return;
+        for (var i = 0; i < path.length - 1; i++) {
+            var parentId = path[i];
+            var li = document.querySelector('#tree-list li[data-note-id="' + parentId + '"]');
+            if (li) {
+                var kids = li.querySelector(':scope > .tree-children');
+                var toggle = li.querySelector(':scope > .tree-node > .tree-toggle');
+                if (kids && toggle) {
+                    kids.style.display = 'block';
+                    toggle.textContent = '▼';
+                    toggle.classList.add('expanded');
+                }
+            }
         }
     }
     function loadCategoryTree() {
         var treeList = document.getElementById("tree-list");
         if (!treeList) return;
+        var currentId = getCurrentNoteId();
         if (treeData) {
-            renderTree(treeData, treeList, getCurrentNoteId());
+            renderTree(treeData, treeList, currentId);
+            expandToNote(findPathToNote(treeData, currentId));
             scrollToCurrentNote();
             return;
         }
@@ -1041,7 +1083,8 @@
             treeData = blogData.tree || [];
             if (treeData.length) {
                 processInternalLinks();
-                renderTree(treeData, treeList, getCurrentNoteId());
+                renderTree(treeData, treeList, currentId);
+                expandToNote(findPathToNote(treeData, currentId));
                 scrollToCurrentNote();
             } else {
                 treeList.innerHTML = '<li class="tree-item"><span class="tag-chip">暂无分类</span></li>';
@@ -1088,6 +1131,7 @@
         items.forEach(function (item) {
             var li = document.createElement("li");
             li.className = "tree-item";
+            li.setAttribute("data-note-id", item.noteId);
             var node = document.createElement("div");
             node.className = "tree-node";
             var hasKids = item.children && item.children.length > 0;
@@ -1227,6 +1271,7 @@
         items.forEach(function (item) {
             var li = document.createElement("li");
             li.className = "tree-item";
+            li.setAttribute("data-note-id", item.noteId);
             var node = document.createElement("div");
             node.className = "tree-node";
             var hasKids = item.children && item.children.length > 0;

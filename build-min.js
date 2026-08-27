@@ -28,7 +28,7 @@ const SRC = {
 const OUT = path.join(SHARE, "blog.min.ejs");
 const CACHE_FILE = path.join(ROOT, ".build-cache");
 
-/** 获取版本信息：优先取 git tag，其次 package.json，最后 commit hash */
+/** 获取版本信息：版本号 + 源文件内容 hash 短码 */
 function buildVersion() {
     function git(args) {
         const r = spawnSync("git", args, { encoding: "utf8", cwd: ROOT });
@@ -42,7 +42,10 @@ function buildVersion() {
     const tag = git(["describe", "--tags", "--abbrev=0"]);
     const commit = git(["rev-parse", "--short", "HEAD"]);
     const time = new Date().toISOString().replace("T", " ").slice(0, 19) + "Z";
-    const version = tag || (pkgVersion ? "v" + pkgVersion : null) || commit || "unknown";
+    // 源文件内容 hash 短码：每次构建内容变化，标识也会变
+    const contentHash = sourcesHash().slice(0, 7);
+    const base = tag || (pkgVersion ? "v" + pkgVersion : null) || commit || "unknown";
+    const version = base + "-" + contentHash;
     return { version, commit: commit || "", time };
 }
 

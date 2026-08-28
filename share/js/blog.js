@@ -242,18 +242,41 @@
 
     if (searchInput) {
         var searchTimer = null;
+        var searchHighlightIdx = -1;
+
+        function updateSearchHighlight() {
+            if (!searchResults) return;
+            var items = searchResults.querySelectorAll(".search-result-item");
+            items.forEach(function (el, i) {
+                el.classList.toggle("highlighted", i === searchHighlightIdx);
+            });
+            if (searchHighlightIdx >= 0 && items[searchHighlightIdx]) {
+                items[searchHighlightIdx].scrollIntoView({ block: "nearest" });
+            }
+        }
+
         searchInput.addEventListener("input", function () {
+            searchHighlightIdx = -1;
             if (searchTimer) clearTimeout(searchTimer);
             searchTimer = setTimeout(function () {
                 renderResults(searchInput.value.trim());
             }, 150);
         });
         searchInput.addEventListener("keydown", function (e) {
-            if (e.key === "Escape") closeSearch();
-            if (e.key === "Enter") {
-                var first = searchResults && searchResults.querySelector(".search-result-item");
-                if (first) {
-                    window.location.href = first.getAttribute("href");
+            var items = searchResults ? searchResults.querySelectorAll(".search-result-item") : [];
+            if (e.key === "Escape") { closeSearch(); return; }
+            if (e.key === "ArrowDown") {
+                e.preventDefault();
+                searchHighlightIdx = Math.min(searchHighlightIdx + 1, items.length - 1);
+                updateSearchHighlight();
+            } else if (e.key === "ArrowUp") {
+                e.preventDefault();
+                searchHighlightIdx = Math.max(searchHighlightIdx - 1, -1);
+                updateSearchHighlight();
+            } else if (e.key === "Enter") {
+                var target = searchHighlightIdx >= 0 ? items[searchHighlightIdx] : items[0];
+                if (target) {
+                    window.location.href = target.getAttribute("href");
                     closeSearch();
                 }
             }
@@ -1871,7 +1894,6 @@
         initToc();
         initTocMobile();
         initBackTop();
-        ensureSearchData();
         if (isHome) {
             loadHomeModules();
         }

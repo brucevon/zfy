@@ -54,14 +54,17 @@
     /* ── 聚合数据加载（/blog-data 一次性拉取除 search 外的全部模块数据） ── */
     var blogData = null;
     var blogDataLoading = false;
+    var blogDataCallbacks = [];
     function ensureBlogData(cb) {
         if (blogData) { if (cb) cb(); return; }
-        if (blogDataLoading) { if (cb) setTimeout(function () { ensureBlogData(cb); }, 100); return; }
+        if (cb) blogDataCallbacks.push(cb);
+        if (blogDataLoading) return;
         blogDataLoading = true;
         fetchJSON("/blog-data").then(function (data) {
             blogData = data || {};
             blogDataLoading = false;
-            if (cb) cb();
+            var cbs = blogDataCallbacks; blogDataCallbacks = [];
+            cbs.forEach(function (fn) { fn(); });
         });
     }
 
@@ -107,14 +110,17 @@
     var searchDataLoading = false;
     var searchOpen = false;
 
+    var searchDataCallbacks = [];
     function ensureSearchData(cb) {
         if (searchData) { if (cb) cb(); return; }
-        if (searchDataLoading) { if (cb) setTimeout(function () { ensureSearchData(cb); }, 100); return; }
+        if (cb) searchDataCallbacks.push(cb);
+        if (searchDataLoading) return;
         searchDataLoading = true;
         fetchJSON("/blog-search").then(function (data) {
             searchData = data || [];
             searchDataLoading = false;
-            if (cb) cb();
+            var cbs = searchDataCallbacks; searchDataCallbacks = [];
+            cbs.forEach(function (fn) { fn(); });
         });
     }
 
@@ -1215,24 +1221,11 @@
                 var ul = document.createElement("ul");
                 ul.className = "tree-children";
                 ul.style.display = "none";
-                renderAboutMenu(item.children, ul);
+                renderTree(item.children, ul, currentId);
                 li.appendChild(ul);
             }
             container.appendChild(li);
         });
-    }
-
-    function toggleAboutSub(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        var toggle = e.currentTarget;
-        var item = toggle.closest(".tree-item");
-        var kids = item.querySelector(":scope > .tree-children");
-        if (!kids) return;
-        var open = kids.style.display !== "none" && kids.style.display !== "";
-        kids.style.display = open ? "none" : "block";
-        toggle.textContent = open ? "▶" : "▼";
-        toggle.classList.toggle("expanded", !open);
     }
 
     function toggleTree(e) {
@@ -1633,9 +1626,7 @@
 
     function escapeHtml(str) {
         if (str === null || str === undefined) return "";
-        var div = document.createElement("div");
-        div.appendChild(document.createTextNode(String(str)));
-        return div.innerHTML;
+        return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
     }
 
     /* ── 标签 ── */
@@ -1650,19 +1641,27 @@
         '#3498db','#9b59b6','#e91e63','#00bcd4','#ff5722',
         '#795548','#607d8b','#4caf50','#03a9f4','#cddc39',
     ];
+    function tagHash(s) {
+        var h = 0;
+        for (var i = 0; i < s.length; i++) h = ((h << 5) - h) + s.charCodeAt(i);
+        return Math.abs(h);
+    }
     function tagStyle(name) {
-        var c = TAG_COLORS[Math.floor(Math.random() * TAG_COLORS.length)];
+        var c = TAG_COLORS[tagHash(name) % TAG_COLORS.length];
         return 'color:' + c + ';--tag-color:' + c;
     }
 
+    var tagDataCallbacks = [];
     function ensureTagData(cb) {
         if (tagData) { if (cb) cb(); return; }
-        if (tagDataLoading) { if (cb) setTimeout(function () { ensureTagData(cb); }, 100); return; }
+        if (cb) tagDataCallbacks.push(cb);
+        if (tagDataLoading) return;
         tagDataLoading = true;
         ensureBlogData(function () {
             tagData = blogData.tags || {};
             tagDataLoading = false;
-            if (cb) cb();
+            var cbs = tagDataCallbacks; tagDataCallbacks = [];
+            cbs.forEach(function (fn) { fn(); });
         });
     }
 
@@ -1747,8 +1746,9 @@
                 var info = tagIndex[names[i]];
                 var ratio = maxCount > 1 ? info.count / maxCount : 1;
                 var size = 0.85 + ratio * 0.65;
-                var rot = (Math.random() - 0.5) * 6;
-                var delay = (Math.random() * 3).toFixed(1);
+                var _h = tagHash(names[i]);
+                var rot = ((_h % 60) - 30) / 10;   // -3.0 ~ +3.0 deg
+                var delay = ((_h % 30) / 10).toFixed(1); // 0.0 ~ 2.9s
                 h += '<span class="tagcloud-tag' + (activeTag === names[i] ? ' active' : '') + '" ' +
                     'style="font-size:' + size + 'em;' + tagStyle(names[i]) + ';' +
                     '--rot:' + rot.toFixed(1) + 'deg;--float-delay:' + delay + 's" ' +

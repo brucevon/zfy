@@ -100,6 +100,7 @@ async function buildTree(rootId, skipId) {
     var iconMap = {};
     var colorMap = {};
     var externalLinkMap = {};
+    var shareAliasMap = {};
     for (var li = 0; li < labels.length; li++) {
         var la = labels[li];
         if (la.name === "category" && la.value === "true") catSet[la.noteId] = true;
@@ -107,6 +108,7 @@ async function buildTree(rootId, skipId) {
         if (la.name === "icon") iconMap[la.noteId] = la.value;
         if (la.name === "color") colorMap[la.noteId] = la.value;
         if (la.name === "shareExternalLink") externalLinkMap[la.noteId] = la.value;
+        if (la.name === "shareAlias") shareAliasMap[la.noteId] = la.value;
     }
     for (var li2 = 0; li2 < labels.length; li2++) {
         if (labels[li2].name === "iconClass" && !iconMap[labels[li2].noteId]) {
@@ -135,6 +137,7 @@ async function buildTree(rootId, skipId) {
                 color: colorMap[n.noteId] || "",
                 category: !!catSet[n.noteId],
                 shareExternalLink: externalLinkMap[n.noteId] || "",
+                shareAlias: shareAliasMap[n.noteId] || "",
                 children: buildChildren(n.noteId),
             });
         }
@@ -261,10 +264,11 @@ async function sync() {
                 "  MAX(CASE WHEN a.name = 'icon' THEN a.value END) AS icon, " +
                 "  MAX(CASE WHEN a.name = 'iconClass' THEN a.value END) AS iconClass, " +
                 "  MAX(CASE WHEN a.name = 'color' THEN a.value END) AS color, " +
+                "  MAX(CASE WHEN a.name = 'shareAlias' THEN a.value END) AS shareAlias, " +
                 "  (SELECT json_group_array(t.value) FROM attributes t " +
                 "    WHERE t.noteId = a.noteId AND t.name = 'noteTag' AND t.isDeleted = 0) AS tags " +
                 "FROM attributes a " +
-                "WHERE a.isDeleted = 0 AND a.noteId IN (" + ph + ") AND a.name IN ('icon', 'iconClass', 'color') " +
+                "WHERE a.isDeleted = 0 AND a.noteId IN (" + ph + ") AND a.name IN ('icon', 'iconClass', 'color', 'shareAlias') " +
                 "GROUP BY a.noteId",
                 noteIds,
             );
@@ -277,6 +281,7 @@ async function sync() {
                 attrsMap[at.noteId] = {
                     noteIcon: at.icon || at.iconClass || "",
                     color: at.color || "",
+                    shareAlias: at.shareAlias || "",
                     tags: tagArr,
                 };
             }
@@ -291,11 +296,11 @@ async function sync() {
         var content = typeof r.c === "string" ? r.c : (r.c ? r.c.toString() : "");
         var plain = stripHtml(content);
         var hasContent = plain.trim().length > 0;
-        var attr = attrsMap[r.noteId] || { noteIcon: "", color: "", tags: [] };
+        var attr = attrsMap[r.noteId] || { noteIcon: "", color: "", shareAlias: "", tags: [] };
 
         if (r.region === "article") {
             if (hasContent) {
-                data.article.push({
+                var artItem = {
                     noteId: r.noteId,
                     title: r.title,
                     noteIcon: attr.noteIcon,
@@ -304,22 +309,26 @@ async function sync() {
                     dateCreated: r.dateCreated,
                     dateModified: r.dateModified,
                     tags: attr.tags,
-                });
+                };
+                if (attr.shareAlias) artItem.shareAlias = attr.shareAlias;
+                data.article.push(artItem);
             }
         } else if (r.region === "recentUpdate") {
             if (data.recentUpdate.length < 3) {
-                data.recentUpdate.push({
+                var updItem = {
                     noteId: r.noteId,
                     title: r.title,
                     noteIcon: attr.noteIcon,
                     color: attr.color,
                     dateCreated: r.dateCreated,
                     tags: attr.tags,
-                });
+                };
+                if (attr.shareAlias) updItem.shareAlias = attr.shareAlias;
+                data.recentUpdate.push(updItem);
             }
         } else if (r.region === "announcement") {
             if (hasContent && !data.announcement) {
-                data.announcement = {
+                var annItem = {
                     noteId: r.noteId,
                     title: r.title,
                     noteIcon: attr.noteIcon,
@@ -328,10 +337,12 @@ async function sync() {
                     dateCreated: r.dateCreated,
                     tags: attr.tags,
                 };
+                if (attr.shareAlias) annItem.shareAlias = attr.shareAlias;
+                data.announcement = annItem;
             }
         } else if (r.region === "recommend") {
             if (hasContent) {
-                data.recommend.push({
+                var recItem = {
                     noteId: r.noteId,
                     title: r.title,
                     noteIcon: attr.noteIcon,
@@ -340,7 +351,9 @@ async function sync() {
                     dateCreated: r.dateCreated,
                     dateModified: r.dateModified,
                     tags: attr.tags,
-                });
+                };
+                if (attr.shareAlias) recItem.shareAlias = attr.shareAlias;
+                data.recommend.push(recItem);
             }
         }
     }

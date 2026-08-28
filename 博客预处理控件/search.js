@@ -84,6 +84,7 @@ async function sync() {
     var excludedIds = {};
     var iconMap = {};
     var colorMap = {};
+    var aliasMap = {};
     for (var i = 0; i < labels.length; i++) {
         if (
             (labels[i].name === "shareHiddenFromTree" && labels[i].value === "true") ||
@@ -96,6 +97,9 @@ async function sync() {
         }
         if (labels[i].name === "color") {
             colorMap[labels[i].noteId] = labels[i].value;
+        }
+        if (labels[i].name === "shareAlias") {
+            aliasMap[labels[i].noteId] = labels[i].value;
         }
     }
     // 补充查询 iconClass（仅当 icon 未设置时作为 fallback）
@@ -139,6 +143,7 @@ async function sync() {
                 dateModified: nodes[i].dateModified || "",
                 noteIcon: iconMap[nodes[i].noteId] || "",
                 color: colorMap[nodes[i].noteId] || "",
+                shareAlias: aliasMap[nodes[i].noteId] || "",
                 content: truncate(stripHtml(content), contentLen),
             });
         }

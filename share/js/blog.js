@@ -84,6 +84,12 @@
 
     function isEmpty(obj) { return obj === null || obj === undefined || (Array.isArray(obj) && obj.length === 0); }
 
+    /** 获取笔记的跳转地址：优先使用 shareAlias，否则使用 noteId */
+    function noteUrl(item) {
+        if (item.shareExternalLink) return item.shareExternalLink;
+        return '/' + (item.shareAlias || item.noteId);
+    }
+
     /* ── 统一滚动管理器（一次 rAF，共享滚动位置） ── */
     var _scrollHandlers = [];
     var _scrollTicking = false;
@@ -242,8 +248,8 @@
                   )
                 : "";
             html +=
-                '<a class="search-result-item" href="/' +
-                item.noteId +
+                '<a class="search-result-item" href="' +
+                noteUrl(item) +
                 '">' +
                 '<span class="search-result-title"' +
                 (item.color ? ' style="color:' + escapeHtml(item.color) + '"' : "") +
@@ -884,7 +890,8 @@
         html += '">';
         html += '<h4 class="rec-title">';
         if (item.noteIcon) html += '<i class="' + escapeHtml(item.noteIcon) + ' rec-item-icon"></i> ';
-        html += '<a href="/' + item.noteId + '"' +
+        html += '<a href="' + noteUrl(item) + '"' +
+            (item.shareExternalLink ? ' target="_blank" rel="noopener"' : '') +
             (item.color ? ' style="color:' + escapeHtml(item.color) + '"' : "") +
             ">" + escapeHtml(item.title) + '</a></h4>';
         if (item.content) {
@@ -969,7 +976,8 @@
                         html += '<div class="rec-upd-item">';
                         if (u.noteIcon) html += '<i class="' + escapeHtml(u.noteIcon) + ' upd-item-icon"></i> ';
                         html += '<time class="rec-date">' + fmtDate(u.dateCreated) + '</time>';
-                        html += '<h4 class="rec-title"><a href="/' + u.noteId + '"' +
+                        html += '<h4 class="rec-title"><a href="' + noteUrl(u) + '"' +
+                            (u.shareExternalLink ? ' target="_blank" rel="noopener"' : '') +
                             (u.color ? ' style="color:' + escapeHtml(u.color) + '"' : "") +
                             ">" + escapeHtml(u.title) + '</a></h4>';
                         if (u.tags && u.tags.length) html += renderModuleTags(u.tags);
@@ -1170,7 +1178,8 @@
                 var u = data[i];
                 html += '<li class="cat-mega-update-item">';
                 if (u.noteIcon) html += '<i class="' + escapeHtml(u.noteIcon) + '"></i> ';
-                html += '<a href="/' + u.noteId + '"' +
+                html += '<a href="' + noteUrl(u) + '"' +
+                    (u.shareExternalLink ? ' target="_blank" rel="noopener"' : '') +
                     (u.color ? ' style="color:' + escapeHtml(u.color) + '"' : "") +
                     '>' + escapeHtml(u.title) + '</a>';
                 html += '<time>' + fmtDate(u.dateCreated) + '</time>';
@@ -1223,7 +1232,8 @@
                 });
             } else {
                 titleEl = document.createElement("a");
-                titleEl.href = "/" + item.noteId;
+                titleEl.href = noteUrl(item);
+                if (item.shareExternalLink) { titleEl.target = "_blank"; titleEl.rel = "noopener"; }
                 titleEl.className = "tag-chip";
                 titleEl.addEventListener("click", closeCategoryPanel);
             }
@@ -1262,7 +1272,7 @@
                     window.open(item.shareExternalLink, '_blank');
                     closeCategoryPanel();
                 } else {
-                    window.location.href = "/" + item.noteId;
+                    window.location.href = noteUrl(item);
                 }
             });
 
@@ -1351,7 +1361,8 @@
                 });
             } else {
                 titleEl = document.createElement("a");
-                titleEl.href = "/" + item.noteId;
+                titleEl.href = noteUrl(item);
+                if (item.shareExternalLink) { titleEl.target = "_blank"; titleEl.rel = "noopener"; }
                 titleEl.className = "tag-chip";
                 titleEl.addEventListener("click", closeCategoryPanel);
             }
@@ -1388,7 +1399,7 @@
                     window.open(item.shareExternalLink, '_blank');
                     closeCategoryPanel();
                 } else {
-                    window.location.href = "/" + item.noteId;
+                    window.location.href = noteUrl(item);
                 }
             });
 
@@ -1859,7 +1870,7 @@
                             (n.dateModified ? '修改:' + fmtDate(n.dateModified) : '') +
                             '</span>';
                     }
-                    h += '<a class="tagcloud-note" href="/' + n.noteId + '">' +
+                    h += '<a class="tagcloud-note" href="' + noteUrl(n) + '">' +
                         '<span class="tagcloud-note-title"' + (n.color ? ' style="color:' + escapeHtml(n.color) + '"' : '') + '>' +
                         '<span class="tagcloud-note-title-text">' + icon + title + '</span>' + _dates +
                         '</span>' +
@@ -1920,11 +1931,14 @@
     /* ── Trilium Internal Links 处理 ── */
     function processInternalLinks() {
         var iconMap = {};
+        var aliasMap = {};
         if (treeData) {
             function walkTree(arr) {
                 for (var i = 0; i < arr.length; i++) {
-                    if (arr[i].icon || arr[i].noteIcon) iconMap[arr[i].noteId] = arr[i].icon || arr[i].noteIcon;
-                    if (arr[i].children) walkTree(arr[i].children);
+                    var item = arr[i];
+                    if (item.icon || item.noteIcon) iconMap[item.noteId] = item.icon || item.noteIcon;
+                    if (item.shareAlias) aliasMap[item.noteId] = item.shareAlias;
+                    if (item.children) walkTree(item.children);
                 }
             }
             walkTree(treeData);
@@ -1934,7 +1948,7 @@
             var href = link.getAttribute("href") || "";
             var noteId = href.replace("note://", "").split(/[?#]/)[0];
             if (noteId) {
-                link.href = "/" + noteId;
+                link.href = "/" + (aliasMap[noteId] || noteId);
                 link.classList.add("trilium-ref-link");
                 if (iconMap[noteId]) {
                     link.setAttribute("data-icon", iconMap[noteId]);
@@ -1946,9 +1960,10 @@
             if (!link.id) link.id = "ref-" + Math.random().toString(36).slice(2, 8);
             link.classList.add("trilium-ref-link");
             var href = link.getAttribute("href") || "";
-            var noteId = href.replace(/^note:\/\//, "").split(/[?#]/)[0];
-            if (noteId && iconMap[noteId]) {
-                link.setAttribute("data-icon", iconMap[noteId]);
+            var noteId = href.replace(/^note:\/\//, "").replace(/^\.\//, "").split(/[?#]/)[0];
+            if (noteId) {
+                if (aliasMap[noteId]) link.href = "/" + aliasMap[noteId];
+                if (iconMap[noteId]) link.setAttribute("data-icon", iconMap[noteId]);
             }
         });
     }

@@ -118,7 +118,7 @@ var _twCard = _ogImage ? 'summary_large_image' : 'summary';
 <meta name="twitter:description" content="<%= _ogDesc %>">
 <% if (_ogImage) { %><meta name="twitter:image" content="<%= _ogImage %>"><% } %>
 
-<script>window.__BLOG_CONFIG__ = <%- JSON.stringify(_cfg) %>;</script>
+<script>window.__BLOG_CONFIG__ = <%- JSON.stringify(_cfg).replace(/<\/script/gi, '<\\/script') %>;</script>
 <style>
   :root {
     --cover-pc: url("<%= _cfg.defaultCover %>");

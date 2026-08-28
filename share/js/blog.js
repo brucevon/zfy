@@ -84,6 +84,40 @@
 
     function isEmpty(obj) { return obj === null || obj === undefined || (Array.isArray(obj) && obj.length === 0); }
 
+    /* ── 统一滚动管理器（一次 rAF，共享滚动位置） ── */
+    var _scrollHandlers = [];
+    var _scrollTicking = false;
+    var _cachedScrollY = -1;
+
+    /** 获取当前滚动位置（单帧内缓存，避免重复计算） */
+    function getScrollY() {
+        if (_cachedScrollY >= 0) return _cachedScrollY;
+        _cachedScrollY = Math.max(
+            window.scrollY || 0,
+            document.documentElement.scrollTop || 0,
+            document.body.scrollTop || 0,
+            pageEl ? (pageEl.scrollTop || 0) : 0
+        );
+        return _cachedScrollY;
+    }
+
+    /** 注册滚动回调，回调接收当前滚动位置参数 */
+    function onScroll(fn) { _scrollHandlers.push(fn); }
+
+    function _onScrollDispatch() {
+        _cachedScrollY = -1;   // 重置缓存
+        var y = getScrollY();
+        for (var i = 0; i < _scrollHandlers.length; i++) _scrollHandlers[i](y);
+        _scrollTicking = false;
+    }
+
+    window.addEventListener("scroll", function () {
+        if (!_scrollTicking) { _scrollTicking = true; requestAnimationFrame(_onScrollDispatch); }
+    }, { passive: true });
+    if (pageEl) pageEl.addEventListener("scroll", function () {
+        if (!_scrollTicking) { _scrollTicking = true; requestAnimationFrame(_onScrollDispatch); }
+    }, { passive: true });
+
     function animateCount(el, target) {
         if (!el || target === undefined || target === null) return;
         target = parseInt(target, 10) || 0;
@@ -556,14 +590,12 @@
     function initHighlight() {
         if (window.hljs) {
             document.querySelectorAll("pre code").forEach(function (block) {
-                hljs.highlightElement(block);
+                try {
+                    var result = hljs.highlightElement(block);
+                    /* highlight.js 识别后会在元素上添加 language-xxx class */
+                } catch (_) {}
             });
         }
-    }
-    if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", initHighlight);
-    } else {
-        initHighlight();
     }
 
     /* ── 代码块复制按钮 ── */
@@ -593,8 +625,9 @@
         });
     }
     if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", initCopyButtons);
+        document.addEventListener("DOMContentLoaded", function () { initHighlight(); initCopyButtons(); });
     } else {
+        initHighlight();
         initCopyButtons();
     }
 
@@ -764,27 +797,20 @@
     function initReadingProgress() {
         var bar = document.getElementById("reading-progress");
         if (!bar) return;
-        var ticking = false;
-        function calc() {
-            var pageEl = document.querySelector(".page");
-            var scrollTop, scrollHeight, clientH;
-            if (pageEl && pageEl.scrollHeight > pageEl.clientHeight) {
-                scrollTop = pageEl.scrollTop;
-                scrollHeight = pageEl.scrollHeight;
-                clientH = pageEl.clientHeight;
+        onScroll(function () {
+            var p = pageEl || document.querySelector(".page");
+            var scrollTop = getScrollY();
+            var scrollHeight, clientH;
+            if (p && p.scrollHeight > p.clientHeight) {
+                scrollHeight = p.scrollHeight;
+                clientH = p.clientHeight;
             } else {
-                scrollTop = window.pageYOffset || document.documentElement.scrollTop || 0;
                 scrollHeight = document.documentElement.scrollHeight;
                 clientH = window.innerHeight;
             }
             var pct = scrollHeight > clientH ? scrollTop / (scrollHeight - clientH) : 0;
             bar.style.width = Math.min(pct, 1) * 100 + "%";
-            ticking = false;
-        }
-        function onScroll() { if (!ticking) { requestAnimationFrame(calc); ticking = true; } }
-        window.addEventListener("scroll", onScroll, { passive: true });
-        var p = document.querySelector(".page");
-        if (p) p.addEventListener("scroll", onScroll, { passive: true });
+        });
     }
     if (document.readyState === "loading") {
         document.addEventListener("DOMContentLoaded", initReadingProgress);
@@ -1621,30 +1647,16 @@
         btn.setAttribute("aria-label", "回到顶部");
         document.body.appendChild(btn);
 
-        var pageEl = document.querySelector(".page");
-        var ticking = false;
-
-        function calc() {
-            var scrollTop, clientH;
-            if (pageEl && pageEl.scrollHeight > pageEl.clientHeight) {
-                scrollTop = pageEl.scrollTop;
-                clientH = pageEl.clientHeight;
-            } else {
-                scrollTop = window.pageYOffset || document.documentElement.scrollTop || 0;
-                clientH = window.innerHeight;
-            }
-            btn.classList.toggle("visible", scrollTop > clientH);
-            ticking = false;
-        }
-        function onScroll() { if (!ticking) { requestAnimationFrame(calc); ticking = true; } }
+        onScroll(function () {
+            var p = pageEl || document.querySelector(".page");
+            var clientH = (p && p.scrollHeight > p.clientHeight) ? p.clientHeight : window.innerHeight;
+            btn.classList.toggle("visible", getScrollY() > clientH);
+        });
 
         btn.addEventListener("click", function () {
             window.scrollTo({ top: 0, behavior: "smooth" });
             if (pageEl) pageEl.scrollTo({ top: 0, behavior: "smooth" });
         });
-
-        window.addEventListener("scroll", onScroll, { passive: true });
-        if (pageEl) pageEl.addEventListener("scroll", onScroll, { passive: true });
     }
 
     function escapeHtml(str) {
@@ -1974,34 +1986,16 @@
         var delta = 3;
         var touchStartY = -1;
 
-        // 兼容任意滚动容器：window / html / body / .page，取最大值
-        function getScroll() {
-            var max = 0;
-            max = Math.max(max, window.scrollY || 0);
-            max = Math.max(max, document.documentElement.scrollTop || 0);
-            max = Math.max(max, document.body.scrollTop || 0);
-            var pageEl = document.querySelector(".page");
-            if (pageEl) max = Math.max(max, pageEl.scrollTop || 0);
-            return max;
-        }
-
-        function handleScroll() {
-            var curr = getScroll();
+        onScroll(function (curr) {
             if (curr <= delta) {
-                header.classList.remove("hidden");         // 回到顶部 => 显示
+                header.classList.remove("hidden");
             } else if (curr > lastScroll) {
-                header.classList.add("hidden");            // 向下滚动 => 隐藏
+                header.classList.add("hidden");
             } else if (curr < lastScroll) {
-                header.classList.remove("hidden");         // 向上滚动 => 显示
+                header.classList.remove("hidden");
             }
             lastScroll = curr;
-        }
-
-        // 三路监听，覆盖 window 滚动与 .page 内部滚动
-        window.addEventListener("scroll", handleScroll, { passive: true });
-        document.addEventListener("scroll", handleScroll, { passive: true, capture: true });
-        var pageEl2 = document.querySelector(".page");
-        if (pageEl2) pageEl2.addEventListener("scroll", handleScroll, { passive: true });
+        });
 
         // 移动端：触摸滑动方向判断
         document.addEventListener(

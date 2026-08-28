@@ -2088,8 +2088,31 @@ a.stat-pill.stat-pill--static {
 }
 
 .rec-upd-item {
-    padding: 2px 0;
-    border-bottom: 1px solid var(--glass-border);
+    position: relative;
+    padding: 8px 0 8px 14px;
+    border-bottom: none;
+}
+.rec-upd-item::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 14px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--primary);
+}
+.rec-upd-item:not(:last-child)::after {
+    content: "";
+    position: absolute;
+    left: 2.5px;
+    top: 22px;
+    bottom: 0;
+    width: 1px;
+    background: var(--border);
+}
+.rec-upd-item:first-child::before {
+    box-shadow: 0 0 0 3px rgba(83, 157, 253, 0.15);
 }
 .rec-title .rec-item-icon {
     font-size: 1rem;
@@ -2108,7 +2131,6 @@ a.stat-pill.stat-pill--static {
 }
 .rec-upd-item:last-child {
     padding-bottom: 0;
-    border-bottom: none;
 }
 .rec-loading {
     font-size: 0.85rem;

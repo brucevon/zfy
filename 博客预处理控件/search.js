@@ -30,6 +30,13 @@ function truncate(str, maxLen) {
     return str.substring(0, maxLen) + "…";
 }
 
+/** 从 HTML 内容中提取第一张图片的 src，没有则返回空字符串 */
+function extractCoverImg(html) {
+    if (!html) return "";
+    var m = html.match(/<img[^>]+src=["']([^"']+)["']/i);
+    return m ? m[1] : "";
+}
+
 async function sync() {
     var cfg = api._syncConfig || {};
     var rootNoteId = cfg.rootNoteId;
@@ -85,6 +92,7 @@ async function sync() {
     var iconMap = {};
     var colorMap = {};
     var aliasMap = {};
+    var coverMap = {};
     for (var i = 0; i < labels.length; i++) {
         if (
             (labels[i].name === "shareHiddenFromTree" && labels[i].value === "true") ||
@@ -100,6 +108,9 @@ async function sync() {
         }
         if (labels[i].name === "shareAlias") {
             aliasMap[labels[i].noteId] = labels[i].value;
+        }
+        if (labels[i].name === "articleCover") {
+            coverMap[labels[i].noteId] = labels[i].value;
         }
     }
     // 补充查询 iconClass（仅当 icon 未设置时作为 fallback）
@@ -136,7 +147,8 @@ async function sync() {
         if (excludedIds[nodes[i].noteId]) continue;
         var content = contentMap[nodes[i].noteId] || "";
         if (content && content.trim().length > 0) {
-            result.push({
+            var cover = coverMap[nodes[i].noteId] || extractCoverImg(content);
+            var item = {
                 noteId: nodes[i].noteId,
                 title: nodes[i].title,
                 dateCreated: nodes[i].dateCreated || "",
@@ -145,7 +157,9 @@ async function sync() {
                 color: colorMap[nodes[i].noteId] || "",
                 shareAlias: aliasMap[nodes[i].noteId] || "",
                 content: truncate(stripHtml(content), contentLen),
-            });
+            };
+            if (cover) item.cover = cover;
+            result.push(item);
         }
     }
 

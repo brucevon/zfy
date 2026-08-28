@@ -927,7 +927,10 @@
         var start = articlePage * ARTICLE_PAGE_SIZE;
         var html = "";
         for (var i = start; i < start + ARTICLE_PAGE_SIZE && i < items.length; i++) {
-            html += '<div class="article-mod">' + renderArticleCard(items[i], { wide: true }) + '</div>';
+            var item = items[i];
+            var modCls = 'article-mod' + (item.cover ? ' article-mod--has-cover' : '');
+            var modStyle = item.cover ? ' style="--cover-url:url(\'' + escapeHtml(item.cover).replace(/'/g, "\\'") + '\')"' : '';
+            html += '<div class="' + modCls + '"' + modStyle + '>' + renderArticleCard(item, { wide: true }) + '</div>';
         }
         el.innerHTML = html;
         if (totalPages > 1) {
@@ -1726,6 +1729,16 @@
         var layout = document.querySelector(".note-layout");
         var curId = getCurrentNoteId();
         ensureTagData(function () {
+            /* curId 可能是 shareAlias，需解析为 noteId */
+            var tree = (blogData && blogData.tree) || treeData || [];
+            if (tree.length) {
+                (function resolve(arr) {
+                    for (var i = 0; i < arr.length; i++) {
+                        if (arr[i].shareAlias === curId) { curId = arr[i].noteId; return; }
+                        if (arr[i].children) resolve(arr[i].children);
+                    }
+                })(tree);
+            }
             var noteTags = [];
             for (var k in tagData) {
                 if (tagData[k].noteId.indexOf(curId) !== -1) noteTags.push(k);
@@ -1870,13 +1883,16 @@
                             (n.dateModified ? '修改:' + fmtDate(n.dateModified) : '') +
                             '</span>';
                     }
-                    h += '<a class="tagcloud-note" href="' + noteUrl(n) + '">' +
-                        '<span class="tagcloud-note-title"' + (n.color ? ' style="color:' + escapeHtml(n.color) + '"' : '') + '>' +
+                    var noteCls = 'tagcloud-note' + (n.cover ? ' tagcloud-note--has-cover' : '');
+                    var noteStyle = n.cover ? ' style="--cover-url:url(\'' + escapeHtml(n.cover).replace(/'/g, "\\'") + '\')"' : '';
+                    h += '<a class="' + noteCls + '"' + noteStyle + ' href="' + noteUrl(n) + '">';
+                    h += '<span class="tagcloud-note-body">';
+                    h += '<span class="tagcloud-note-title"' + (n.color ? ' style="color:' + escapeHtml(n.color) + '"' : '') + '>' +
                         '<span class="tagcloud-note-title-text">' + icon + title + '</span>' + _dates +
                         '</span>' +
                         (snippet ? '<span class="tagcloud-note-snippet">' + snippet + '</span>' : '') +
-                        tagsHtml +
-                        '</a>';
+                        tagsHtml;
+                    h += '</span></a>';
                 }
                 h += '</div>';
                 if (totalPages > 1) {
@@ -2035,3 +2051,5 @@
         );
     }
 })();
+
+

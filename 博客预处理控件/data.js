@@ -8,10 +8,10 @@
  *     "tree":         [ { noteId, title, noteIcon, color, category, shareExternalLink, children }, ... ],
  *     "aboutTree":    [ { noteId, title, noteIcon, color, category, shareExternalLink, children }, ... ],
  *     "tags":         { tagName: { count, noteId: [...] }, ... },
- *     "article":      [ { noteId, title, noteIcon, color, content, dateCreated, dateModified, tags }, ... ],
- *     "recentUpdate": [ { noteId, title, noteIcon, color, dateCreated, tags }, ... ],
- *     "announcement": { noteId, title, noteIcon, color, content, dateCreated, tags } | null,
- *     "recommend":    [ { noteId, title, noteIcon, color, content, dateCreated, dateModified, tags }, ... ],
+ *     "article":      [ { noteId, title, noteIcon, color, cover?, content, dateCreated, dateModified, tags }, ... ],
+ *     "recentUpdate": [ { noteId, title, noteIcon, color, cover?, dateCreated, tags }, ... ],
+ *     "announcement": { noteId, title, noteIcon, color, cover?, content, dateCreated, tags } | null,
+ *     "recommend":    [ { noteId, title, noteIcon, color, cover?, content, dateCreated, dateModified, tags }, ... ],
  *     "stats":        { article, recommend, recentUpdate, announcement },
  *     "heatmap":      [ { date, count }, ... ]
  *   }
@@ -46,6 +46,13 @@ function stripHtml(str) {
 function truncate(str, maxLen) {
     if (!str || str.length <= maxLen) return str || "";
     return str.substring(0, maxLen) + "…";
+}
+
+/** 从 HTML 内容中提取第一张图片的 src，没有则返回空字符串 */
+function extractCoverImg(html) {
+    if (!html) return "";
+    var m = html.match(/<img[^>]+src=["']([^"']+)["']/i);
+    return m ? m[1] : "";
 }
 
 /**
@@ -265,10 +272,11 @@ async function sync() {
                 "  MAX(CASE WHEN a.name = 'iconClass' THEN a.value END) AS iconClass, " +
                 "  MAX(CASE WHEN a.name = 'color' THEN a.value END) AS color, " +
                 "  MAX(CASE WHEN a.name = 'shareAlias' THEN a.value END) AS shareAlias, " +
+                "  MAX(CASE WHEN a.name = 'articleCover' THEN a.value END) AS articleCover, " +
                 "  (SELECT json_group_array(t.value) FROM attributes t " +
                 "    WHERE t.noteId = a.noteId AND t.name = 'noteTag' AND t.isDeleted = 0) AS tags " +
                 "FROM attributes a " +
-                "WHERE a.isDeleted = 0 AND a.noteId IN (" + ph + ") AND a.name IN ('icon', 'iconClass', 'color', 'shareAlias') " +
+                "WHERE a.isDeleted = 0 AND a.noteId IN (" + ph + ") AND a.name IN ('icon', 'iconClass', 'color', 'shareAlias', 'articleCover') " +
                 "GROUP BY a.noteId",
                 noteIds,
             );
@@ -282,6 +290,7 @@ async function sync() {
                     noteIcon: at.icon || at.iconClass || "",
                     color: at.color || "",
                     shareAlias: at.shareAlias || "",
+                    cover: at.articleCover || "",
                     tags: tagArr,
                 };
             }
@@ -296,7 +305,9 @@ async function sync() {
         var content = typeof r.c === "string" ? r.c : (r.c ? r.c.toString() : "");
         var plain = stripHtml(content);
         var hasContent = plain.trim().length > 0;
-        var attr = attrsMap[r.noteId] || { noteIcon: "", color: "", shareAlias: "", tags: [] };
+        var attr = attrsMap[r.noteId] || { noteIcon: "", color: "", shareAlias: "", cover: "", tags: [] };
+
+        var cover = attr.cover || extractCoverImg(content);
 
         if (r.region === "article") {
             if (hasContent) {
@@ -311,6 +322,7 @@ async function sync() {
                     tags: attr.tags,
                 };
                 if (attr.shareAlias) artItem.shareAlias = attr.shareAlias;
+                if (cover) artItem.cover = cover;
                 data.article.push(artItem);
             }
         } else if (r.region === "recentUpdate") {
@@ -324,6 +336,7 @@ async function sync() {
                     tags: attr.tags,
                 };
                 if (attr.shareAlias) updItem.shareAlias = attr.shareAlias;
+                if (cover) updItem.cover = cover;
                 data.recentUpdate.push(updItem);
             }
         } else if (r.region === "announcement") {
@@ -338,6 +351,7 @@ async function sync() {
                     tags: attr.tags,
                 };
                 if (attr.shareAlias) annItem.shareAlias = attr.shareAlias;
+                if (cover) annItem.cover = cover;
                 data.announcement = annItem;
             }
         } else if (r.region === "recommend") {
@@ -353,6 +367,7 @@ async function sync() {
                     tags: attr.tags,
                 };
                 if (attr.shareAlias) recItem.shareAlias = attr.shareAlias;
+                if (cover) recItem.cover = cover;
                 data.recommend.push(recItem);
             }
         }

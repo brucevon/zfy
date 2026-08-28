@@ -1264,7 +1264,12 @@ html.mobile-view .note-tags {
     border-top: 1px solid var(--border, rgba(128,128,128,0.2));
 }
 .module-tags { display: flex; flex-wrap: wrap; gap: 3px 4px; margin-top: 6px; }
-.module-tags .tag-chip--note { font-size: .6rem; padding: 0 3px; }
+.module-tags .tag-chip--note {
+    font-size: .7rem; padding: 2px 6px;
+    background: var(--surface) !important;
+    backdrop-filter: none !important; -webkit-backdrop-filter: none !important;
+    border: 1px solid var(--border) !important;
+}
 .rec-upd-item .module-tags { margin-top: 0; gap: 1px; }
 .tag-chip--note {
     cursor: pointer; font-size: .7rem; padding: 2px 6px;
@@ -1323,7 +1328,7 @@ html.mobile-view .note-tags {
 .tagcloud-note-title { font-weight: 500; font-size: 1rem; display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; gap: 12px; min-width: 0; }
 .tagcloud-note-title i { margin-right: 6px; }
 .tagcloud-note-title-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-.tagcloud-note-dates { font-size: .75rem; opacity: .25; white-space: nowrap; flex-shrink: 0; }
+.tagcloud-note-dates { font-size: .75rem; color: var(--text); white-space: nowrap; flex-shrink: 0; }
 .tagcloud-note-snippet {
     display: block; font-size: .85rem; opacity: .65; line-height: 1.5;
     margin-top: 6px; overflow: hidden; text-overflow: ellipsis;
@@ -1333,6 +1338,41 @@ html.mobile-view .note-tags {
     border-top: 1px solid var(--border, rgba(128,128,128,0.12));
 }
 .tagcloud-note-tags .tag-chip--note { font-size: .7rem; }
+
+/* ── 封面图（背景铺满） ── */
+.article-mod--has-cover { position: relative; overflow: hidden; }
+.article-mod--has-cover::before {
+    content: ''; position: absolute; inset: 0;
+    background: var(--cover-url) center / 100% 100% no-repeat;
+    z-index: 0;
+}
+.article-mod--has-cover::after {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(to top, rgba(0,0,0,.7) 0%, rgba(0,0,0,.35) 50%, rgba(0,0,0,.08) 100%);
+    z-index: 0;
+}
+.article-mod--has-cover > .rec-card-body { position: relative; z-index: 1; }
+.article-mod--has-cover .rec-title a { color: #fff; }
+.article-mod--has-cover .rec-item-icon { color: rgba(255,255,255,.85); }
+.article-mod--has-cover .rec-summary { color: rgba(255,255,255,.9); }
+.article-mod--has-cover .rec-date { color: rgba(255,255,255,.65); background: transparent; border: none; }
+.article-mod--has-cover .module-tags .tag-chip--note { background: rgba(255,255,255,.15); color: rgba(255,255,255,.9); border-color: transparent; }
+
+.tagcloud-note--has-cover { position: relative; overflow: hidden; }
+.tagcloud-note--has-cover::before {
+    content: ''; position: absolute; inset: 0;
+    background: var(--cover-url) center / 100% 100% no-repeat;
+    z-index: 0;
+}
+.tagcloud-note--has-cover::after {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(to top, rgba(0,0,0,.65) 0%, rgba(0,0,0,.3) 50%, rgba(0,0,0,.05) 100%);
+    z-index: 0;
+}
+.tagcloud-note--has-cover > * { position: relative; z-index: 1; }
+.tagcloud-note--has-cover .tagcloud-note-title { color: #fff; }
+.tagcloud-note--has-cover .tagcloud-note-snippet { color: rgba(255,255,255,.85); }
+.tagcloud-note--has-cover .tagcloud-note-dates { color: rgba(255,255,255,.85); }
 .tagcloud-pager {
     display: flex; align-items: center; justify-content: center; gap: 12px;
     margin-top: 24px; padding-top: 16px;

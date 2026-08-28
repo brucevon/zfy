@@ -158,7 +158,10 @@ var _twCard = _ogImage ? 'summary_large_image' : 'summary';
 
 <div class="search-dropdown" id="search-dropdown">
     <div class="search-inner">
-        <input class="search-input" id="search-input" type="text" placeholder="搜索笔记标题或内容…" autocomplete="off" spellcheck="false" />
+        <div class="search-input-wrap">
+            <span class="search-input-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
+            <input class="search-input" id="search-input" type="text" placeholder="搜索笔记标题或内容…" autocomplete="off" spellcheck="false" />
+        </div>
         <div class="search-results" id="search-results"></div>
     </div>
 </div>

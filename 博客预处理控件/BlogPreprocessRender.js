@@ -1,121 +1,76 @@
-import { Button } from "trilium:preact";
 import { showMessage } from "trilium:api";
 
 var MODULES = [
-    { name: "data",   label: "同步聚合数据", url: "/blog-data",   icon: "📦", needsRoot: true },
-    { name: "search", label: "同步搜索索引", url: "/blog-search", icon: "🔍", needsRoot: true },
+    { label: "聚合数据", url: "/blog-data",   icon: "📦" },
+    { label: "搜索索引", url: "/blog-search", icon: "🔍" },
 ];
 
 export default function () {
-    var runScript = async function (name) {
+    var runAll = async function () {
         try {
-            var needsRoot = false;
-            for (var mi = 0; mi < MODULES.length; mi++) {
-                if (MODULES[mi].name === name) {
-                    needsRoot = !!MODULES[mi].needsRoot;
-                    break;
-                }
-            }
             var noteId = api.currentNote.noteId;
             await api.runAsyncOnBackendWithManualTransactionHandling(
-                async function (pid, childName, nr) {
+                async function (pid) {
                     var parent = await api.getNote(pid);
                     var children = await parent.getChildNotes();
-                    var normalize = function (n) {
-                        return n.replace(/\.js$/, "");
-                    };
                     var targetNote = null;
                     for (var ci = 0; ci < children.length; ci++) {
-                        if (normalize(children[ci].title) === childName) {
+                        var t = children[ci].title.replace(/\.js$/, "");
+                        if (t === "data") {
                             targetNote = children[ci];
                             break;
                         }
                     }
                     if (!targetNote)
                         throw new Error(
-                            "未找到子笔记「" +
-                                childName +
-                                "」" +
-                                (children.length
-                                    ? "，现有: " +
-                                      children
-                                          .map(function (c) {
-                                              return c.title;
-                                          })
-                                          .join(", ")
-                                    : "（无子笔记）"),
+                            "未找到子笔记「data」" +
+                            (children.length
+                                ? "，现有: " + children.map(function (c) { return c.title; }).join(", ")
+                                : "（无子笔记）")
                         );
 
                     var code = await targetNote.getContent();
 
-                    // 读取脚本笔记上的配置标签
-                    var targetId = targetNote.getLabelValue("saveNoteId");
-                    if (!targetId)
-                        throw new Error(childName + " 缺少 #saveNoteId");
+                    var rootId = targetNote.getLabelValue("rootNoteId");
+                    var dataSaveId = targetNote.getLabelValue("dataSaveNoteId");
+                    var searchSaveId = targetNote.getLabelValue("searchSaveNoteId");
 
-                    var rootId = null;
-                    if (nr) {
-                        rootId = targetNote.getLabelValue("rootNoteId");
-                        if (!rootId)
-                            throw new Error(childName + " 缺少 #rootNoteId");
-                    }
+                    var dataLen = targetNote.getLabelValue("dataLen");
+                    if (dataLen) dataLen = parseInt(dataLen, 10);
+                    if (!dataLen || isNaN(dataLen)) dataLen = null;
+                    var searchLen = targetNote.getLabelValue("searchLen");
+                    if (searchLen) searchLen = parseInt(searchLen, 10);
+                    if (!searchLen || isNaN(searchLen)) searchLen = null;
 
-                    var contentLen = targetNote.getLabelValue("contentLen");
-                    if (contentLen) contentLen = parseInt(contentLen, 10);
-                    if (!contentLen || isNaN(contentLen)) contentLen = null;
-
-                    // 通过 api._syncConfig 向脚本传递配置，sync() 无参数读取
                     api._syncConfig = {
                         rootNoteId: rootId,
-                        targetNoteId: targetId,
-                        contentLen: contentLen,
+                        dataSaveNoteId: dataSaveId,
+                        searchSaveNoteId: searchSaveId,
+                        dataLen: dataLen,
+                        searchLen: searchLen,
                     };
 
                     var _module = { exports: null };
-                    try {
-                        var fn = new Function("module", "exports", "api", code);
-                        fn(_module, _module.exports || {}, api);
-                    } catch (e) {
-                        /* 自执行块可能因 api.currentNote 不对而报错，忽略 */
+                    var fn = new Function("module", "exports", "api", code);
+                    fn(_module, _module.exports || {}, api);
+
+                    if (_module.exports && typeof _module.exports.syncData === "function") {
+                        await _module.exports.syncData();
                     }
-                    var syncFn = _module.exports && _module.exports.sync;
-                    if (typeof syncFn === "function") {
-                        await syncFn();
-                    } else {
-                        throw new Error(
-                            childName +
-                                " 未导出 sync 函数 (typeof=" +
-                                typeof _module.exports +
-                                ")",
-                        );
+                    if (_module.exports && typeof _module.exports.syncSearch === "function") {
+                        await _module.exports.syncSearch();
                     }
                 },
-                [noteId, name, needsRoot],
+                [noteId],
             );
-            showMessage(name + " 完成");
+            showMessage("同步完成 🎉");
         } catch (e) {
-            console.error(name + " 失败:", e);
-            showMessage(name + " 失败: " + e.message);
+            console.error("同步失败:", e);
+            showMessage("同步失败: " + e.message);
         }
     };
 
-    var runAll = async function () {
-        for (var mi = 0; mi < MODULES.length; mi++) {
-            await runScript(MODULES[mi].name);
-        }
-        showMessage("全部同步完成 🎉");
-    };
-
-    var buttonStyle = {
-        width: "100%",
-        padding: "10px 16px",
-        fontSize: "14px",
-        fontWeight: 600,
-        border: "none",
-        borderRadius: "8px",
-        cursor: "pointer",
-        textAlign: "left" },
-    allBtnStyle = {
+    var allBtnStyle = {
         width: "100%",
         padding: "12px 16px",
         fontSize: "15px",
@@ -128,6 +83,18 @@ export default function () {
         color: "#fff",
         marginBottom: "16px",
     };
+    var itemStyle = {
+        width: "100%",
+        padding: "10px 16px",
+        fontSize: "14px",
+        fontWeight: 600,
+        border: "none",
+        borderRadius: "8px",
+        textAlign: "left",
+        background: "#f0f0f0",
+        color: "#999",
+        cursor: "default",
+    };
 
     return (
         <div style={{ padding: "24px", fontFamily: "system-ui, sans-serif", maxWidth: "420px" }}>
@@ -135,7 +102,7 @@ export default function () {
                 博客预处理
             </h1>
             <p style={{ margin: "0 0 20px", fontSize: "13px", color: "#888" }}>
-                点击按钮同步数据到对应路由
+                点击按钮同步聚合数据与搜索索引
             </p>
 
             <button style={allBtnStyle} onClick={runAll}>
@@ -145,22 +112,13 @@ export default function () {
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {MODULES.map(function (m) {
                     return (
-                        <button
-                            key={m.name}
-                            style={Object.assign({}, buttonStyle, {
-                                background: "#f0f0f0",
-                                color: "#333",
-                            })}
-                            onClick={function () {
-                                runScript(m.name);
-                            }}
-                        >
+                        <div key={m.url} style={itemStyle}>
                             <span style={{ marginRight: 8 }}>{m.icon}</span>
                             {m.label}
-                            <span style={{ float: "right", fontSize: 11, color: "#999", lineHeight: "20px" }}>
+                            <span style={{ float: "right", fontSize: 11, color: "#bbb", lineHeight: "20px" }}>
                                 {m.url}
                             </span>
-                        </button>
+                        </div>
                     );
                 })}
             </div>

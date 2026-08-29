@@ -1,34 +1,24 @@
 /**
- * 博客聚合数据生成 (Backend Script)
+ * 博客聚合数据 + 搜索索引 (Backend Script)
  *
- * 汇总「博客预处理控件」里除 search 外的全部接口数据到单一 JSON，
- * 保留各接口原有数据格式不变，外层按 key 区分：
- *
- *   {
- *     "tree":         [ { noteId, title, noteIcon, color, category, shareExternalLink, children }, ... ],
- *     "aboutTree":    [ { noteId, title, noteIcon, color, category, shareExternalLink, children }, ... ],
- *     "tags":         { tagName: { count, noteId: [...] }, ... },
- *     "article":      [ { noteId, title, noteIcon, color, cover?, content, dateCreated, dateModified, tags }, ... ],
- *     "recentUpdate": [ { noteId, title, noteIcon, color, cover?, dateCreated, tags }, ... ],
- *     "announcement": { noteId, title, noteIcon, color, cover?, content, dateCreated, tags } | null,
- *     "recommend":    [ { noteId, title, noteIcon, color, cover?, content, dateCreated, dateModified, tags }, ... ],
- *     "stats":        { article, recommend, recentUpdate, announcement },
- *     "heatmap":      [ { date, count }, ... ]
- *   }
- *
- * 说明:
- *   - article 查询所有 #article=true 且有内容的笔记，按创建时间倒序（原为单条）
- *   - recentUpdate 最多 3 条；announcement 取最新一条有内容的笔记
- *   - tree / aboutTree / tags 需要 #rootNoteId，未配置时输出空
- *   - 数据获取与属性聚合尽量在 SQL 中完成，JS 仅做 HTML 清理、树结构构建与组装
+ * 合并 data 与 search 两个模块为单一脚本，按 moduleName 参数决定执行哪个，
+ * 无参数时默认全部执行，写入各自目标笔记。
  *
  * 标签:
- *   rootNoteId = <根笔记ID>  (可选，tree/aboutTree/tags 需要)
- *   saveNoteId = <目标笔记ID>  (必需，需设置 #shareRaw #shareAlias=blog-data)
- *   contentLen = <截取长度>  (可选，默认 150)
+ *   rootNoteId      = <根笔记ID>            (可选，tree/aboutTree/tags 需要)
+ *   dataSaveNoteId  = <聚合数据目标笔记ID>   (必需)
+ *   searchSaveNoteId= <搜索索引目标笔记ID>   (必需)
+ *   dataLen         = <聚合数据截取长度>      (可选，默认 150)
+ *   searchLen       = <搜索索引截取长度>      (可选，默认 500)
+ *
+ * 前端通过 api._syncConfig.moduleName = "data" | "search" 指定执行单个模块。
+ * Trilium 直接执行 / #run 定时任务时，无 moduleName 则全部执行。
  */
 
 var TREE_MAX_DEPTH = 50;
+var SEARCH_MAX_DEPTH = 50;
+
+// ── 共享工具函数 ──
 
 function stripHtml(str) {
     if (!str) return "";
@@ -54,6 +44,8 @@ function extractCoverImg(html) {
     var m = html.match(/<img[^>]+src=["']([^"']+)["']/i);
     return m ? m[1] : "";
 }
+
+// ── 共享查询函数 ──
 
 /**
  * 通用目录树构建：递归查询 rootId 下所有后代构建嵌套树。
@@ -88,19 +80,7 @@ async function buildTree(rootId, skipId) {
         if (noteIds.indexOf(nodes[i].noteId) === -1) noteIds.push(nodes[i].noteId);
     }
 
-    var labels = [];
-    if (noteIds.length > 0) {
-        var ph = noteIds.map(function () { return "?"; }).join(",");
-        try {
-            labels = await api.sql.getRows(
-                "SELECT noteId, name, value FROM attributes " +
-                "WHERE type = 'label' AND isDeleted = 0 AND noteId IN (" + ph + ")",
-                noteIds,
-            );
-        } catch (e) {
-            console.error("tree 标签查询失败: " + e.message);
-        }
-    }
+    var labels = await queryLabels(noteIds);
 
     var catSet = {};
     var hiddenSet = {};
@@ -154,6 +134,22 @@ async function buildTree(rootId, skipId) {
     return buildChildren(rootId);
 }
 
+/** 批量查询标签（labels），返回原始行数组 */
+async function queryLabels(noteIds) {
+    if (!noteIds || noteIds.length === 0) return [];
+    var ph = noteIds.map(function () { return "?"; }).join(",");
+    try {
+        return await api.sql.getRows(
+            "SELECT noteId, name, value FROM attributes " +
+            "WHERE type = 'label' AND isDeleted = 0 AND noteId IN (" + ph + ")",
+            noteIds,
+        );
+    } catch (e) {
+        console.error("标签查询失败: " + e.message);
+        return [];
+    }
+}
+
 /**
  * 标签云聚合：根笔记后代中所有 #noteTag 标签。
  * SQL 内完成去重与聚合，返回 { tagName: { count, noteId: [...] } }。
@@ -189,14 +185,15 @@ async function buildTags(rootId) {
     return tags;
 }
 
-async function sync() {
+// ── 模块：聚合数据 ──
+
+async function syncData() {
     var cfg = api._syncConfig || {};
     var rootNoteId = cfg.rootNoteId;
-    var targetNoteId = cfg.targetNoteId;
-    if (!targetNoteId) throw new Error("缺少配置: targetNoteId");
+    var targetNoteId = cfg.dataSaveNoteId;
+    if (!targetNoteId) throw new Error("缺少配置: dataSaveNoteId");
 
-    var contentLen = (cfg.contentLen && cfg.contentLen > 0) ? cfg.contentLen : 150;
-    // 查询时限制内容读取量，避免大笔记拖慢服务器（留余量给 HTML 标签）
+    var contentLen = (cfg.dataLen && cfg.dataLen > 0) ? cfg.dataLen : 150;
     var queryContentLimit = contentLen * 3 + 500;
 
     var startTime = Date.now();
@@ -257,7 +254,7 @@ async function sync() {
         console.error("data 笔记查询失败: " + e.message);
     }
 
-    // ── 3. 一次聚合查询全部属性（图标/颜色/标签），标签在 SQL 内聚合成 JSON 数组 ──
+    // ── 3. 一次聚合查询全部属性（图标/颜色/标签） ──
     var noteIds = [];
     for (var i = 0; i < rows.length; i++) {
         if (noteIds.indexOf(rows[i].noteId) === -1) noteIds.push(rows[i].noteId);
@@ -299,14 +296,13 @@ async function sync() {
         }
     }
 
-    // ── 4. 结构化组装（仅 HTML 清理与对象构造，无额外查询） ──
+    // ── 4. 结构化组装 ──
     for (var ri = 0; ri < rows.length; ri++) {
         var r = rows[ri];
         var content = typeof r.c === "string" ? r.c : (r.c ? r.c.toString() : "");
         var plain = stripHtml(content);
         var hasContent = plain.trim().length > 0;
         var attr = attrsMap[r.noteId] || { noteIcon: "", color: "", shareAlias: "", cover: "", tags: [] };
-
         var cover = attr.cover || extractCoverImg(content);
 
         if (r.region === "article") {
@@ -415,12 +411,7 @@ async function sync() {
     }
 
     var output = JSON.stringify(data);
-
-    var targetNote = await api.getNote(targetNoteId);
-    if (!targetNote) throw new Error("目标笔记不存在");
-    if (targetNote.isProtected)
-        await api.protectNote(targetNoteId, false, false);
-    await targetNote.setContent(output);
+    await writeNote(targetNoteId, output);
 
     console.log(
         "聚合数据同步完成（tree " + data.tree.length + " / aboutTree " + data.aboutTree.length +
@@ -440,28 +431,130 @@ async function sync() {
     };
 }
 
-module.exports = { sync: sync };
+// ── 模块：搜索索引 ──
 
-if (typeof api !== "undefined") {
-    (async function () {
-        try {
-            api._syncConfig = api._syncConfig || {};
-            if (!api._syncConfig.rootNoteId)
-                api._syncConfig.rootNoteId = api.currentNote.getLabelValue("rootNoteId");
-            if (!api._syncConfig.targetNoteId)
-                api._syncConfig.targetNoteId = api.currentNote.getLabelValue("saveNoteId");
-            if (!api._syncConfig.contentLen && !api._syncConfig.hasOwnProperty("contentLen")) {
-                var contentLenTag = api.currentNote.getLabelValue("contentLen");
-                if (contentLenTag) {
-                    var parsed = parseInt(contentLenTag, 10);
-                    if (!isNaN(parsed) && parsed > 0) api._syncConfig.contentLen = parsed;
-                }
-            }
-            if (!api._syncConfig.targetNoteId) throw new Error("缺少 #saveNoteId");
-            var r = await sync();
-            console.log("✅ 聚合数据完成");
-        } catch (e) {
-            console.error("❌ 聚合数据失败: " + e.message);
+async function syncSearch() {
+    var cfg = api._syncConfig || {};
+    var rootNoteId = cfg.rootNoteId;
+    var targetNoteId = cfg.searchSaveNoteId;
+    if (!rootNoteId) throw new Error("缺少配置: rootNoteId");
+    if (!targetNoteId) throw new Error("缺少配置: searchSaveNoteId");
+
+    var contentLen = (cfg.searchLen && cfg.searchLen > 0) ? cfg.searchLen : 500;
+    var queryContentLimit = contentLen * 3 + 500;
+
+    var startTime = Date.now();
+
+    var nodes = [];
+    try {
+        nodes = await api.sql.getRows(
+            "WITH RECURSIVE subtree AS (" +
+            "  SELECT n.noteId, n.title, n.dateCreated, n.dateModified, 0 AS depth" +
+            "  FROM notes n JOIN branches b ON n.noteId = b.noteId AND b.isDeleted = 0" +
+            "  WHERE n.noteId = ? AND n.isDeleted = 0" +
+            "  UNION ALL" +
+            "  SELECT n.noteId, n.title, n.dateCreated, n.dateModified, s.depth + 1" +
+            "  FROM notes n JOIN branches b ON n.noteId = b.noteId AND b.isDeleted = 0" +
+            "  JOIN subtree s ON b.parentNoteId = s.noteId" +
+            "  WHERE n.isDeleted = 0 AND s.depth < ?" +
+            ") SELECT DISTINCT noteId, title, dateCreated, dateModified FROM subtree WHERE depth > 0",
+            [rootNoteId, SEARCH_MAX_DEPTH],
+        );
+    } catch (e) {
+        console.error("search 查询失败: " + e.message);
+    }
+
+    if (nodes.length === 0) throw new Error("根笔记下未找到笔记");
+
+    // 批量查询标签（排除 + 图标）
+    var noteIds = nodes.map(function (n) { return n.noteId; });
+    var labels = await queryLabels(noteIds);
+
+    var excludedIds = {};
+    var iconMap = {};
+    var colorMap = {};
+    var aliasMap = {};
+    var coverMap = {};
+    for (var i = 0; i < labels.length; i++) {
+        if (
+            (labels[i].name === "shareHiddenFromTree" && labels[i].value === "true") ||
+            (labels[i].name === "category" && labels[i].value === "true")
+        ) {
+            excludedIds[labels[i].noteId] = true;
         }
-    })();
+        if (labels[i].name === "icon") iconMap[labels[i].noteId] = labels[i].value;
+        if (labels[i].name === "color") colorMap[labels[i].noteId] = labels[i].value;
+        if (labels[i].name === "shareAlias") aliasMap[labels[i].noteId] = labels[i].value;
+        if (labels[i].name === "articleCover") coverMap[labels[i].noteId] = labels[i].value;
+    }
+    // 补充 iconClass（仅当 icon 未设置时作为 fallback）
+    for (var i2 = 0; i2 < labels.length; i2++) {
+        if (labels[i2].name === "iconClass" && !iconMap[labels[i2].noteId]) {
+            iconMap[labels[i2].noteId] = labels[i2].value;
+        }
+    }
+
+    // 批量查询内容，SUBSTR 限制读取量
+    var contentMap = {};
+    if (noteIds.length > 0) {
+        var ph = noteIds.map(function () { return "?"; }).join(",");
+        try {
+            var contentRows = await api.sql.getRows(
+                "SELECT n.noteId, SUBSTR(COALESCE(b.content, ''), 1, ?) AS c " +
+                "FROM notes n " +
+                "LEFT JOIN blobs b ON n.blobId = b.blobId " +
+                "WHERE n.isDeleted = 0 AND n.noteId IN (" + ph + ")",
+                [queryContentLimit].concat(noteIds),
+            );
+            for (var ci = 0; ci < contentRows.length; ci++) {
+                var raw = contentRows[ci].c;
+                contentMap[contentRows[ci].noteId] = (typeof raw === 'string') ? raw : (raw ? raw.toString() : "");
+            }
+        } catch (e) {
+            console.error("search 内容查询失败: " + e.message);
+        }
+    }
+
+    // 过滤并截取内容
+    var result = [];
+    for (var ni = 0; ni < nodes.length; ni++) {
+        if (excludedIds[nodes[ni].noteId]) continue;
+        var content = contentMap[nodes[ni].noteId] || "";
+        if (content && content.trim().length > 0) {
+            var cover = coverMap[nodes[ni].noteId] || extractCoverImg(content);
+            var item = {
+                noteId: nodes[ni].noteId,
+                title: nodes[ni].title,
+                dateCreated: nodes[ni].dateCreated || "",
+                dateModified: nodes[ni].dateModified || "",
+                noteIcon: iconMap[nodes[ni].noteId] || "",
+                color: colorMap[nodes[ni].noteId] || "",
+                shareAlias: aliasMap[nodes[ni].noteId] || "",
+                content: truncate(stripHtml(content), contentLen),
+            };
+            if (cover) item.cover = cover;
+            result.push(item);
+        }
+    }
+
+    var output = JSON.stringify(result);
+    await writeNote(targetNoteId, output);
+
+    console.log(
+        "搜索索引同步完成（" + result.length + " 条，" + (Date.now() - startTime) + "ms）",
+    );
+    return { count: result.length, elapsedMs: Date.now() - startTime };
 }
+
+// ── 写入目标笔记 ──
+
+async function writeNote(noteId, content) {
+    var note = await api.getNote(noteId);
+    if (!note) throw new Error("目标笔记不存在: " + noteId);
+    if (note.isProtected) await api.protectNote(noteId, false, false);
+    await note.setContent(content);
+}
+
+// ── 导出 ──
+
+module.exports = { syncData: syncData, syncSearch: syncSearch };

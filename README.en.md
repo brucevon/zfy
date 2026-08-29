@@ -77,9 +77,9 @@ Root Note (note with #isHome=true)
 
 ```text
 BlogPreprocessRender.js (Orchestrator)
-  ├─ data.js   ─→ Aggregated data (tree / aboutTree / tags / article /
+  └─ data.js   ─→ Aggregated data (tree / aboutTree / tags / article /
   │               recentUpdate / announcement / recommend / stats / heatmap)
-  └─ search.js ─→ Search index JSON (all notes)
+  │            ─→ Search index JSON (all notes)
         │
         └─→ Written to intermediate notes (#shareRaw + #shareAlias=blog-data / blog-search)
                │
@@ -195,11 +195,11 @@ Create child notes under the root note as needed. Add labels to control display 
 Import script files from the `博客预处理控件/` directory:
 
 - **`BlogPreprocessRender.js`** → Import as **JSX** note (render panel). Create a new note with type **Render Note**, link it to the JSX note, then open it to see the panel.
-- **`data.js`**, **`search.js`** → Import as **Backend Script** notes, ideally as child notes of the JSX note.
+- **`data.js`** → Import as **Backend Script** note, ideally as a child of the JSX note.
 
 After importing, configure the orchestrator as described in [⚙️ Preprocessing Scripts](#%EF%B8%8F-preprocessing-scripts). After running once, homepage data is pre-generated.
 
-> Note: The 3 scripts have **different types** — don't import them all as the same type. `BlogPreprocessRender.js` must be **JSX** to render the panel properly. **`~renderNote` is also a Relation** — must be linked via Relation Map.
+> Note: The 2 scripts have **different types** — don't import them all as the same type. `BlogPreprocessRender.js` must be **JSX** to render the panel properly. **`~renderNote` is also a Relation** — must be linked via Relation Map.
 
 ---
 
@@ -221,11 +221,10 @@ Frontend JS (fetch('/blog-data') aggregated data; fetch('/blog-search') search i
 
 | Script | Purpose | Required Labels |
 |--------|---------|-----------------|
-| `BlogPreprocessRender.js` | **Orchestrator** — JSX render panel with one-click sync buttons | linked via `~renderNote` |
-| `data.js` | **Aggregator**: category tree / about tree / tag cloud / articles / updates / announcements / recommendations / stats / heatmap in one script | `#rootNoteId` `#saveNoteId` `#contentLen(optional)` |
-| `search.js` | Search index (all notes) | `#rootNoteId` `#saveNoteId` `#contentLen(optional)` |
+| `BlogPreprocessRender.js` | **Orchestrator** — JSX render panel with one-click sync button | linked via `~renderNote` |
+| `data.js` | **Aggregator + Search**: category tree / about tree / tag cloud / articles / updates / announcements / recommendations / stats / heatmap + search index | `#rootNoteId` `#dataSaveNoteId` `#searchSaveNoteId` `#dataLen(optional)` `#searchLen(optional)` |
 
-> Each script writes to its target JSON note via the `#saveNoteId` label. The orchestrator reads this label from each child script.
+> `#dataSaveNoteId` and `#searchSaveNoteId` point to the `blog-data` and `blog-search` note IDs respectively. `#rootNoteId` is used for recursive queries (trees/tags/search).
 
 ### ⚡ Performance Notes
 
@@ -240,31 +239,25 @@ Frontend JS (fetch('/blog-data') aggregated data; fetch('/blog-search') search i
 2. Create a note (e.g., `博客预处理面板`) linked to `BlogPreprocessRender.js` as its render note:
    - Import `BlogPreprocessRender.js` as a **JS Frontend** note
    - Add relation `~renderNote=BlogPreprocessRender.js` (search & link in Relation Map)
-   - Open the render note to see the sync button panel
-3. Make `BlogPreprocessRender.js` the parent; add `data.js`, `search.js` as its child notes (titles must match the "Script" column, e.g., `data.js`)
-4. Add labels to each child script:
+   - Open the render note to see the sync button
+3. Make `BlogPreprocessRender.js` the parent; add `data.js` as its child note (title must be `data.js`)
+4. Add labels to the `data.js` child note:
 
-   | Child Script | Required Labels |
-   |--------------|-----------------|
-   | `data.js` | `#saveNoteId=blog-data笔记ID` `#rootNoteId=博客根笔记ID` `#contentLen=150(optional)` |
-   | `search.js` | `#saveNoteId=blog-search笔记ID` `#rootNoteId=博客根笔记ID` `#contentLen=500(optional)` |
+   | Label | Description |
+   |-------|-------------|
+   | `#dataSaveNoteId=<blog-data noteId>` | Aggregated data target |
+   | `#searchSaveNoteId=<blog-search noteId>` | Search index target |
+   | `#rootNoteId=<root noteId>` | Root for recursive queries (tree/tags/search) |
+   | `#dataLen=150` | Aggregated data truncation (optional, default 150) |
+   | `#searchLen=500` | Search index truncation (optional, default 500) |
 
-   > The orchestrator reads `#saveNoteId` from each child script. `#rootNoteId` is used for recursive queries (trees/tags). `#contentLen` overrides the default truncation length.
+   > The orchestrator reads labels from the child script to determine write targets. `#rootNoteId` is used for recursive queries.
 
-5. Open the render note and click one-click sync or run scripts individually; check console output
-
-> 💡 On first run, execute scripts **one by one** to verify output. After success, use one-click sync for all.
+5. Open the render note, click one-click sync, check console output
 
 ### Automatic Execution
 
-Orchestrator and child scripts support `#run` labels for automatic execution. See [Trilium backend script events](https://docs.triliumnotes.org/user-guide/scripts/backend-basics/events). E.g., `#run=sync` triggers preprocessing after sync.
-
-### Running Scripts Standalone (without Orchestrator)
-
-1. Import as **Backend Script**, add required labels (`#rootNoteId`, `#saveNoteId`, `#contentLen`)
-2. Right-click the script note → **Execute script**
-
-> The standalone block auto-detects whether `api._syncConfig` was set by the orchestrator; if not, it reads labels from the note itself.
+The orchestrator supports `#run` labels for automatic execution. See [Trilium backend script events](https://docs.triliumnotes.org/user-guide/scripts/backend-basics/events). E.g., `#run=sync` triggers preprocessing after sync.
 
 ---
 
@@ -547,10 +540,9 @@ share/
 ├── css/blog.css      # All blog styles (source)
 └── js/blog.js        # Client-side interaction script (source)
 
-博客预处理控件/          # Backend preprocessing scripts (3 total)
+博客预处理控件/          # Backend preprocessing scripts
 ├── BlogPreprocessRender.js  # Orchestrator (JSX render panel)
-├── data.js                  # Aggregated data (tree/about/tags/articles/updates/announcements/recommendations/stats/heatmap)
-└── search.js                # Search index
+└── data.js                  # Aggregated data + search index
 
 build-min.js          # Minify build script (generates blog.min.ejs)
 压缩部署说明.md        # Minified deployment docs

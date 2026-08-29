@@ -77,9 +77,9 @@
 
 ```text
 BlogPreprocessRender.js (编排器)
-  ├─ data.js   ─→ 聚合数据（tree / aboutTree / tags / article /
+  └─ data.js   ─→ 聚合数据（tree / aboutTree / tags / article /
   │               recentUpdate / announcement / recommend / stats / heatmap）
-  └─ search.js ─→ 搜索索引 JSON（全量笔记）
+  │            ─→ 搜索索引 JSON（全量笔记）
         │
         └─→ 写入中间笔记（#shareRaw + #shareAlias=blog-data / blog-search）
                │
@@ -195,11 +195,11 @@ share/blog.min.ejs     # ★ 压缩单文件（由 build-min.js 生成，推荐�
 从 `博客预处理控件/` 目录导入脚本文件：
 
 - **`BlogPreprocessRender.js`** → 导入为 **JSX 笔记**（代码类型选 `JSX`），新建一个笔记，类型选择 **渲染笔记**，点击渲染笔记选择 `JSX` 笔记，然后打开渲染笔记就可以看见渲染面板
-- **`data.js`**、**`search.js`** → 导入为 **JS 后端脚本**（Backend Script），建议导入为 `JSX` 笔记的子笔记，方便管理。
+- **`data.js`** → 导入为 **JS 后端脚本**（Backend Script），建议导入为 `JSX` 笔记的子笔记，方便管理。
 
 导入后参照下文 [⚙️ 预处理脚本](#%EF%B8%8F-预处理脚本核心架构) 配置编排器。运行一次后，首页数据即预生成完毕。
 
-> 注意：3 个脚本**类型不同**，不能全部选同一类型导入。`BlogPreprocessRender.js` 必须是 **JSX** 才能正常渲染面板。**`~renderNote` 也是 Relation**，需在 Relation Map 中链接。
+> 注意：两个脚本**类型不同**，不能全部选同一类型导入。`BlogPreprocessRender.js` 必须是 **JSX** 才能正常渲染面板。**`~renderNote` 也是 Relation**，需在 Relation Map 中链接。
 
 ---
 
@@ -219,15 +219,14 @@ share/blog.min.ejs     # ★ 压缩单文件（由 build-min.js 生成，推荐�
 
 ### 脚本列表
 
-从 `博客预处理控件/` 目录下载全部文件，在各笔记中粘贴为 **JS 后端脚本**（Backend Script）。每个脚本通过 `#saveNoteId` 标签指向对应的 json 目标笔记：
+从 `博客预处理控件/` 目录下载全部文件，在各笔记中粘贴为 **JS 后端脚本**（Backend Script）。`data.js` 同时承担聚合数据与搜索索引两个模块，通过不同标签分别指定写入目标：
 
 | 脚本 | 功能 | 必需标签 |
 |------|------|----------|
-| `BlogPreprocessRender.js` | **编排入口**，JSX 渲染笔记，显示一键同步按钮面板 | 需通过 `~renderNote` 关联（见下文） |
-| `data.js` | **聚合脚本**：一次生成分类树 / 关于树 / 标签云 / 文章 / 动态 / 公告 / 推荐 / 统计 / 热力全部数据 | `#rootNoteId` `#saveNoteId` `#contentLen(可选)` |
-| `search.js` | 搜索索引（全量笔记） | `#rootNoteId` `#saveNoteId` `#contentLen(可选)` |
+| `BlogPreprocessRender.js` | **编排入口**，JSX 渲染笔记，显示一键同步按钮 | 需通过 `~renderNote` 关联（见下文） |
+| `data.js` | **聚合 + 搜索**：一次生成分类树 / 关于树 / 标签云 / 文章 / 动态 / 公告 / 推荐 / 统计 / 热力 + 搜索索引 | `#rootNoteId` `#dataSaveNoteId` `#searchSaveNoteId` `#dataLen(可选)` `#searchLen(可选)` |
 
-> 每个脚本通过 `#saveNoteId` 标签指向之前创建的对应 json 笔记的 ID。编排器会从每个子脚本标签中读取此 ID，写入对应笔记。
+> `#dataSaveNoteId` 和 `#searchSaveNoteId` 分别指向之前创建的 `blog-data` 和 `blog-search` 笔记 ID。`#rootNoteId` 用于树/标签/搜索等需要递归查询的数据。
 
 ### ⚡ 性能优化说明
 
@@ -242,33 +241,25 @@ share/blog.min.ejs     # ★ 压缩单文件（由 build-min.js 生成，推荐�
 2. 新建一个笔记（如 `博客预处理面板`），关联 `BlogPreprocessRender.js` 作为渲染笔记：
    - 将 `BlogPreprocessRender.js` 导入为 **JS 前端笔记**（代码类型选 `JS Frontend`）
    - 在新笔记上添加关系 `~renderNote=BlogPreprocessRender.js`（在 Relation Map 中搜索并链接）
-   - 打开此渲染笔记即可看到一键同步按钮面板
-3. 将 `BlogPreprocessRender.js` 设为父笔记，`data.js`、`search.js` 作为其子笔记（子脚本笔记的标题须与上表"脚本"列一致，例如 `data.js`）
-4. 在每个**子脚本笔记**上添加标签：
+   - 打开此渲染笔记即可看到一键同步按钮
+3. 将 `BlogPreprocessRender.js` 设为父笔记，`data.js` 作为其子笔记（子脚本笔记的标题须为 `data.js`）
+4. 在 `data.js` 子笔记上添加标签：
 
-   | 子脚本 | 必需标签 |
-   |--------|----------|
-   | `data.js` | `#saveNoteId=blog-data笔记ID` `#rootNoteId=博客根笔记ID` `#contentLen=150(可选)` |
-   | `search.js` | `#saveNoteId=blog-search笔记ID` `#rootNoteId=博客根笔记ID` `#contentLen=500(可选)` |
+   | 标签 | 说明 |
+   |------|------|
+   | `#dataSaveNoteId=blog-data笔记ID` | 聚合数据写入目标 |
+   | `#searchSaveNoteId=blog-search笔记ID` | 搜索索引写入目标 |
+   | `#rootNoteId=博客根笔记ID` | 递归查询根节点（树/标签/搜索） |
+   | `#dataLen=150` | 聚合数据截取长度（可选，默认 150） |
+   | `#searchLen=500` | 搜索索引截取长度（可选，默认 500） |
 
-   > 编排器读取子脚本笔记上的 `#saveNoteId` 标签确定写入目标。`#rootNoteId` 用于树/标签等需要递归查询的数据。`#contentLen` 覆盖默认截取长度。
+   > 编排器读取子脚本笔记上的标签确定写入目标。`#rootNoteId` 用于树/标签/搜索等需要递归查询的数据。
 
-5. 打开渲染笔记，点击一键同步或逐个运行，检查各脚本控制台输出是否通过
-
-> 💡 首次运行时建议**逐个执行**，观察控制台输出排查问题。成功后可使用一键同步批量生成全部数据。
+5. 打开渲染笔记，点击一键同步，检查控制台输出是否通过
 
 ### 自动执行
 
-编排器及子脚本支持通过 `#run` 标签实现自动执行，具体参考 [Trilium 后端脚本事件文档](https://docs.triliumnotes.org/user-guide/scripts/backend-basics/events)。例如 `#run=sync` 可在同步后自动触发预处理。
-
-### 🔧 独立运行脚本（不使用编排器）
-
-如果不使用编排面板，每个脚本也可以独立运行：
-
-1. 将脚本导入为 **JS 后端脚本**，在脚本笔记上添加必要标签（`#rootNoteId`、`#saveNoteId`、`#contentLen` 等）
-2. 在 Trilium 中右键脚本笔记 → **Execute script**，脚本会读取自身标签运行
-
-> 脚本的 standalone 块会自动检测 `api._syncConfig` 是否已由编排器设置，如果未设置则从自身标签读取，无需额外配置。
+编排器支持通过 `#run` 标签实现自动执行，具体参考 [Trilium 后端脚本事件文档](https://docs.triliumnotes.org/user-guide/scripts/backend-basics/events)。例如 `#run=sync` 可在同步后自动触发预处理。
 
 ---
 
@@ -566,10 +557,9 @@ share/
 ├── css/blog.css      # 全部博客样式（源码）
 └── js/blog.js        # 客户端交互脚本（源码）
 
-博客预处理控件/          # 后端预处理脚本（共 3 个）
+博客预处理控件/          # 后端预处理脚本
 ├── BlogPreprocessRender.js  # 编排入口（JSX 渲染面板）
-├── data.js                  # 聚合数据（分类树/关于树/标签/文章/动态/公告/推荐/统计/热力）
-└── search.js                # 搜索索引
+└── data.js                  # 聚合数据 + 搜索索引
 
 build-min.js          # 压缩构建脚本（生成 blog.min.ejs）
 压缩部署说明.md        # 压缩部署文档

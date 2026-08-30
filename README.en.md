@@ -1,443 +1,314 @@
 # zfy — TriliumNext Blog Theme
 
 <p align="center">
-  <a href="README.md">🇨🇳 中文</a> &nbsp;|&nbsp; <a href="README.en.md">🇺🇸 English</a>
+  <a href="README.md">中文</a> · <a href="README.en.md">English</a>
 </p>
 
-> ℹ️ This document is AI-assisted and reviewed against the source code; the [Chinese version](README.md) is the authoritative reference.
-
-## 🎯 Preface
-
-If you use TriliumNext for knowledge management, you've probably considered turning it into a blog — but the default shared pages are too basic, and you don't want the hassle of maintaining two separate systems (Hexo/WordPress).
-
-**zfy** was built for exactly this: a TriliumNext blog theme based on a **server-side preprocessing + EJS output** architecture. **All content is pre-generated as JSON data on the server; the template only reads static data**, making page loads instantaneous.
-
-🖼️ Example blog → [brucevon.space](https://brucevon.space)
+> zfy is a TriliumNext blog theme. Backend preprocessing pre-generates content as JSON; the template only reads static data, so pages load instantly.
+>
+> AI-assisted documentation, verified manually. When in doubt, the code is authoritative.
+> Demo: <https://brucevon.space>
 
 ---
 
-## 📑 Table of Contents
+## Contents
 
-- [✨ Design Highlights](#-design-highlights)
-- [🖼️ Preview](#-preview)
-- [🗺️ Architecture Overview](#-architecture-overview)
-- [🚀 Quick Start](#-quick-start)
-- [⚙️ Preprocessing Scripts](#%EF%B8%8F-preprocessing-scripts)
-- [📦 Minified Deployment](#-minified-deployment)
-- [🌐 nginx Configuration](#-nginx-configuration)
-- [❓ FAQ](#-faq)
-- [📋 PromotedAttributes Reference](#-promotedattributes-reference)
-- [🏷️ Tag Quick Reference](#-tag-quick-reference)
-- [📁 File Structure](#-file-structure)
-- [💭 Closing Thoughts](#-closing-thoughts)
+- [Features](#features)
+- [Architecture](#architecture)
+- [Quick Start](#quick-start)
+- [Preprocessing Scripts](#preprocessing-scripts)
+- [Minified Deployment](#minified-deployment)
+- [nginx Reference](#nginx-reference)
+- [PromotedAttributes](#promotedattributes)
+- [File Structure](#file-structure)
+- [FAQ](#faq)
 
 ---
 
-## ✨ Design Highlights
+## Features
 
-| | |
+| Feature | Description |
 |---|---|
-| 🧩 **Two-Column Layout** | Announcements/updates/heatmap on the left, latest articles on the right; single column on mobile |
-| 🏷️ **Tag-Driven** | 20+ labels covering theme, comments, footer, cover, and more — zero hardcoded values |
-| 🌓 **Dark/Light Themes** | CSS variables + `data-theme` toggle, one-click switch |
-| 📱 **Responsive** | 768px breakpoint adapts to mobile with single-column layout |
-| 💬 **Twikoo Comments** | CDN-loaded, purely tag-configured, theme auto-follows |
-| 🔍 **Full-Text Search** | Server-side pre-built index, real-time client-side search with keyword highlighting |
-| 🔥 **Heatmap** | Yearly article heat distribution map |
-| 📄 **Article Pagination** | One card per article on the homepage, 5 per page |
-| 🖼️ **Lightbox** | Click-to-enlarge images with large prev/next buttons and keyboard navigation |
-| 📦 **Single-File Deployment** | Build script inlines compressed CSS/JS into one EJS — deploy a single shared note |
-| ⚡ **High Performance** | Fully static output + SQL batch preprocessing; one aggregated request loads all module data |
+| Two-column layout | Left: announcements/updates/heatmap; right: latest articles; single column on mobile |
+| Tag-driven | 20+ labels cover theme/comments/footer/cover; zero hardcoding |
+| Dual theme | CSS variables + `data-theme`; one-click dark/light switch |
+| Full-text search | Server-side pre-index, client-side realtime search with highlighting |
+| Breadcrumbs | Category path on home cards / content pages / search results, click to locate in category tree |
+| Article pagination | Latest articles, 5 per page |
+| Tag-cloud two columns | Article list double-column on PC, single on mobile |
+| Image lightbox | Click to zoom, large prev/next buttons, arrow-key support |
+| shareAlias | Alias URLs auto-resolve to the real noteId |
+| Single-file deploy | Build script inlines minified CSS/JS into one EJS |
+| High performance | SQL batch preprocessing, one aggregated request loads all module data |
 
 ---
 
-## 🖼️ Preview
-
-> Live demo: [brucevon.space](https://brucevon.space)
-
----
-
-## 🗺️ Architecture Overview
+## Architecture
 
 ### Configuration Flow
 
 ```text
-Root Note (note with #isHome=true)
-  │
-  │  blog.ejs reads labels → _cfg object
-  │
-  ├─→ Server-side: theme, cover, category root, About lookup
-  │
-  └─→ window.__BLOG_CONFIG__ injected into page
-       │
-       └─→ blog.js reads: HOME_ID, default theme
+Root note (#isHome=true)
+  └─ blog.ejs reads labels → _cfg
+       └─ server: theme/cover/category root/About
+       └─ window.__BLOG_CONFIG__ → blog.js
 ```
 
 ### Preprocessing Flow
 
 ```text
-BlogPreprocessRender.js (Orchestrator)
-  └─ data.js   ─→ Aggregated data (tree / aboutTree / tags / article /
-  │               recentUpdate / announcement / recommend / stats / heatmap)
-  │            ─→ Search index JSON (all notes)
-        │
-        └─→ Written to intermediate notes (#shareRaw + #shareAlias=blog-data / blog-search)
-               │
-               └─→ Frontend JS fetches /blog-data (aggregated) + /blog-search (search)
+BlogPreprocessRender.js (orchestrator)
+  ├─ data.js   → aggregated data (tree/aboutTree/tags/article/recentUpdate/
+  │              announcement/recommend/stats/heatmap) → blog-data
+  └─ search.js → search index (all notes) → blog-search
+        └─ frontend fetches /blog-data (aggregated) + /blog-search (search)
 ```
-
-> 💡 Understanding this overall flow before diving into the steps will give you better context.
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
-> 💡 **Prerequisite**: In Trilium, "enabling sharing" means right-click the note → **Share** → the note URL becomes publicly accessible. All notes marked "enable sharing" in the steps below require this action.
+> Note: in Trilium, "enable sharing" = right-click the note → Share, making the URL public.
 
-### 1️⃣ Download Resource Files
-
-Download from the `share/` directory of this repo (template + styles + script sources, **or** the single minified file):
+### 1. Download Resources
 
 ```text
-share/blog.ejs         # Blog template (main entry)
-share/css/blog.css     # All blog styles
-share/js/blog.js       # Client-side interaction script
-# Or the single-file build (contains minified css/js inline):
-share/blog.min.ejs     # ★ Minified single file (generated by build-min.js, recommended)
+share/blog.ejs          # template
+share/css/blog.css      # styles
+share/js/blog.js        # script
+share/blog.min.ejs      # ★ single-file build (deploy; generated by build-min.js)
 ```
 
-> Twikoo is loaded via CDN — **no need to upload `twikoo.min.js`**.
+Twikoo is served from CDN — no need to upload `twikoo.min.js`.
 
-### 2️⃣ Import into Trilium (Templates & Styles)
+### 2. Import Template & Styles
 
-First, ensure you have a `分享` (Shared) parent note in Trilium (created automatically when you first share a note, or create one manually). Create resource notes under or alongside it, each **enabled for sharing**:
+Create a `分享` (Shared) parent note in Trilium. Choose one option:
 
-**Option A: Single minified file (recommended)**
+**A. Single-file build (recommended, 1 shared note)**
 
-| File | Required Labels |
-|------|----------------|
-| `blog.min.ejs` | `~shareTemplate(inheritable)=blog.min.ejs` (This is a **Relation** — link via Relation Map on the root note) |
+| File | Labels |
+|---|---|
+| `blog.min.ejs` | `~shareTemplate(inheritable)=blog.min.ejs` (Relation) |
 
-One shared note deploys the entire template + styles + scripts.
+**B. Three source files**
 
-**Option B: Source files (three notes)**
-
-| File | Required Labels |
-|------|----------------|
-| `blog.ejs` | `~shareTemplate(inheritable)=blog.ejs` (**Relation**, link via Relation Map) |
+| File | Labels |
+|---|---|
+| `blog.ejs` | `~shareTemplate(inheritable)=blog.ejs` (Relation) |
 | `blog.css` | `#shareAlias=blog.css` `#shareRaw` |
 | `blog.js` | `#shareAlias=blog.js` `#shareRaw` |
 
-> Static assets are served at `/blog.css`, `/blog.js`, assuming nginx hides the `/share/` prefix. Adjust if not hidden (see nginx config below).
->
-> Choose either option. After source updates, run `node build-min.js` to regenerate the single-file build.
+### 3. Image Assets
 
-### 3️⃣ Create Image Assets
+| Image | Purpose |
+|---|---|
+| `favicon.ico` | browser tab icon |
+| `logo.icon` | top avatar |
+| `bg-pc.png` | PC background |
+| `bg-mobile.png` | mobile background |
+| `beian.png` | footer ICP icon (optional) |
 
-The blog needs 5 images. Create **image notes** (Upload file) in Trilium, each **enabled for sharing**:
+### 4. Shared Data Notes
 
-| Image | Description |
-|-------|-------------|
-| `favicon.ico` | Browser tab icon |
-| `logo.icon` | Top bar avatar |
-| `bg-pc.png` | Desktop blog background |
-| `bg-mobile.png` | Mobile blog background |
-| `beian.png` | Footer ICP icon (optional) |
+Under `分享`, create `home-data` and enable sharing. Below it create 2 json child notes:
 
-> Shared image URLs are at `/share/[noteId]`. With nginx prefix-hiding, they become `/favicon.ico` etc. You can also customize paths via root note labels.
-
-### 4️⃣ Create Shared Data Notes
-
-The preprocessing scripts write data to dedicated JSON notes. Create a note (e.g., `home-data`) under the `分享` parent, **enable sharing**. Below it, create 2 `json`-type child notes:
-
-| Child Note | Required Labels |
-|------------|-----------------|
+| Child Note | Labels |
+|---|---|
 | `blog-data` | `#shareHiddenFromTree` `#shareRaw` `#shareAlias=blog-data` |
 | `blog-search` | `#shareHiddenFromTree` `#shareRaw` `#shareAlias=blog-search` |
 
-> 💡 The aggregated endpoint `/blog-data` returns category tree, about tree, tag cloud, articles, updates, announcements, recommendations, stats, and heatmap in one request. `/blog-search` is kept separate since it's large and frequently updated.
->
-> Each note's noteId (right-click → Copy ID) is used later for `#saveNoteId` labels — collect them in advance.
+Aggregated endpoint `/blog-data` returns category tree/about/tags/articles/updates/announcements/recommendations/stats/heatmap in one request; `/blog-search` holds the search index separately. Record each noteId for the scripts' `#saveNoteId`.
 
-### 5️⃣ Configure Root Note
+### 5. Root Note
 
-Create a **root note** (e.g., `我的博客`), **enable sharing**. Add PromotedAttributes (see below) to the root note, ensuring these key labels are set:
+Create a root note, enable sharing, set key labels (full list in [PromotedAttributes](#promotedattributes)):
 
-- `#isHome=true` — Declares this note as the blog homepage
-- `#homeId=<currentNoteId>` — The root note's own noteId (right-click → Copy ID)
-- `#blogTitle=xxx`, `#blogDescription=xxx` — Blog title and subtitle
-- `~shareTemplate(inheritable)=blog.ejs` (or `blog.min.ejs`) — **Relation**: search for the template note in Relation Map and link it
-- `~shareFavicon(inheritable)=favicon.ico` — Link to favicon image note
-- `~shareLogo(inheritable)=logo.icon` — Link to logo image note
+- `#isHome=true`
+- `#homeId=<noteId>`
+- `#blogTitle` / `#blogDescription`
+- `~shareTemplate(inheritable)=blog.ejs` (or `blog.min.ejs`)
+- `~shareFavicon` / `~shareLogo`
 
-> ⚠️ Labels starting with `~` are **Relations**, not regular labels. You must manually search and link to the target note in the root note's **Relation Map** — simply pasting text won't establish the connection.
+> Labels starting with `~` are Relations — link them manually in the root note's Relation Map; pasting text won't work.
 
-### 6️⃣ Create the "About" Note
+### 6. "About" Note
 
-The About menu tree is built by data.js from the「关于」note under the root note. Create a note titled **「关于」** (or "About") under the root note; it may contain child notes with the `#category=true` label.
+data.js builds the About menu from the「关于」note under the root note. Create at least an empty「关于」note.
 
-> 💡 If you don't need the About menu yet, create an empty note titled "关于" to avoid an empty aboutTree in data.js output.
+### 7. Publish Articles
 
-### 7️⃣ Publish Articles
+Add labels to child notes as needed:
 
-Create child notes under the root note as needed. Add labels to control display placement:
+| Label | Location |
+|---|---|
+| `#recommend=true` | recommended |
+| `#article=true` | latest posts |
+| `#category=true` | category tree node |
+| `#recentUpdate=true` | updates |
+| `#announcement=true` | announcement |
 
-| Label | Display Location |
-|-------|-----------------|
-| `#recommend=true` | "Recommended" module on homepage |
-| `#article=true` | "Latest Posts" sorting |
-| `#category=true` | Category tree node |
-| `#recentUpdate=true` | "Updates" module on homepage |
-| `#announcement=true` | Announcement area on homepage |
+### 8. Import Preprocessing Scripts
 
-### 8️⃣ Import Preprocessing Scripts (Recommended)
+- `BlogPreprocessRender.js` → import as a **JSX** note, create a `Render Note` linked to it
+- `data.js` / `search.js` → import as **Backend Script** notes under the JSX note
 
-Import script files from the `博客预处理控件/` directory:
-
-- **`BlogPreprocessRender.js`** → Import as **JSX** note (render panel). Create a new note with type **Render Note**, link it to the JSX note, then open it to see the panel.
-- **`data.js`** → Import as **Backend Script** note, ideally as a child of the JSX note.
-
-After importing, configure the orchestrator as described in [⚙️ Preprocessing Scripts](#%EF%B8%8F-preprocessing-scripts). After running once, homepage data is pre-generated.
-
-> Note: The 2 scripts have **different types** — don't import them all as the same type. `BlogPreprocessRender.js` must be **JSX** to render the panel properly. **`~renderNote` is also a Relation** — must be linked via Relation Map.
+Configure and run once; homepage data is then pre-generated.
 
 ---
 
-## ⚙️ Preprocessing Scripts (Core Architecture)
+## Preprocessing Scripts
 
-Homepage data isn't queried in real-time by EJS — instead, **backend preprocessing scripts** generate JSON data at runtime, writing it to dedicated shared notes. The template and frontend JS only read static data.
-
-### Data Flow
-
-```
-Preprocessing Scripts (batch SQL + SUBSTR truncation)
-    ↓ api.note.setContent()
-Dedicated Shared JSON Notes (#shareRaw + #shareAlias=blog-data / blog-search)
-    ↓
-Frontend JS (fetch('/blog-data') aggregated data; fetch('/blog-search') search index)
-```
+Homepage data is generated once by backend scripts into shared notes; template/frontend only read.
 
 ### Script List
 
 | Script | Purpose | Required Labels |
-|--------|---------|-----------------|
-| `BlogPreprocessRender.js` | **Orchestrator** — JSX render panel with one-click sync button | linked via `~renderNote` |
-| `data.js` | **Aggregator + Search**: category tree / about tree / tag cloud / articles / updates / announcements / recommendations / stats / heatmap + search index | `#rootNoteId` `#dataSaveNoteId` `#searchSaveNoteId` `#dataLen(optional)` `#searchLen(optional)` |
+|---|---|---|
+| `BlogPreprocessRender.js` | orchestrator, JSX sync panel | linked via `~renderNote` |
+| `data.js` | aggregated data (categories/tags/articles/updates/announcements/recommendations/stats/heatmap) | `#rootNoteId` `#saveNoteId` `#contentLen(optional)` |
+| `search.js` | search index | `#rootNoteId` `#saveNoteId` `#contentLen(optional)` |
 
-> `#dataSaveNoteId` and `#searchSaveNoteId` point to the `blog-data` and `blog-search` note IDs respectively. `#rootNoteId` is used for recursive queries (trees/tags/search).
+### Performance
 
-### ⚡ Performance Notes
-
-- **Batch SQL**: scripts use `JOIN blobs + SUBSTR` to truncate content at the SQLite level, avoiding N × `api.getNote()` full-blob fetches
-- **One aggregated query**: `data.js` merges all modules into 2–3 SQL queries (notes + attribute aggregation + conditional stats), aggregating tags in SQL
-- **Single conditional aggregation**: stats use `COUNT(DISTINCT CASE WHEN ...)` in one query
-- **Transfer control**: only 2 frontend requests (`/blog-data` + `/blog-search`), content truncated to ~150 chars by default
+- Scripts use `JOIN blobs + SUBSTR` to truncate content at the SQL level, avoiding N × `api.getNote()`
+- `data.js` merges all modules into 2–3 SQL queries; tags JSON-aggregated in SQL
+- Stats use `COUNT(DISTINCT CASE WHEN ...)` in one query
+- Frontend makes only 2 requests (`/blog-data` + `/blog-search`); content truncated ~150 chars by default
 
 ### Orchestrator Setup
 
-1. Confirm the 2 shared data notes (`blog-data`, `blog-search`) exist with `#shareHiddenFromTree` `#shareRaw` `#shareAlias=blog-xxx` labels (Quick Start step 4)
-2. Create a note (e.g., `博客预处理面板`) linked to `BlogPreprocessRender.js` as its render note:
-   - Import `BlogPreprocessRender.js` as a **JS Frontend** note
-   - Add relation `~renderNote=BlogPreprocessRender.js` (search & link in Relation Map)
-   - Open the render note to see the sync button
-3. Make `BlogPreprocessRender.js` the parent; add `data.js` as its child note (title must be `data.js`)
-4. Add labels to the `data.js` child note:
+1. Confirm `blog-data` / `blog-search` notes have `#shareHiddenFromTree` `#shareRaw` `#shareAlias`
+2. Create a `博客预处理面板` render note linked to `BlogPreprocessRender.js`
+3. Make `BlogPreprocessRender.js` the parent; `data.js`/`search.js` its children (titles must match)
+4. Add labels to child scripts:
 
-   | Label | Description |
-   |-------|-------------|
-   | `#dataSaveNoteId=<blog-data noteId>` | Aggregated data target |
-   | `#searchSaveNoteId=<blog-search noteId>` | Search index target |
-   | `#rootNoteId=<root noteId>` | Root for recursive queries (tree/tags/search) |
-   | `#dataLen=150` | Aggregated data truncation (optional, default 150) |
-   | `#searchLen=500` | Search index truncation (optional, default 500) |
+   | Child Script | Required Labels |
+   |---|---|
+   | `data.js` | `#saveNoteId=blog-data笔记ID` `#rootNoteId=博客根笔记ID` `#contentLen=150(optional)` |
+   | `search.js` | `#saveNoteId=blog-search笔记ID` `#rootNoteId=博客根笔记ID` `#contentLen=500(optional)` |
 
-   > The orchestrator reads labels from the child script to determine write targets. `#rootNoteId` is used for recursive queries.
+5. Open the render note, one-click sync or run individually
 
-5. Open the render note, click one-click sync, check console output
+`#run` auto-execution is supported (see [Trilium backend script events](https://docs.triliumnotes.org/user-guide/scripts/backend-basics/events)).
 
-### Automatic Execution
+### Standalone Run
 
-The orchestrator supports `#run` labels for automatic execution. See [Trilium backend script events](https://docs.triliumnotes.org/user-guide/scripts/backend-basics/events). E.g., `#run=sync` triggers preprocessing after sync.
+Right-click a script note → Execute script; the standalone block auto-reads its own labels.
 
 ---
 
-## 📦 Minified Deployment
+## Minified Deployment
 
-To avoid maintaining multiple shared notes in Trilium, the repo provides a minify build script:
+Sources are readable; the output is a single file:
 
-- Sources (readable): `share/blog.ejs` + `share/css/blog.css` + `share/js/blog.js`
-- Output (minified & inlined): `share/blog.min.ejs` (esbuild minifies css/js and inlines them; self-checked)
+```text
+Sources: share/blog.ejs + share/css/blog.css + share/js/blog.js
+Output:  share/blog.min.ejs (esbuild-minified css/js inlined, with version header)
+```
 
 ```bash
-node build-min.js   # Requires Node.js ≥ 16; pulls esbuild automatically on first run
+node build-min.js   # Node ≥ 16; pulls esbuild automatically on first run
 ```
 
 See [压缩部署说明.md](压缩部署说明.md) for details.
 
 ---
 
-## 🌐 nginx Configuration
+## nginx Reference
 
-<details>
-<summary>Click to expand production nginx config</summary>
+Production reverse proxy that hides the `/share/` prefix:
 
 ```nginx
-upstream trilium {
-    server 127.0.0.1:8080;
-    keepalive 64;
-}
-
-proxy_cache_path /var/cache/nginx/trilium levels=1:2 keys_zone=trilium_cache:10m max_size=1g inactive=60m use_temp_path=off;
+upstream trilium { server 127.0.0.1:8080; keepalive 2; }
 
 server {
-    listen 80;
-    server_name yourdomain.com;
+    listen 80; server_name yourdomain.com;
     return 301 https://$host$request_uri;
 }
-
 server {
-    listen 443 ssl http2;
-    server_name yourdomain.com;
+    listen 443 ssl http2; server_name yourdomain.com;
+    ssl_certificate /etc/nginx/ssl/yourdomain.com/cert.pem;
+    ssl_certificate_key /etc/nginx/ssl/yourdomain.com/key.pem;
+    ssl_session_cache shared:SSL:10m; ssl_session_timeout 10m;
+    ssl_protocols TLSv1.2 TLSv1.3; ssl_prefer_server_ciphers on;
 
-    ssl_certificate     /etc/letsencrypt/live/yourdomain.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/yourdomain.com/privkey.pem;
-
-    # Security headers
-    add_header X-Frame-Options "SAMEORIGIN" always;
-    add_header X-Content-Type-Options "nosniff" always;
-    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-
-    # Gzip
-    gzip on;
-    gzip_types text/plain text/css application/json application/javascript image/svg+xml;
-    gzip_min_length 256;
-    gzip_comp_level 5;
+    gzip on; gzip_min_length 1k; gzip_comp_level 6;
+    gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss;
     gzip_vary on;
-    gzip_proxied any;
 
-    # Block backend access
-    location ~* /(login|setup|admin|ws|custom|inside) {
-        return 404;
-    }
+    location ~* /(login|setup|admin|ws|custom|inside) { return 404; }
 
-    # Proxy /share/assets/ → backend (preserved)
     location /share/assets/ {
         proxy_pass http://trilium;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_http_version 1.1;
-        proxy_set_header Connection "";
+        proxy_http_version 1.1; proxy_set_header Connection "";
         proxy_read_timeout 90;
     }
-
-    # 🔙 Core reverse proxy: hide /share/ prefix
     location / {
         proxy_pass http://trilium/share/;
-
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_cookie_path /share/ /;
-
-        proxy_http_version 1.1;
-        proxy_set_header Connection "";
+        proxy_http_version 1.1; proxy_set_header Connection "";
         proxy_read_timeout 90;
-
-        # Optimized all-memory buffers for preprocessing large JSON
-        proxy_buffer_size          512k;
-        proxy_buffers            4 512k;
-        proxy_busy_buffers_size   1024k;
-        proxy_max_temp_file_size      0;
+        proxy_buffer_size 512k; proxy_buffers 4 512k;
+        proxy_busy_buffers_size 1024k; proxy_max_temp_file_size 0;
     }
 }
 ```
 
-> Key strategy: `location /` → `proxy_pass http://trilium/share/` automatically hides the `/share/` prefix. All static resources, JSON data, and pages share the same route — no need for individual regex matches. Security blocks only target backend paths like `/login|setup|admin|ws|custom|inside`, without interfering with `/api/attachments/` and similar image resources.
-
-</details>
+`location /` → `proxy_pass http://trilium/share/` hides the `/share/` prefix; static/JSON/pages share one route; security blocks target only backend paths, without touching `/api/attachments/`.
 
 ---
 
-## ❓ FAQ
+## PromotedAttributes
 
-### Blank page or errors
+Declare the label system on the root note via PromotedAttributes. `~relation` types must be linked manually in Relation Map; all `#label:` labels belong on one line, space-separated (broken into categories below for readability — merge when pasting).
 
-- Check if the root note has **sharing enabled** (right-click → Share)
-- Verify the `~shareTemplate` Relation for `blog.ejs` (or `blog.min.ejs`) is correctly linked
-- Verify all resource notes (css/js/images) have **sharing enabled**
-
-### Category tree / About menu not showing
-
-- Confirm `#rootNoteId` points to the correct blog root note ID (required by data.js)
-- Confirm a note titled **「关于」** exists under the root note
-- Confirm `#category=true` is added to notes that should appear in the category tree
-
-### Search returns no results
-
-- Ensure search.js has run successfully and written to the blog-search note
-- Check `#rootNoteId` points to the correct root note containing all articles
-
-### Broken styles
-
-- Clear browser cache (hard refresh with `Ctrl+F5`)
-- When using source files, confirm `blog.css` and `blog.js` sharing status is correct
-- Check nginx static resource path mapping
-
-### Script error "content.trim is not a function"
-
-- If using an older version, update to the latest scripts. This was fixed in commit `39afe5f` (blob content Buffer→String conversion).
-
----
-
-## 📋 PromotedAttributes Reference
-
-Define the blog's label system on the **root note** in Trilium's PromotedAttributes. The complete definitions are listed in 4 categories below.
-
-> ⚠️ **Note**: `~relation` types require **manually creating relation links** — copying text won't establish the connection. Search and link to target notes in the root note's Relation Map.
->
-> All `#label:` + label values **must be on a single line, space-separated** — broken into categories below for readability, but merge them into one line when pasting.
-
-### 1. Relations
+### Relations
 
 ```text
 ~shareTemplate(inheritable)=blog.ejs  ~shareFavicon(inheritable)=favicon.ico  ~shareLogo(inheritable)=logo.icon
 ```
 
-> If deploying the minified single file, replace `blog.ejs` with `blog.min.ejs`.
+Use `blog.min.ejs` instead of `blog.ejs` for single-file deployment.
 
-### 2. Root Note Labels (non-inheritable)
+### Root Note Labels
 
 ```text
 #label:isHome="promoted,alias=Blog Homepage,single,boolean"            #isHome=true
 #label:homeId="promoted,alias=Homepage ID,single,text"                 #homeId="noteId"
 #label:blogTitle="promoted,alias=Blog Title,single,text"               #blogTitle="My Blog"
 #label:blogDescription="promoted,alias=Blog Subtitle,single,text"      #blogDescription="Sharing thoughts"
-#label:appearanceDefaultTheme="promoted,alias=Default Theme,single,text"  #appearanceDefaultTheme="dark"
+#label:appearanceDefaultTheme="promoted,alias=Default Theme,single,text" #appearanceDefaultTheme="dark"
 #label:coverDefaultImage="promoted,alias=Desktop BG URL,single,text"   #coverDefaultImage="/bg-pc.png"
 #label:coverMobileImage="promoted,alias=Mobile BG URL,single,text"     #coverMobileImage="/bg-mobile.png"
 #label:twikooEnabled="promoted,alias=Comments,single,boolean"          #twikooEnabled=true
-#label:twikooEnvId="promoted,alias=Twikoo Env ID,single,text"         #twikooEnvId="your-env-id"
-#label:twikooVersion="promoted,alias=Twikoo Version,single,text"      #twikooVersion="1.6.41"
+#label:twikooEnvId="promoted,alias=Twikoo Env ID,single,text"          #twikooEnvId="your-env-id"
+#label:twikooVersion="promoted,alias=Twikoo Version,single,text"       #twikooVersion="1.6.41"
 #label:footerCopyright="promoted,alias=Footer Copyright,single,text"   #footerCopyright="© 2026 YourName"
-#label:footerIcp="promoted,alias=ICP备案号,single,text"                #footerIcp="your-icp-number"
-#label:footerPolice="promoted,alias=Police备案号,single,text"          #footerPolice="your-police-number"
-#label:footerPoliceUrl="promoted,alias=Police备案URL,single,text"      #footerPoliceUrl="your-police-url"
-#label:footerBeianIcon="promoted,alias=备案图标URL,single,text"        #footerBeianIcon="/beian.png"
+#label:footerIcp="promoted,alias=ICP Number,single,text"               #footerIcp="your-icp"
+#label:footerPolice="promoted,alias=Police Number,single,text"         #footerPolice="your-police"
+#label:footerPoliceUrl="promoted,alias=Police URL,single,text"         #footerPoliceUrl="your-police-url"
+#label:footerBeianIcon="promoted,alias=ICP Icon URL,single,text"       #footerBeianIcon="/beian.png"
 #label:siteStartDate="promoted,alias=Site Start Date,single,text"      #siteStartDate="2026-04-10"
 ```
 
-#### Root Note System Labels
+System labels:
 
 ```text
 #readOnly  #shareDescription="My Blog Description"  #iconClass="bx bxs-yin-yang"
 ```
 
-### 3. Child Note Labels (inheritable · optional)
+### Child Note Labels (inheritable)
 
-Define these on the **root note** with `(inheritable)` so they're visible to child notes:
+Defined on the root note, `(inheritable)` exposes them to children:
 
 ```text
 #label:recommend(inheritable)="promoted,alias=Recommended,single,boolean"
@@ -452,11 +323,9 @@ Define these on the **root note** with `(inheritable)` so they're visible to chi
 #label:shareAlias(inheritable)="promoted,alias=Alias,single,text"
 ```
 
-> Child note labels only need the `#label:` meta definition — no default values on the root note. Children use them by adding and assigning values, e.g., `#recommend=true`.
+### One-Click Copy
 
-### 4. One-Click Copy (all of the above)
-
-> 💡 **Usage**: Split into 5 groups below for readability. **Merge all 5 groups into 1 line (space-separated)** when pasting into the root note's label field.
+Merge all 5 lines into 1 (space-separated) and paste into the root note's label field:
 
 ```text
 #label:isHome="promoted,alias=Blog Homepage,single,boolean" #isHome=true #label:homeId="promoted,alias=Homepage ID,single,text" #homeId="noteId" #label:blogTitle="promoted,alias=Blog Title,single,text" #blogTitle="My Blog" #label:blogDescription="promoted,alias=Blog Subtitle,single,text" #blogDescription="Sharing thoughts"
@@ -465,105 +334,48 @@ Define these on the **root note** with `(inheritable)` so they're visible to chi
 
 #label:twikooEnabled="promoted,alias=Comments,single,boolean" #twikooEnabled=true #label:twikooEnvId="promoted,alias=Twikoo Env ID,single,text" #twikooEnvId="your-env-id" #label:twikooVersion="promoted,alias=Twikoo Version,single,text" #twikooVersion="1.6.41"
 
-#label:footerCopyright="promoted,alias=Footer Copyright,single,text" #footerCopyright="© 2026 YourName" #label:footerIcp="promoted,alias=ICP Number,single,text" #footerIcp="your-icp-number" #label:footerPolice="promoted,alias=Police Number,single,text" #footerPolice="your-police-number" #label:footerPoliceUrl="promoted,alias=Police URL,single,text" #footerPoliceUrl="your-police-url" #label:footerBeianIcon="promoted,alias=备案图标URL,single,text" #footerBeianIcon="/beian.png" #label:siteStartDate="promoted,alias=Site Start Date,single,text" #siteStartDate="2026-04-10"
+#label:footerCopyright="promoted,alias=Footer Copyright,single,text" #footerCopyright="© 2026 YourName" #label:footerIcp="promoted,alias=ICP Number,single,text" #footerIcp="your-icp" #label:footerPolice="promoted,alias=Police Number,single,text" #footerPolice="your-police" #label:footerPoliceUrl="promoted,alias=Police URL,single,text" #footerPoliceUrl="your-police-url" #label:footerBeianIcon="promoted,alias=ICP Icon URL,single,text" #footerBeianIcon="/beian.png" #label:siteStartDate="promoted,alias=Site Start Date,single,text" #siteStartDate="2026-04-10"
 
 #label:recommend(inheritable)="promoted,alias=Recommended,single,boolean" #label:article(inheritable)="promoted,alias=Article,single,boolean" #label:recentUpdate(inheritable)="promoted,alias=Updates,single,boolean" #label:announcement(inheritable)="promoted,alias=Announcement,single,boolean" #label:enableTwikoo(inheritable)="promoted,alias=Comments,single,boolean" #label:category(inheritable)="promoted,alias=Category,single,boolean" #label:shareHiddenFromTree(inheritable)="promoted,alias=Hidden from Tree,single,boolean" #label:iconClass(inheritable)="promoted,alias=Icon,single,text" #label:dateNote(inheritable)="promoted,alias=Date Override,single,text" #label:shareAlias(inheritable)="promoted,alias=Alias,single,text"
 ```
 
 ---
 
-## 🏷️ Tag Quick Reference
-
-Everyday reference (without `#label:` PromotedAttributes syntax).
-
-### Root Note Tags
-
-| Tag | Description | Default |
-|-----|-------------|---------|
-| `#isHome=true` | Mark as blog homepage | `true` |
-| `#homeId=xxx` | Blog homepage note ID | — |
-| `#blogTitle=xxx` | Blog title | — |
-| `#blogDescription=xxx` | Blog subtitle | — |
-| `#appearanceDefaultTheme=xxx` | Default theme `dark`/`light` | `dark` |
-| `#coverDefaultImage=url` | Desktop background | `/bg-pc.png` |
-| `#coverMobileImage=url` | Mobile background | `/bg-mobile.png` |
-| `#twikooEnabled=true` | Enable Twikoo comments | `true` |
-| `#twikooEnvId=xxx` | Twikoo environment ID | — |
-| `#twikooVersion=x.y.z` | Twikoo CDN version | `1.6.41` |
-| `#footerCopyright=xxx` | Footer copyright text | — |
-| `#footerIcp=xxx` | ICP filing number | — |
-| `#footerPolice=xxx` | Police filing number | — |
-| `#footerPoliceUrl=url` | Police filing URL | — |
-| `#footerBeianIcon=url` | ICP icon path | `/beian.png` |
-| `#siteStartDate=YYYY-MM-DD` | Site start date (footer "Running X days") | — |
-
-### Child Note Tags
-
-| Tag | Description |
-|-----|-------------|
-| `#recommend=true` | Mark as recommended, appears in "Recommended" module |
-| `#article=true` | Mark as article, participates in "Latest Posts" sorting |
-| `#recentUpdate=true` | Mark as recent update, appears in "Updates" module |
-| `#announcement=true` | Mark as announcement, appears in announcement area |
-| `#enableTwikoo=true` | Enable comments on this note |
-| `#category=true` | Mark as category node, appears in category tree |
-| `#shareHiddenFromTree=true` | Hide from category tree |
-| `#iconClass` | Icon CSS class (e.g., `bx bx-code`) |
-| `#shareExternalLink` | External link — note redirects to this label's value as URL |
-| `#dateNote=YYYY-MM-DD` | Override sort date |
-| `#blogDescription` | Override page subtitle for this note (falls back to root note's) |
-| `#color` | Note title color; also used by category menu recent update titles |
-| `#shareAlias` | Note URL alias |
-
----
-
-## 🏗️ Architecture
-
-> See [Architecture Overview](#-architecture-overview) for configuration flow and preprocessing flow diagrams.
-
-### Homepage Detection
-
-At render time, the template traverses the parent chain (max 50 levels) from the current note to find the first note with `#isHome=true`. **No hardcoded noteIds.**
-
-### Category Tree
-
-Built with the root note as root. `#category=true` marks category nodes, `#shareHiddenFromTree=true` controls visibility. Generated by `buildTree` recursive SQL in data.js.
-
----
-
-## 📁 File Structure
+## File Structure
 
 ```text
 share/
-├── blog.ejs          # Trilium EJS template — blog entry (source, readable)
-├── blog.min.ejs      # ★ Minified single-file build (deploy this; generated by build-min.js)
-├── css/blog.css      # All blog styles (source)
-└── js/blog.js        # Client-side interaction script (source)
+├── blog.ejs          # template (source)
+├── blog.min.ejs      # ★ single-file build (deploy)
+├── css/blog.css      # styles (source)
+└── js/blog.js        # script (source)
 
-博客预处理控件/          # Backend preprocessing scripts
-├── BlogPreprocessRender.js  # Orchestrator (JSX render panel)
-└── data.js                  # Aggregated data + search index
+博客预处理控件/
+├── BlogPreprocessRender.js  # orchestrator (JSX panel)
+├── data.js                  # aggregated data script
+└── search.js                # search index script
 
-build-min.js          # Minify build script (generates blog.min.ejs)
-压缩部署说明.md        # Minified deployment docs
+build-min.js          # build script (generates blog.min.ejs)
+压缩部署说明.md        # minified deployment guide
 ```
 
 ---
 
-## 💭 Closing Thoughts
+## FAQ
 
-zfy is a personal project, evolving through use. If you're on TriliumNext, feel free to adapt it.
-
-- Example blog: [brucevon.space](https://brucevon.space)
-- GitHub: [zfy](https://github.com/brucevon/zfy)
-
-Feedback and discussion:
-
-- 💬 Blog comments: [brucevon.space/lIQxHnOklH2m](https://brucevon.space/lIQxHnOklH2m)
-- 🐙 GitHub Issues: [github.com/brucevon/zfy/issues](https://github.com/brucevon/zfy/issues)
-
-⭐ Stars are always appreciated.
+- **Blank page** — verify root note and resources have sharing enabled; the `~shareTemplate` Relation is linked.
+- **Category tree / About menu missing** — `#rootNoteId` points to the correct root; a「关于」note exists; `#category=true` is set.
+- **No search results** — search.js wrote to blog-search; `#rootNoteId` is correct.
+- **Broken styles** — hard refresh (Ctrl+F5); with the three-file setup confirm blog.css/blog.js sharing; check nginx paths.
+- **`content.trim is not a function`** — update old scripts (fixed in commit `39afe5f` for blob Buffer→String).
 
 ---
 
-> 📝 This English documentation is AI-assisted, translated from the [Chinese version](README.md). The Chinese version is the authoritative reference.
+## Closing Thoughts
+
+A personal project, evolving through use.
+
+- Demo: <https://brucevon.space>
+- GitHub: <https://github.com/brucevon/zfy>
+- Comments: <https://brucevon.space/lIQxHnOklH2m>
+- Issues: <https://github.com/brucevon/zfy/issues>

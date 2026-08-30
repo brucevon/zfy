@@ -779,6 +779,17 @@ a { color: inherit; text-decoration: none; }
 .about-menu .tag-chip:hover {
     background: rgba(128,128,128,0.1);
 }
+/* 亮色主题下关于菜单 hover 更明显 */
+[data-theme="light"] .about-menu .tag-chip:hover {
+    background: rgba(15, 23, 42, 0.07);
+    color: var(--primary);
+}
+[data-theme="light"] .about-menu .tree-node {
+    border-radius: 8px;
+}
+[data-theme="light"] .about-menu .tree-node:hover {
+    background: rgba(15, 23, 42, 0.05);
+}
 .about-menu .tag-chip--category {
     cursor: pointer;
 }
@@ -1218,6 +1229,21 @@ html.mobile-view .cat-mega-right {
 .tree-node:hover::before,
 .tree-node.active::before {
     height: 18px;
+}
+
+/* 亮色主题下 hover 更明显：浅灰高亮 + 左侧竖线着色 + 文字加深 */
+[data-theme="light"] .tree-node {
+    padding-left: 6px;
+    border-radius: 8px;
+}
+[data-theme="light"] .tree-node:hover {
+    background: rgba(15, 23, 42, 0.07);
+    box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.06);
+}
+[data-theme="light"] .tree-node:hover .tag-chip,
+[data-theme="light"] .tree-node:hover .tree-label {
+    color: var(--text);
+    font-weight: 500;
 }
 
 .tree-toggle {

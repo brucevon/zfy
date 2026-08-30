@@ -1371,17 +1371,24 @@ html.mobile-view .note-tags {
 .tagcloud-list-title { font-size: 1.05rem; font-weight: 500; margin: 0 0 12px; padding-left: 4px; border-left: 3px solid var(--tag-color, var(--accent, #58a6ff)); }
 .tagcloud-list-title i { margin: 0 8px 0 12px; }
 .tagcloud-list-count { opacity: .5; font-size: .85rem; font-weight: 400; }
+/* 标签云笔记列表：PC 双列 */
+.tagcloud-list {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
 .tagcloud-note {
-    display: block; padding: 14px 16px; border-radius: 12px; margin-bottom: 10px;
+    display: flex; flex-direction: column; padding: 14px 16px; border-radius: 12px; margin-bottom: 0;
     background: var(--bg);
     text-decoration: none; color: var(--text, #ccc);
     transition: background .15s, transform .15s;
+    min-width: 0;
 }
 .tagcloud-note:hover { background: var(--glass-bg); transform: translateX(4px); }
 .tagcloud-note-title { font-weight: 500; font-size: 1rem; display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; gap: 12px; min-width: 0; }
 .tagcloud-note-title i { margin-right: 6px; }
 .tagcloud-note-title-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-.tagcloud-note-dates { font-size: .75rem; color: var(--text); white-space: nowrap; flex-shrink: 0; }
+.tagcloud-note-dates { display: block; font-size: .75rem; color: var(--text); flex-shrink: 0; margin-top: 8px; }
 .tagcloud-note-snippet {
     display: block; font-size: .85rem; opacity: .65; line-height: 1.5;
     margin-top: 6px; overflow: hidden; text-overflow: ellipsis;
@@ -2662,6 +2669,9 @@ html.mobile-view .tagcloud-wrap {
     flex-direction: column;
     min-height: 0;
     flex: 1;
+}
+html.mobile-view .tagcloud-list {
+    grid-template-columns: 1fr;
 }
 html.mobile-view .tagcloud-note-title {
     flex-direction: column;

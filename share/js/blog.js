@@ -1959,10 +1959,11 @@
                     h += '<a class="' + noteCls + '"' + noteStyle + ' href="' + noteUrl(n) + '">';
                     h += '<span class="tagcloud-note-body">';
                     h += '<span class="tagcloud-note-title"' + (n.color ? ' style="color:' + escapeHtml(n.color) + '"' : '') + '>' +
-                        '<span class="tagcloud-note-title-text">' + icon + title + '</span>' + _dates +
+                        '<span class="tagcloud-note-title-text">' + icon + title + '</span>' +
                         '</span>' +
                         (snippet ? '<span class="tagcloud-note-snippet">' + snippet + '</span>' : '') +
-                        tagsHtml;
+                        tagsHtml +
+                        _dates;
                     h += '</span></a>';
                 }
                 h += '</div>';

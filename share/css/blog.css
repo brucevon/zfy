@@ -377,6 +377,42 @@ a { color: inherit; text-decoration: none; }
     transform: translateY(-2px);
 }
 
+/* 文章面包屑（最新文章卡片顶部分类路径） */
+.rec-breadcrumb {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 6px;
+    font-size: 0.72rem;
+    line-height: 1.4;
+}
+.rec-bc-sep {
+    color: var(--text-faint);
+    opacity: 0.6;
+}
+.rec-bc-link {
+    color: var(--text-faint);
+    text-decoration: none;
+    transition: color .2s;
+    cursor: pointer;
+}
+.rec-bc-link:hover {
+    color: var(--primary);
+    text-decoration: underline;
+}
+.article-mod--has-cover .rec-breadcrumb {
+    position: relative;
+    z-index: 1;
+}
+.article-mod--has-cover .rec-bc-link,
+.article-mod--has-cover .rec-bc-sep {
+    color: rgba(255,255,255,.6);
+}
+.article-mod--has-cover .rec-bc-link:hover {
+    color: #fff;
+}
+
 .article-pager {
     display: flex;
     align-items: center;
@@ -2734,6 +2770,31 @@ html.mobile-view .site-footer {
 }
 
 /* 文章大标题 */
+/* 内容页文章面包屑 */
+.note-breadcrumb {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 12px;
+    font-size: 0.78rem;
+    line-height: 1.4;
+}
+.note-bc-sep {
+    color: var(--text-faint);
+    opacity: 0.6;
+}
+.note-bc-link {
+    color: var(--text-faint);
+    text-decoration: none;
+    transition: color .2s;
+    cursor: pointer;
+}
+.note-bc-link:hover {
+    color: var(--primary);
+    text-decoration: underline;
+}
+
 .note-title {
     display: flex;
     align-items: center;

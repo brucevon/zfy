@@ -410,6 +410,23 @@ async function syncData() {
         console.error("data 热力图查询失败: " + e.message);
     }
 
+    // ── 7. 为每条 article 生成分类路径（面包屑：基于 tree 的分类祖先链） ──
+    var catIndex = {};
+    (function walkTree(nodes, ancestors) {
+        for (var wi = 0; wi < nodes.length; wi++) {
+            var wn = nodes[wi];
+            var nextAnc = ancestors;
+            if (wn.category) {
+                nextAnc = ancestors.concat({ noteId: wn.noteId, title: wn.title });
+            }
+            catIndex[wn.noteId] = nextAnc;
+            if (wn.children && wn.children.length) walkTree(wn.children, nextAnc);
+        }
+    })(data.tree, []);
+    for (var ai2 = 0; ai2 < data.article.length; ai2++) {
+        data.article[ai2].categoryPath = catIndex[data.article[ai2].noteId] || [];
+    }
+
     var output = JSON.stringify(data);
     await writeNote(targetNoteId, output);
 

@@ -55,6 +55,29 @@
     var blogData = null;
     var blogDataLoading = false;
     var blogDataCallbacks = [];
+    var noteAliasMap = {}; /* shareAlias → noteId，用于从别名 URL 反查真实笔记 ID */
+    /* noteId → 分类祖先链（基于 tree 全量构建，供内容页/搜索面包屑使用） */
+    var categoryPathMap = {};
+    function buildAliasMap() {
+        noteAliasMap = {};
+        categoryPathMap = {};
+        var arr = (blogData.article || []).concat(blogData.recommend || []);
+        for (var i = 0; i < arr.length; i++) {
+            if (arr[i].shareAlias) noteAliasMap[arr[i].shareAlias] = arr[i].noteId;
+        }
+        (function walk(nodes, ancestors) {
+            ancestors = ancestors || [];
+            for (var k = 0; k < nodes.length; k++) {
+                var n = nodes[k];
+                if (n.shareAlias) noteAliasMap[n.shareAlias] = n.noteId;
+                categoryPathMap[n.noteId] = ancestors;
+                var next = n.category
+                    ? ancestors.concat([{ noteId: n.noteId, title: n.title }])
+                    : ancestors;
+                if (n.children) walk(n.children, next);
+            }
+        })(blogData.tree || [], []);
+    }
     function ensureBlogData(cb) {
         if (blogData) { if (cb) cb(); return; }
         if (cb) blogDataCallbacks.push(cb);
@@ -63,6 +86,7 @@
         fetchJSON("/blog-data").then(function (data) {
             blogData = data || {};
             blogDataLoading = false;
+            buildAliasMap();
             var cbs = blogDataCallbacks; blogDataCallbacks = [];
             cbs.forEach(function (fn) { fn(); });
         });
@@ -345,7 +369,8 @@
     /* ── 当前笔记 ID ── */
     function getCurrentNoteId() {
         var parts = window.location.pathname.split("/").filter(Boolean);
-        return parts[parts.length - 1] || "";
+        var raw = parts[parts.length - 1] || "";
+        return noteAliasMap[raw] || raw;
     }
     var isHome = _cfg.isHome || false;
 
@@ -466,6 +491,7 @@
 
     /* ── 分类面板 ── */
     var treeData = null;
+    var pendingCatId = null; /* 面包屑点击后待定位的分类节点 ID */
     function openCategoryPanel(e) {
         if (e) { e.preventDefault(); }
         if (!categoryPanel) categoryPanel = document.getElementById("category-panel");
@@ -476,6 +502,16 @@
             loadCategoryMegaData();
         }
     }
+
+    /* 面包屑分类点击（首页卡片 .rec-bc-link / 内容页 .note-bc-link）：打开分类面板并定位展开 */
+    document.addEventListener("click", function (e) {
+        var bc = e.target.closest ? e.target.closest(".rec-bc-link, .note-bc-link") : null;
+        if (!bc) return;
+        e.preventDefault();
+        e.stopPropagation();
+        pendingCatId = bc.getAttribute("data-cat-id") || null;
+        openCategoryPanel();
+    });
 
     if (categoryBtn) categoryBtn.addEventListener("click", openCategoryPanel);
     if (categoryBtnM) categoryBtnM.addEventListener("click", openCategoryPanel);
@@ -888,6 +924,16 @@
         else if (opts.wide) html += ' rec-card-body--wide';
         else if (opts.compact) html += ' rec-card-body--compact';
         html += '">';
+        /* 面包屑：文章分类路径（首页最新文章专用） */
+        if (opts.breadcrumb && item.categoryPath && item.categoryPath.length) {
+            html += '<div class="rec-breadcrumb">';
+            for (var bi = 0; bi < item.categoryPath.length; bi++) {
+                var bc = item.categoryPath[bi];
+                if (bi > 0) html += '<span class="rec-bc-sep">/</span>';
+                html += '<a class="rec-bc-link" href="javascript:;" data-cat-id="' + escapeHtml(bc.noteId) + '">' + escapeHtml(bc.title) + '</a>';
+            }
+            html += '</div>';
+        }
         html += '<h4 class="rec-title">';
         if (item.noteIcon) html += '<i class="' + escapeHtml(item.noteIcon) + ' rec-item-icon"></i> ';
         html += '<a href="' + noteUrl(item) + '"' +
@@ -930,7 +976,7 @@
             var item = items[i];
             var modCls = 'article-mod' + (item.cover ? ' article-mod--has-cover' : '');
             var modStyle = item.cover ? ' style="--cover-url:url(\'' + escapeHtml(item.cover).replace(/'/g, "\\'") + '\')"' : '';
-            html += '<div class="' + modCls + '"' + modStyle + '>' + renderArticleCard(item, { wide: true }) + '</div>';
+            html += '<div class="' + modCls + '"' + modStyle + '>' + renderArticleCard(item, { wide: true, breadcrumb: true }) + '</div>';
         }
         el.innerHTML = html;
         if (totalPages > 1) {
@@ -1094,8 +1140,8 @@
     }
 
     /* ── 加载分类树（blogData.tree） ── */
-    function scrollToCurrentNote() {
-        var curId = getCurrentNoteId();
+    function scrollToCurrentNote(noteId) {
+        var curId = noteId || getCurrentNoteId();
         if (!curId) return;
         var curLink = document.querySelector('#tree-list li[data-note-id="' + curId + '"] a');
         if (curLink) {
@@ -1117,12 +1163,11 @@
         }
         return null;
     }
-    /* 展开路径上的所有父节点 */
+    /* 展开路径上的所有节点（含目标自身，若其有子项） */
     function expandToNote(path) {
-        if (!path || path.length <= 1) return;
-        for (var i = 0; i < path.length - 1; i++) {
-            var parentId = path[i];
-            var li = document.querySelector('#tree-list li[data-note-id="' + parentId + '"]');
+        if (!path || path.length === 0) return;
+        for (var i = 0; i < path.length; i++) {
+            var li = document.querySelector('#tree-list li[data-note-id="' + path[i] + '"]');
             if (li) {
                 var kids = li.querySelector(':scope > .tree-children');
                 var toggle = li.querySelector(':scope > .tree-node > .tree-toggle');
@@ -1137,11 +1182,15 @@
     function loadCategoryTree() {
         var treeList = document.getElementById("tree-list");
         if (!treeList) return;
-        var currentId = getCurrentNoteId();
+        var focusId = pendingCatId || getCurrentNoteId();
+        var renderAndLocate = function () {
+            renderTree(treeData, treeList, focusId);
+            expandToNote(findPathToNote(treeData, focusId));
+            scrollToCurrentNote(focusId);
+            pendingCatId = null;
+        };
         if (treeData) {
-            renderTree(treeData, treeList, currentId);
-            expandToNote(findPathToNote(treeData, currentId));
-            scrollToCurrentNote();
+            renderAndLocate();
             return;
         }
         treeList.innerHTML = '<li class="tree-item" style="padding:8px;color:var(--muted)">加载中…</li>';
@@ -1149,9 +1198,7 @@
             treeData = blogData.tree || [];
             if (treeData.length) {
                 processInternalLinks();
-                renderTree(treeData, treeList, currentId);
-                expandToNote(findPathToNote(treeData, currentId));
-                scrollToCurrentNote();
+                renderAndLocate();
             } else {
                 treeList.innerHTML = '<li class="tree-item"><span class="tag-chip">暂无分类</span></li>';
             }
@@ -1927,6 +1974,31 @@
     });
 
     /* ── 初始化 ── */
+    /* ── 内容页文章面包屑：读取当前文章的分类路径，点击分类定位展开分类面板 ── */
+    function renderNoteBreadcrumb() {
+        var el = document.getElementById("note-breadcrumb");
+        if (!el) return;
+        ensureBlogData(function () {
+            var curId = getCurrentNoteId(); /* 在 blogData 就绪后调用，alias 可正确反查 */
+            if (!curId) return;
+            var articleList = blogData.article || [];
+            var path = [];
+            for (var i = 0; i < articleList.length; i++) {
+                if (articleList[i].noteId === curId) {
+                    path = articleList[i].categoryPath || [];
+                    break;
+                }
+            }
+            if (!path.length) return;
+            var html = '';
+            for (var b = 0; b < path.length; b++) {
+                if (b > 0) html += '<span class="note-bc-sep">/</span>';
+                html += '<a class="note-bc-link" href="javascript:;" data-cat-id="' + escapeHtml(path[b].noteId) + '">' + escapeHtml(path[b].title) + '</a>';
+            }
+            el.innerHTML = html;
+        });
+    }
+
     function init() {
         initTagCloud();
         renderNoteTags();
@@ -1935,6 +2007,8 @@
         initBackTop();
         if (isHome) {
             loadHomeModules();
+        } else if (document.getElementById("note-breadcrumb")) {
+            renderNoteBreadcrumb();
         }
     }
 

@@ -364,7 +364,7 @@ a { color: inherit; text-decoration: none; }
 
 .article-mod {
     background: var(--surface);
-    border: 1px solid var(--border);
+    border: none;
     border-radius: var(--radius);
     padding: 20px 24px;
     transition: all .3s;

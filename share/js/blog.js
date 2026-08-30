@@ -106,6 +106,18 @@
         } catch (e) { return iso; }
     }
 
+    /** 格式化为 YYYY-MM-DD（仅日期，用于 meta 行） */
+    function fmtDateOnly(iso) {
+        if (!iso) return "";
+        try {
+            var d = new Date(iso);
+            if (isNaN(d.getTime())) return iso;
+            return d.getFullYear() + "-" +
+                String(d.getMonth() + 1).padStart(2, "0") + "-" +
+                String(d.getDate()).padStart(2, "0");
+        } catch (e) { return iso; }
+    }
+
     function isEmpty(obj) { return obj === null || obj === undefined || (Array.isArray(obj) && obj.length === 0); }
 
     /** 获取笔记的跳转地址：优先使用 shareAlias，否则使用 noteId */
@@ -884,18 +896,52 @@
         initReadingProgress();
     }
 
-    /* ── 字数统计 & 阅读时长 ── */
+    /* ── 字数统计 & 阅读时长 & 创建/更新时间 ── */
     function initNoteMeta() {
         var meta = document.querySelector(".note-meta");
         if (!meta) return;
         var body = document.querySelector(".note-body");
         if (!body) return;
-        var clone = body.cloneNode(true);
-        clone.querySelectorAll("pre").forEach(function (el) { el.remove(); });
-        var text = clone.textContent || "";
-        var len = text.replace(/\s+/g, "").length;
-        var min = Math.max(1, Math.ceil(len / 300));
-        meta.textContent = "约 " + len + " 字 · 预计阅读 " + min + " 分钟";
+        function fill(created, modified) {
+            var parts = [];
+            if (created) parts.push("创建 " + fmtDateOnly(created));
+            if (modified && modified !== created) parts.push("更新 " + fmtDateOnly(modified));
+            var clone = body.cloneNode(true);
+            clone.querySelectorAll("pre").forEach(function (el) { el.remove(); });
+            var text = clone.textContent || "";
+            var len = text.replace(/\s+/g, "").length;
+            var min = Math.max(1, Math.ceil(len / 300));
+            parts.push("约 " + len + " 字 · 预计阅读 " + min + " 分钟");
+            meta.textContent = parts.join(" · ");
+        }
+        /* 优先用模板 data 属性，空则等 blogData 就绪后按 noteId 匹配 */
+        var art = document.querySelector(".mod");
+        var created = art ? art.getAttribute("data-created") : "";
+        var modified = art ? art.getAttribute("data-modified") : "";
+        if (created || modified) { fill(created, modified); return; }
+        ensureBlogData(function () {
+            var curId = getCurrentNoteId();
+            if (!curId) { fill("", ""); return; }
+            var d = blogData || {};
+            var sources = [].concat(d.article || [], d.recommend || [], d.announcement ? [d.announcement] : [], d.recentUpdate || []);
+            for (var i = 0; i < sources.length; i++) {
+                if (sources[i].noteId === curId) {
+                    fill(sources[i].dateCreated, sources[i].dateModified);
+                    return;
+                }
+            }
+            /* blogData 未覆盖的笔记（如旧公告）回退到全量搜索索引匹配 */
+            ensureSearchData(function () {
+                var list = searchData || [];
+                for (var j = 0; j < list.length; j++) {
+                    if (list[j].noteId === curId) {
+                        fill(list[j].dateCreated, list[j].dateModified);
+                        return;
+                    }
+                }
+                fill("", "");
+            });
+        });
     }
     if (document.readyState === "loading") {
         document.addEventListener("DOMContentLoaded", initNoteMeta);

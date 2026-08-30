@@ -193,6 +193,7 @@
         searchDropdown.classList.add("open");
         searchOpen = true;
         searchInput.focus();
+        ensureBlogData(); /* 预热分类路径数据（面包屑） */
         ensureSearchData(function () {
             renderResults(searchInput.value.trim());
         });
@@ -251,6 +252,17 @@
 
     function renderResults(q) {
         if (!searchResults) return;
+        /* 先确保数据就绪再做匹配，否则 searchData 未加载时会被误判为"无结果" */
+        if (!blogData || !searchData) {
+            var tries = 0;
+            ensureSearchData();
+            ensureBlogData();
+            (function check() {
+                if (blogData && searchData) { renderResults(q); return; }
+                if (tries++ < 60) setTimeout(check, 80);
+            })();
+            return;
+        }
         var items = q ? filterSearchData(q) : [];
         if (!q || items.length === 0) {
             searchResults.innerHTML =
@@ -271,10 +283,22 @@
                       tokens
                   )
                 : "";
+            /* 面包屑：该笔记的分类路径（纯展示） */
+            var path = categoryPathMap[item.noteId] || [];
+            var crumb = "";
+            if (path.length) {
+                crumb = '<span class="search-result-crumb">';
+                for (var b = 0; b < path.length; b++) {
+                    if (b > 0) crumb += '<i class="search-crumb-sep">/</i>';
+                    crumb += '<span class="search-crumb-item">' + escapeHtml(path[b].title) + '</span>';
+                }
+                crumb += '</span>';
+            }
             html +=
                 '<a class="search-result-item" href="' +
                 noteUrl(item) +
                 '">' +
+                crumb +
                 '<span class="search-result-title"' +
                 (item.color ? ' style="color:' + escapeHtml(item.color) + '"' : "") +
                 ">" +

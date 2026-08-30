@@ -915,6 +915,23 @@ a { color: inherit; text-decoration: none; }
     -webkit-box-orient: vertical;
     overflow: hidden;
 }
+/* 搜索结果面包屑（分类路径，纯展示） */
+.search-result-crumb {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 3px;
+    font-size: 0.7rem;
+    line-height: 1.3;
+}
+.search-crumb-item {
+    color: var(--text-faint);
+}
+.search-crumb-sep {
+    color: var(--text-faint);
+    opacity: 0.5;
+    font-style: normal;
+}
 .search-no-results {
     padding: 24px 16px;
     text-align: center;

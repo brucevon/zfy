@@ -344,7 +344,7 @@ var _twCard = _ogImage ? 'summary_large_image' : 'summary';
         <div class="footer-divider">
             <% if (_cfg.footerCopyright) { %><span><%= _cfg.footerCopyright %></span><span class="footer-sep">·</span><% } %>
             <% if (_cfg.footerPolice) { %>
-            <a href="<%= _cfg.footerPoliceUrl || '#' %>" target="_blank" rel="noopener"><%= _cfg.footerPolice %></a><span class="footer-sep">·</span>
+            <a class="footer-beian" href="<%= _cfg.footerPoliceUrl || '#' %>" target="_blank" rel="noopener"><% if (_cfg.footerBeianIcon) { %><img class="footer-beian-icon" src="<%= _cfg.footerBeianIcon %>" alt="" /><% } %><%= _cfg.footerPolice %></a><span class="footer-sep">·</span>
             <% } %>
             <% if (_cfg.footerIcp) { %>
             <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener"><%= _cfg.footerIcp %></a><span class="footer-sep">·</span>

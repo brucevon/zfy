@@ -674,6 +674,17 @@ a { color: inherit; text-decoration: none; }
     color: var(--border-dark);
     margin: 0 2px;
 }
+.footer-beian {
+    display: inline-flex;
+    align-items: center;
+}
+.footer-beian-icon {
+    width: 15px;
+    height: 15px;
+    object-fit: contain;
+    margin-right: 4px;
+    vertical-align: middle;
+}
 
 /* Hamburger (mobile) */
 .hamburger {

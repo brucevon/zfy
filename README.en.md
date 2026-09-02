@@ -58,10 +58,10 @@ Root note (#isHome=true)
 
 ```text
 BlogPreprocessRender.js (orchestrator)
-  ├─ data.js   → aggregated data (tree/aboutTree/tags/article/recentUpdate/
-  │              announcement/recommend/stats/heatmap) → blog-data
-  └─ search.js → search index (all notes) → blog-search
-        └─ frontend fetches /blog-data (aggregated) + /blog-search (search)
+  └─ data.js → syncData   aggregated data (tree/aboutTree/tags/article/recentUpdate/
+               │          announcement/recommend/stats/heatmap) → blog-data
+               └─ syncSearch  search index (all notes) → blog-search
+                    └─ frontend fetches /blog-data (aggregated) + /blog-search (search)
 ```
 
 ---
@@ -151,7 +151,7 @@ Add labels to child notes as needed:
 ### 8. Import Preprocessing Scripts
 
 - `BlogPreprocessRender.js` → import as a **JSX** note, create a `Render Note` linked to it
-- `data.js` / `search.js` → import as **Backend Script** notes under the JSX note
+- `data.js` → import as a **Backend Script** note (contains syncData + syncSearch) under the JSX note
 
 Configure and run once; homepage data is then pre-generated.
 
@@ -166,8 +166,7 @@ Homepage data is generated once by backend scripts into shared notes; template/f
 | Script | Purpose | Required Labels |
 |---|---|---|
 | `BlogPreprocessRender.js` | orchestrator, JSX sync panel | linked via `~renderNote` |
-| `data.js` | aggregated data (categories/tags/articles/updates/announcements/recommendations/stats/heatmap) | `#rootNoteId` `#saveNoteId` `#contentLen(optional)` |
-| `search.js` | search index | `#rootNoteId` `#saveNoteId` `#contentLen(optional)` |
+| `data.js` | aggregated data (categories/tags/articles/updates/announcements/recommendations/stats/heatmap) + search index | `#rootNoteId` `#dataSaveNoteId` `#searchSaveNoteId` `#dataLen(optional)` `#searchLen(optional)` |
 
 ### Performance
 
@@ -180,13 +179,12 @@ Homepage data is generated once by backend scripts into shared notes; template/f
 
 1. Confirm `blog-data` / `blog-search` notes have `#shareHiddenFromTree` `#shareRaw` `#shareAlias`
 2. Create a `博客预处理面板` render note linked to `BlogPreprocessRender.js`
-3. Make `BlogPreprocessRender.js` the parent; `data.js`/`search.js` its children (titles must match)
-4. Add labels to child scripts:
+3. Make `BlogPreprocessRender.js` the parent; `data.js` its child (titles must match)
+4. Add labels to child script:
 
    | Child Script | Required Labels |
    |---|---|
-   | `data.js` | `#saveNoteId=blog-data笔记ID` `#rootNoteId=博客根笔记ID` `#contentLen=150(optional)` |
-   | `search.js` | `#saveNoteId=blog-search笔记ID` `#rootNoteId=博客根笔记ID` `#contentLen=500(optional)` |
+   | `data.js` | `#dataSaveNoteId=blog-data笔记ID` `#searchSaveNoteId=blog-search笔记ID` `#rootNoteId=博客根笔记ID` `#dataLen=150(optional)` `#searchLen=500(optional)` |
 
 5. Open the render note, one-click sync or run individually
 
@@ -352,8 +350,7 @@ share/
 
 博客预处理控件/
 ├── BlogPreprocessRender.js  # orchestrator (JSX panel)
-├── data.js                  # aggregated data script
-└── search.js                # search index script
+└── data.js                  # aggregated data + search index (syncData/syncSearch)
 
 build-min.js          # build script (generates blog.min.ejs)
 压缩部署说明.md        # minified deployment guide
@@ -365,7 +362,7 @@ build-min.js          # build script (generates blog.min.ejs)
 
 - **Blank page** — verify root note and resources have sharing enabled; the `~shareTemplate` Relation is linked.
 - **Category tree / About menu missing** — `#rootNoteId` points to the correct root; a「关于」note exists; `#category=true` is set.
-- **No search results** — search.js wrote to blog-search; `#rootNoteId` is correct.
+- **No search results** — data.js's syncSearch wrote to blog-search; `#rootNoteId` is correct.
 - **Broken styles** — hard refresh (Ctrl+F5); with the three-file setup confirm blog.css/blog.js sharing; check nginx paths.
 - **`content.trim is not a function`** — update old scripts (fixed in commit `39afe5f` for blob Buffer→String).
 

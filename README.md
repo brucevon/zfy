@@ -58,10 +58,10 @@
 
 ```text
 BlogPreprocessRender.js (编排器)
-  ├─ data.js   → 聚合数据 (tree/aboutTree/tags/article/recentUpdate/
-  │              announcement/recommend/stats/heatmap) 写入 blog-data
-  └─ search.js → 搜索索引 (全量笔记) 写入 blog-search
-        └─ 前端 fetch /blog-data (聚合) + /blog-search (搜索)
+  └─ data.js → syncData   聚合数据 (tree/aboutTree/tags/article/recentUpdate/
+               │           announcement/recommend/stats/heatmap) 写入 blog-data
+               └─ syncSearch 搜索索引 (全量笔记) 写入 blog-search
+                    └─ 前端 fetch /blog-data (聚合) + /blog-search (搜索)
 ```
 
 ---
@@ -151,7 +151,7 @@ data.js 从根笔记下的「关于」笔记构建 About 菜单。建议至少�
 ### 8. 导入预处理脚本
 
 - `BlogPreprocessRender.js` → 导入为 **JSX** 笔记，建 `渲染笔记` 关联
-- `data.js` / `search.js` → 导入为 **Backend Script**，作为 JSX 子笔记
+- `data.js` → 导入为 **Backend Script**（内含 syncData + syncSearch），作为 JSX 子笔记
 
 配置后运行一次，首页数据即预生成。
 
@@ -166,8 +166,7 @@ data.js 从根笔记下的「关于」笔记构建 About 菜单。建议至少�
 | 脚本 | 功能 | 必需标签 |
 |---|---|---|
 | `BlogPreprocessRender.js` | 编排入口，JSX 渲染同步面板 | 经 `~renderNote` 关联 |
-| `data.js` | 聚合数据（分类/标签/文章/动态/公告/推荐/统计/热力） | `#rootNoteId` `#saveNoteId` `#contentLen(可选)` |
-| `search.js` | 搜索索引 | `#rootNoteId` `#saveNoteId` `#contentLen(可选)` |
+| `data.js` | 聚合数据（分类/标签/文章/动态/公告/推荐/统计/热力）+ 搜索索引 | `#rootNoteId` `#dataSaveNoteId` `#searchSaveNoteId` `#dataLen(可选)` `#searchLen(可选)` |
 
 ### 性能
 
@@ -180,13 +179,12 @@ data.js 从根笔记下的「关于」笔记构建 About 菜单。建议至少�
 
 1. 确认 `blog-data`、`blog-search` 笔记带 `#shareHiddenFromTree` `#shareRaw` `#shareAlias`
 2. 建 `博客预处理面板` 渲染笔记关联 `BlogPreprocessRender.js`
-3. `BlogPreprocessRender.js` 为父，`data.js`/`search.js` 为子（标题须一致）
+3. `BlogPreprocessRender.js` 为父，`data.js` 为子（标题须一致）
 4. 子脚本加标签：
 
    | 子脚本 | 必需标签 |
    |---|---|
-   | `data.js` | `#saveNoteId=blog-data笔记ID` `#rootNoteId=博客根笔记ID` `#contentLen=150(可选)` |
-   | `search.js` | `#saveNoteId=blog-search笔记ID` `#rootNoteId=博客根笔记ID` `#contentLen=500(可选)` |
+   | `data.js` | `#dataSaveNoteId=blog-data笔记ID` `#searchSaveNoteId=blog-search笔记ID` `#rootNoteId=博客根笔记ID` `#dataLen=150(可选)` `#searchLen=500(可选)` |
 
 5. 打开渲染笔记一键同步或逐个运行
 
@@ -352,8 +350,7 @@ share/
 
 博客预处理控件/
 ├── BlogPreprocessRender.js  # 编排入口（JSX 面板）
-├── data.js                  # 聚合数据脚本
-└── search.js                # 搜索索引脚本
+└── data.js                  # 聚合数据 + 搜索索引脚本（syncData/syncSearch）
 
 build-min.js          # 构建脚本（生成 blog.min.ejs）
 压缩部署说明.md        # 压缩部署文档
@@ -365,7 +362,7 @@ build-min.js          # 构建脚本（生成 blog.min.ejs）
 
 - **页面空白**：检查根笔记及资源已开启分享；`~shareTemplate` Relation 是否链接。
 - **分类树/关于菜单不显示**：确认 `#rootNoteId` 指向正确根笔记；存在「关于」笔记；`#category=true` 已加。
-- **搜索无结果**：确认 search.js 已写入 blog-search；`#rootNoteId` 正确。
+- **搜索无结果**：确认 data.js 的 syncSearch 已写入 blog-search；`#rootNoteId` 正确。
 - **样式错乱**：硬刷新（Ctrl+F5）；三件套部署时确认 blog.css/blog.js 分享状态；检查 nginx 路径。
 - **`content.trim is not a function`**：更新旧脚本至最新（commit `39afe5f` 已修复 blob Buffer→String）。
 

@@ -196,7 +196,7 @@ function _blogCreated(n){
     // 推荐统计与首页底部计数器口径一致：计所有带 #recommend 的笔记数
     if(r) _SSR_STATS.recommend++;
     if(an) _SSR_STATS.announcement++;
-    if(u && n.title) _UPD_ARR.push({ n:n, d:n.utcDateModified||n.dateCreated||'' });
+    if(u && n.title) _UPD_ARR.push({ n:n, d:_blogCreated(n)||n.utcDateModified||n.dateCreated||'' });
     // 标签索引 + 枢纽笔记
     if(n.title){
       var tg=_noteTags(n);
@@ -508,7 +508,7 @@ function _blogCreated(n){
       for (var _ui = 0; _ui < _updLim; _ui++) {
         var _u = SSR.updates[_ui];
 %>
-          <div class="rec-upd-item"><% if (_u.icon) { %><i class="<%= _u.icon %> upd-item-icon"></i> <% } %><time class="rec-date"><%= _ymd(_u.dateCreated) %></time><h4 class="rec-title"><a href="<%= _url(_u) %>"<%= _u.ext ? ' target="_blank" rel="noopener"' : '' %>><%= _u.title %></a></h4><% if (_u.tags && _u.tags.length) { %><div class="module-tags"><% for (var _u2=0;_u2<_u.tags.length;_u2++){ %><span class="tag-chip tag-chip--note" data-tag="<%= _esc(_u.tags[_u2]) %>" style="<%= _tagStyle(_u.tags[_u2]) %>"><i class="bx bx-purchase-tag-alt"></i> <%= _esc(_u.tags[_u2]) %></span><% } %></div><% } %></div>
+          <div class="rec-upd-item"><% if (_u.icon) { %><i class="<%= _u.icon %> upd-item-icon"></i> <% } %><time class="rec-date"><%= _ymd(_u.dateCreated) %></time><h4 class="rec-title"><a href="<%= _url(_u) %>"<% if (_u.color) { %> style="color:<%= _esc(_u.color) %>"<% } %><%= _u.ext ? ' target="_blank" rel="noopener"' : '' %>><%= _u.title %></a></h4><% if (_u.tags && _u.tags.length) { %><div class="module-tags"><% for (var _u2=0;_u2<_u.tags.length;_u2++){ %><span class="tag-chip tag-chip--note" data-tag="<%= _esc(_u.tags[_u2]) %>" style="<%= _tagStyle(_u.tags[_u2]) %>"><i class="bx bx-purchase-tag-alt"></i> <%= _esc(_u.tags[_u2]) %></span><% } %></div><% } %></div>
 <%
       } if (!SSR.updates.length) {
 %>

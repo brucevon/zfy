@@ -62,7 +62,7 @@
 
 - **服务端渲染**：首页四模块、分类树、关于菜单、导航统计、面包屑、热力图全部在模板端生成 HTML（SEO 友好、改文即见）。
 - **客户端交互**：`blog.js` 基于模板注入的 `window.__SSR_HOME__ / __SSR_ARTICLES__ / __SSR_TAGDATA__ / __SSR_HUB__ / __SSR_SEARCH__ / __BLOG_CONFIG__` 完成展开折叠、定位、搜索、分页、灯箱、主题等，**不再请求 `/blog-data`、`/blog-search`**。
-- **零后端依赖**：全部数据由模板实时聚合生成，仓库不包含任何预处理脚本，部署仅需一个 `blog.min.ejs`。
+- **零后端依赖**：全部数据由模板实时聚合生成，部署仅需一个 `blog.min.ejs`；唯一的可选后端脚本是 `plugin/add-date-created-label.js`（一键写入 `#dateCreated` 创建时间标签）。
 
 ---
 
@@ -142,7 +142,7 @@ Trilium 下建 `分享` 主笔记，再建一个模板笔记并开启分享，�
 
 ### 8. 创建时间（可选）
 
-共享模板默认读不到笔记的真实创建时间。如需要在内容页显示"创建时间"，可手动给文章加 `#dateCreated=YYYY-MM-DD` 标签（见 [标签与配置清单](#标签与配置清单)）。
+共享模板默认读不到笔记的真实创建时间，只能靠标签。推荐在 Trilium 中运行 `plugin/add-date-created-label.js`（后端脚本）：给脚本笔记加 `#rootNoteId = <分享子树根笔记ID>` 后右键执行，即可把子树内可见笔记的真实创建时间一键批量写入 `#dateCreated` 标签（格式 `YYYY-MM-DD HH:mm:ss`，已带标签的自动跳过）。也可手动给文章加 `#dateCreated` 标签（见 [标签与配置清单](#标签与配置清单)）。
 
 ---
 
@@ -159,7 +159,7 @@ Trilium 下建 `分享` 主笔记，再建一个模板笔记并开启分享，�
 node build-min.js   # Node ≥ 16，首次自动拉取 esbuild
 ```
 
-详细见 [压缩部署说明.md](压缩部署说明.md)。
+详细见 [deployment.md](deployment.md)。
 
 ---
 
@@ -272,7 +272,7 @@ server {
 | `#shareExternalLink=<url>` | 外链跳转 |
 | `#shareHiddenFromTree=true` | 从分类树/搜索/打标排除 |
 | `#articleCover=<图片url>` | 文章封面 |
-| `#dateCreated=` | 创建时间（可选，手动设置后内容页显示创建日期） |
+| `#dateCreated=` | 创建时间（可选，格式 `YYYY-MM-DD HH:mm:ss`，可用 `plugin/add-date-created-label.js` 一键批量写入） |
 | `#color=<hex>` | 标题/图标颜色 |
 | `#iconClass=<图标class>` | 图标 |
 | `#enableTwikoo=true` | 单篇开启评论 |
@@ -320,7 +320,9 @@ share/
 └── js/blog.js        # 脚本（源码）
 
 build-min.js          # 构建脚本（生成 blog.min.ejs）
-压缩部署说明.md        # 压缩部署文档
+deployment.md         # 压缩部署文档
+plugin/
+└── add-date-created-label.js   # 可选后端脚本：一键写入 #dateCreated 创建时间标签
 ```
 
 ---
@@ -330,7 +332,7 @@ build-min.js          # 构建脚本（生成 blog.min.ejs）
 - **页面空白**：确认根笔记及资源已开启分享；`~shareTemplate` Relation 是否链接。
 - **分类树 / 关于菜单不显示**：确认「关于」笔记存在于根下；分类节点已加 `#category=true`。
 - **文章不出现在首页**：确认文章笔记加 `#article=true`。
-- **内容页不显示"创建时间"**：共享模板读不到真实创建时间，需手动给文章加 `#dateCreated=YYYY-MM-DD` 标签。
+- **内容页不显示"创建时间"**：共享模板读不到真实创建时间，可在 Trilium 中运行 `plugin/add-date-created-label.js` 一键批量写入，或手动给文章加 `#dateCreated=YYYY-MM-DD HH:mm:ss` 标签。
 - **标签云不显示**：确认标签云笔记已加 `#tagCloud` 并开启分享；笔记打了 `#noteTag`。
 - **样式错乱**：硬刷新（Ctrl+F5）；确认只用 `blog.min.ejs` 一个分享笔记。
 - **搜索找不到**：搜索仅匹配标题；确认笔记未加 `#shareHiddenFromTree` 或 `#category`。

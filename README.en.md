@@ -62,7 +62,7 @@ Root note (#isHome=true)
 
 - **Server render** — the four homepage modules, category tree, About menu, nav stats, breadcrumbs and heatmap are generated as HTML in the template (SEO-friendly, edit-and-live).
 - **Client interaction** — `blog.js` uses the injected `window.__SSR_HOME__ / __SSR_ARTICLES__ / __SSR_TAGDATA__ / __SSR_HUB__ / __SSR_SEARCH__ / __BLOG_CONFIG__` to handle expand/collapse, locating, search, pagination, lightbox and theming. It **no longer fetches `/blog-data` or `/blog-search`**.
-- **Zero backend** — all data is aggregated by the template at render time; the repo contains no preprocessing script, deployment needs only one `blog.min.ejs`.
+- **Zero backend** — all data is aggregated by the template at render time; deployment needs only one `blog.min.ejs`. The only optional backend script is `plugin/add-date-created-label.js` (one-click write of the `#dateCreated` create-time label).
 
 ---
 
@@ -142,7 +142,7 @@ Create a note and add `#tagCloud` (or add it as a child of the root with that la
 
 ### 8. Create Time (optional)
 
-A shared template can't read a note's real create time. To show "create time" on a content page, add the `#dateCreated=YYYY-MM-DD` label to the article manually (see [Labels & Config Reference](#labels--config-reference)).
+A shared template can't read a note's real create time; it can only rely on labels. The recommended way is to run `plugin/add-date-created-label.js` (backend script) in Trilium: add `#rootNoteId = <shared subtree root note ID>` to the script note, then right-click → execute. It batch-writes the real create time of all visible notes in the subtree into the `#dateCreated` label (format `YYYY-MM-DD HH:mm:ss`, skipping notes that already have the label). You can also add `#dateCreated` to an article manually (see [Labels & Config Reference](#labels--config-reference)).
 
 ---
 
@@ -159,7 +159,7 @@ Output:  share/blog.min.ejs (esbuild-minified css/js inlined, with version heade
 node build-min.js   # Node ≥ 16; pulls esbuild automatically on first run
 ```
 
-See [压缩部署说明.md](压缩部署说明.md) for details.
+See [deployment.md](deployment.md) for details.
 
 ---
 
@@ -272,7 +272,7 @@ Exposed to all children. Toggle them directly on child notes:
 | `#shareExternalLink=<url>` | external link |
 | `#shareHiddenFromTree=true` | exclude from tree/search/stamping |
 | `#articleCover=<image url>` | article cover |
-| `#dateCreated=` | create time (optional; shows create date on content page when set) |
+| `#dateCreated=` | create time (optional; format `YYYY-MM-DD HH:mm:ss`, batch-writable via `plugin/add-date-created-label.js`) |
 | `#color=<hex>` | title/icon color |
 | `#iconClass=<icon class>` | icon |
 | `#enableTwikoo=true` | enable comments per note |
@@ -320,7 +320,9 @@ share/
 └── js/blog.js        # script (source)
 
 build-min.js          # build script (generates blog.min.ejs)
-压缩部署说明.md        # minified deployment guide
+deployment.md         # minified deployment guide
+plugin/
+└── add-date-created-label.js   # optional backend script: one-click write of #dateCreated label
 ```
 
 ---
@@ -330,7 +332,7 @@ build-min.js          # build script (generates blog.min.ejs)
 - **Blank page** — verify the root note and resources have sharing enabled; the `~shareTemplate` Relation is linked.
 - **Category tree / About menu missing** — confirm an About note exists under the root; category nodes have `#category=true`.
 - **Article missing on homepage** — confirm the article note has `#article=true`.
-- **No "create time" on a content page** — a shared template can't read real create time; add `#dateCreated=YYYY-MM-DD` manually to the article.
+- **No "create time" on a content page** — a shared template can't read real create time; run `plugin/add-date-created-label.js` in Trilium to batch-write it, or add `#dateCreated=YYYY-MM-DD HH:mm:ss` manually to the article.
 - **Tag cloud not showing** — confirm the tag-cloud note has `#tagCloud` with sharing enabled; notes have `#noteTag`.
 - **Broken styles** — hard refresh (Ctrl+F5); use only the single `blog.min.ejs` shared note.
 - **Search finds nothing** — search matches titles only; confirm the note doesn't have `#shareHiddenFromTree` or `#category`.

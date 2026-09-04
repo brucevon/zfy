@@ -448,6 +448,8 @@ function _blogCreated(n){
         for(var _x=0;_x<_hk.length;_x++){ SSR.heatmapArr.push({date:_hk[_x], count:SSR.heatmap[_hk[_x]]}); if(SSR.heatmap[_hk[_x]]>_hmMax) _hmMax=SSR.heatmap[_hk[_x]]; }
         /* ---- 热力图（复刻 renderHeatmap 算法，窗口放宽到整站历史）---- */
         var now=new Date(); now.setHours(0,0,0,0);
+        /* 访客本地日期可能早于服务器（如 UTC+8 用户在服务器仍是前一天），向后多看一天，保证热力图覆盖访客"今天" */
+        now.setDate(now.getDate()+1);
         var hmStart=new Date(now); hmStart.setDate(hmStart.getDate()-363);
         var _hmKeys=Object.keys(SSR.heatmap).filter(function(k){ return /^\d{4}-\d{2}-\d{2}$/.test(k); });
         if(_hmKeys.length){

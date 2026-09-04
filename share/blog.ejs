@@ -499,7 +499,7 @@ function _blogCreated(n){
 <div class="layout">
   <aside class="sidebar-col">
     <div class="panel">
-      <div class="panel-header">📢 公告</div>
+      <div class="panel-header"><i class="bx bx-megaphone" aria-hidden="true"></i>公告</div>
       <div class="panel-body">
         <div class="notice-list" id="mod-announcement" data-ssr="home"><%- SSR.announcement ? _card(SSR.announcement, 'rec-card-body--compact', true) : '<div class="rec-empty">暂无公告</div>' %></div>
       </div>
@@ -523,7 +523,7 @@ function _blogCreated(n){
       </div>
     </div>
     <div class="panel">
-      <div class="panel-header">📅 更新热力</div>
+      <div class="panel-header"><i class="bx bx-calendar-check" aria-hidden="true"></i>更新热力</div>
       <div class="panel-body">
         <div class="hm-wrap" id="mod-heatmap" data-ssr="home">
           <div class="hm-grid" id="heatmap-grid" style="<%- SSR.hmGridStyle %>"><%- SSR.hmHTML %></div>
@@ -534,7 +534,7 @@ function _blogCreated(n){
   </aside>
   <main class="main-col">
     <div class="section-header">
-      <div class="section-title"><span class="icon">📝</span>最新文章</div>
+      <div class="section-title"><span class="icon"><i class="bx bx-news" aria-hidden="true"></i></span>最新文章</div>
       <% if (_cfg.tagCloudNoteId) { %>
       <a class="section-more" href="/<%= _cfg.tagCloudNoteId %>">查看全部 →</a>
       <% } %>

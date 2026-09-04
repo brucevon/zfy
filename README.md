@@ -4,7 +4,7 @@
   <a href="README.md">中文</a> · <a href="README.en.md">English</a>
 </p>
 
-> zfy 是一个 TriliumNext 博客主题。后端预处理把内容预生成为 JSON，模板只读静态数据，页面零等待。
+> zfy 是一个 TriliumNext 博客主题，采用**服务端实时聚合（SSR）**方案：模板在每次渲染时实时遍历笔记树生成首页、分类树、关于菜单、标签云、热力图与标题搜索索引，**改文即见，无需手动重建快照**。
 >
 > 文档由 AI 辅助编写并人工校对，如有出入以代码为准。
 > 示例：<https://brucevon.space>
@@ -19,7 +19,7 @@
 - [预处理脚本](#预处理脚本)
 - [压缩部署](#压缩部署)
 - [nginx 参考](#nginx-参考)
-- [PromotedAttributes](#promotedattributes)
+- [标签与配置清单](#标签与配置清单)
 - [文件结构](#文件结构)
 - [FAQ](#faq)
 
@@ -30,39 +30,41 @@
 | 特性 | 说明 |
 |---|---|
 | 双栏布局 | 左侧公告/动态/热力，右侧最新文章；PC 双栏，移动端单列 |
-| 标签驱动 | 20+ 标签覆盖主题/评论/页脚/封面，零硬编码 |
+| 全站实时聚合 | 模板渲染时实时遍历笔记树，改文即见，无需重建 json 快照 |
+| 标签驱动 | 首页/分类/标签云/评论/页脚/封面全部标签化，无硬编码 |
 | 双主题 | CSS 变量 + `data-theme`，一键切换深/浅色 |
-| 全文搜索 | 服务端预索引，客户端实时检索 + 关键词高亮 |
-| 面包屑 | 首页卡片 / 内容页 / 搜索结果均显示分类路径，可点击定位分类树 |
+| 标题搜索 | 服务端实时收集标题索引，客户端即时检索 + 关键词高亮 |
+| 面包屑 | 首页卡片 / 内容页均显示分类路径，可点击定位分类树 |
 | 文章分页 | 首页最新文章每页 5 篇分页浏览 |
-| 标签云双列 | 标签下文章列表 PC 双列、移动端单列 |
+| 标签云 | 标签聚合 + 标签下文章列表（PC 双列、移动端单列） |
 | 图片灯箱 | 点击放大，大号左右切换按钮，支持方向键 |
 | shareAlias | 别名 URL 自动反查真实 noteId |
 | 单文件部署 | 构建脚本把 CSS/JS 内联压缩为单个 EJS |
-| 高性能 | SQL 批量预处理，一次聚合请求返回全站数据 |
+| 零后端依赖 | 唯一的后端脚本只负责写 `#dateCreated` 创建时间标签 |
 
 ---
 
 ## 架构
 
-### 配置流
+### 数据流（服务端实时聚合 SSR）
 
 ```text
 根笔记 (#isHome=true)
-  └─ blog.ejs 读取标签 → _cfg
-       └─ server: 主题/封面/分类根/About
-       └─ window.__BLOG_CONFIG__ → blog.js
+  └─ blog.ejs 渲染时实时遍历分享子树
+       ├─ #article    → 最新文章列表
+       ├─ #announcement → 公告卡片
+       ├─ #recentUpdate → 动态模块 + 菜单「最近动态」
+       ├─ #recommend  → 推荐计数
+       ├─ #category   → 分类树 + 内容页面包屑路径
+       ├─ #noteTag    → 标签云 / 模块标签 / 文章标签
+       ├─ 全部可见笔记 → 标题搜索索引（window.__SSR_SEARCH__）
+       └─ 全部隐藏笔记 → #dateCreated 创建时间
+            └─ 结果直接生成 HTML，并注入 window.__SSR_*__ 供客户端交互
 ```
 
-### 预处理流
-
-```text
-BlogPreprocessRender.js (编排器)
-  └─ data.js → syncData   聚合数据 (tree/aboutTree/tags/article/recentUpdate/
-               │           announcement/recommend/stats/heatmap) 写入 blog-data
-               └─ syncSearch 搜索索引 (全量笔记) 写入 blog-search
-                    └─ 前端 fetch /blog-data (聚合) + /blog-search (搜索)
-```
+- **服务端渲染**：首页四模块、分类树、关于菜单、导航统计、面包屑、热力图全部在模板端生成 HTML（SEO 友好、改文即见）。
+- **客户端交互**：`blog.js` 基于模板注入的 `window.__SSR_HOME__ / __SSR_ARTICLES__ / __SSR_TAGDATA__ / __SSR_HUB__ / __SSR_SEARCH__ / __BLOG_CONFIG__` 完成展开折叠、定位、搜索、分页、灯箱、主题等，**不再请求 `/blog-data`、`/blog-search`**。
+- **唯一后端脚本**：`data.js` 只执行 `stampDates()`，给分享子树内可见笔记写 `#dateCreated`（共享模板 `note` 不暴露真实创建时间）。
 
 ---
 
@@ -73,122 +75,104 @@ BlogPreprocessRender.js (编排器)
 ### 1. 下载资源
 
 ```text
-share/blog.ejs          # 模板
-share/css/blog.css      # 样式
-share/js/blog.js        # 脚本
 share/blog.min.ejs      # ★ 单文件产物（部署推荐，由 build-min.js 生成）
+share/blog.ejs          # 模板源码（日常修改用）
+share/css/blog.css      # 样式源码
+share/js/blog.js        # 脚本源码
 ```
 
 Twikoo 走 CDN，无需上传 `twikoo.min.js`。
 
-### 2. 导入模板与样式
+### 2. 导入模板（单文件）
 
-Trilium 下建 `分享` 主笔记。二选一：
+Trilium 下建 `分享` 主笔记，再建一个模板笔记并开启分享，粘贴 `blog.min.ejs` 内容：
 
-**A. 单文件产物（推荐，1 个分享笔记）**
-
-| 文件 | 标签 |
+| 模板笔记 | 标签 |
 |---|---|
 | `blog.min.ejs` | `~shareTemplate(inheritable)=blog.min.ejs`（Relation） |
 
-**B. 三件套**
+> `~` 开头是 Relation，需在 Relation Map 中手动链接，粘贴文本不会生效。
+> `~shareTemplate` 是**必填**，否则分享页不套用本主题。
 
-| 文件 | 标签 |
-|---|---|
-| `blog.ejs` | `~shareTemplate(inheritable)=blog.ejs`（Relation） |
-| `blog.css` | `#shareAlias=blog.css` `#shareRaw` |
-| `blog.js` | `#shareAlias=blog.js` `#shareRaw` |
-
-### 3. 图片资源
+### 3. 图片资源（可选）
 
 | 图片 | 用途 |
 |---|---|
-| `favicon.ico` | 标签页图标 |
 | `logo.icon` | 顶部头像 |
 | `bg-pc.png` | PC 背景 |
 | `bg-mobile.png` | 移动背景 |
 | `beian.png` | 页脚备案图标（可选） |
 
-### 4. 共享数据笔记
+可通过根笔记 `#coverDefaultImage` / `#coverMobileImage` / `#footerBeianIcon` 覆盖背景与备案图标 URL。
 
-在 `分享` 下建 `home-data`，开启分享。其下建 2 个 json 子笔记：
+### 4. 根笔记
 
-| 子笔记 | 标签 |
-|---|---|
-| `blog-data` | `#shareHiddenFromTree` `#shareRaw` `#shareAlias=blog-data` |
-| `blog-search` | `#shareHiddenFromTree` `#shareRaw` `#shareAlias=blog-search` |
-
-聚合接口 `/blog-data` 一次返回分类树/关于树/标签云/文章/动态/公告/推荐/统计/热力；`/blog-search` 单独承载搜索索引。记录各 noteId，供脚本 `#saveNoteId` 使用。
-
-### 5. 根笔记
-
-建根笔记，开启分享，设置关键标签（完整见 [PromotedAttributes](#promotedattributes)）：
+建根笔记，开启分享，设置关键标签（完整清单见 [标签与配置清单](#标签与配置清单)）：
 
 - `#isHome=true`
-- `#homeId=<noteId>`
 - `#blogTitle` / `#blogDescription`
-- `~shareTemplate(inheritable)=blog.ejs`（或 `blog.min.ejs`）
-- `~shareFavicon` / `~shareLogo`
+- `~shareTemplate(inheritable)=blog.min.ejs`
 
-> `~` 开头是 Relation，需在根笔记 Relation Map 中手动链接，粘贴文本不会生效。
+### 5. 「关于」笔记
 
-### 6. 「关于」笔记
+模板会从根笔记下找一个标题为「关于」的笔记渲染"关于"下拉菜单。建议建一个「关于」笔记（可空），其子笔记按 `#category` / 图标 / 颜色配置即成为菜单项。
 
-data.js 从根笔记下的「关于」笔记构建 About 菜单。建议至少建一个空「关于」笔记。
+### 6. 发文章 / 建分类
 
-### 7. 发文章
+给子笔记加标签（均定义在根笔记 `inheritable`，子笔记直接打勾即可）：
 
-按需给子笔记加标签：
+| 标签 | 作用 | 位置 |
+|---|---|---|
+| `#article=true` | 文章，进首页「最新文章」 | 文章笔记 |
+| `#recentUpdate=true` | 动态，进首页「动态」+ 菜单「最近动态」 | 动态笔记 |
+| `#announcement=true` | 公告，首页「公告」（取第一个） | 公告笔记 |
+| `#recommend=true` | 推荐，计入「推荐」计数 | 文章笔记 |
+| `#category=true` | 分类节点，构成分类树与面包屑 | 分类笔记 |
+| `#noteTag=xxx` | 标签，进标签云 / 模块/文章标签 | 任意已分享笔记 |
+| `#shareAlias=xxx` | 别名 URL（可选，更友好） | 任意笔记 |
+| `#shareExternalLink=...` | 外链（分类/文章跳转外部） | 分类或文章 |
+| `#articleCover=https://...` | 封面图（首页/标签云文章卡片） | 文章 |
+| `#color=#hex` | 标题/图标着色 | 任意笔记 |
+| `#iconClass=bx bxs-xxx` | 图标 | 任意笔记 |
+| `#shareHiddenFromTree=true` | 从分类树/搜索/打标中排除 | 内部笔记 |
 
-| 标签 | 位置 |
-|---|---|
-| `#recommend=true` | 推荐阅读 |
-| `#article=true` | 最新发布 |
-| `#category=true` | 分类树节点 |
-| `#recentUpdate=true` | 动态 |
-| `#announcement=true` | 公告 |
+> 分类树按 `#category` 的父子层级自动生成；内容页面包屑即当前笔记到根的分类路径。
+
+### 7. 标签云（可选）
+
+建一个笔记并加 `#tagCloud`（或作为根笔记的子笔记带上该标签），该笔记成为标签云页面。首页「查看全部 →」与导航「文章/动态/推荐/公告」计数会跳到它。可用 `#tagCloudIconClass` 自定义标签图标。
 
 ### 8. 导入预处理脚本
 
-- `BlogPreprocessRender.js` → 导入为 **JSX** 笔记，建 `渲染笔记` 关联
-- `data.js` → 导入为 **Backend Script**（内含 syncData + syncSearch），作为 JSX 子笔记
+仅需写创建时间标签，一次性配置：
 
-配置后运行一次，首页数据即预生成。
+- `BlogPreprocessRender.js` → 导入为 **JSX** 笔记，建渲染笔记关联。
+- `data.js` → 导入为 **Backend Script** 笔记，作为 JSX 的子笔记，标题需为 `data`。
+- 在 `data.js` 上设置 `#rootNoteId=<博客根笔记ID>`，打开渲染面板点「写入创建时间标签」。
+
+> 若历史笔记已有 `#dateCreated`，脚本会跳过，不会重复写入。
 
 ---
 
 ## 预处理脚本
 
-首页数据由后端脚本一次性生成 JSON 写入共享笔记，模板/前端只读。
-
-### 脚本列表
+页面数据已全部由模板服务端实时聚合，**无需预生成 json 快照**。唯一的后端脚本用于写创建时间标签：
 
 | 脚本 | 功能 | 必需标签 |
 |---|---|---|
-| `BlogPreprocessRender.js` | 编排入口，JSX 渲染同步面板 | 经 `~renderNote` 关联 |
-| `data.js` | 聚合数据（分类/标签/文章/动态/公告/推荐/统计/热力）+ 搜索索引 | `#rootNoteId` `#dataSaveNoteId` `#searchSaveNoteId` `#dataLen(可选)` `#searchLen(可选)` |
+| `BlogPreprocessRender.js` | 编排入口，JSX 渲染面板 | 经 `~renderNote` 关联，子笔记为 `data` |
+| `data.js` | 写 `#dateCreated` 创建时间标签（`stampDates`） | `#rootNoteId` |
 
-### 性能
+### 为什么需要它
 
-- 脚本用 `JOIN blobs + SUBSTR` 在 SQL 层截取内容，避免 N 次 `api.getNote()`
-- `data.js` 全模块合并为 2~3 条 SQL，标签在 SQL 内 JSON 聚合
-- 统计用 `COUNT(DISTINCT CASE WHEN ...)` 一次查询
-- 前端仅 2 个请求（`/blog-data` + `/blog-search`），内容默认截断 ~150 字
+共享模板的 `note` 对象不暴露真实创建时间（`utcDateCreated` / `dateCreated` 为 `null`），模板只能通过标签读取创建时间。`stampDates()` 把每个可见笔记的真实 `dateCreated` 固化到 `#dateCreated` 标签上，内容页"创建时间"即正常显示。
 
-### 设置编排器
+### 设置步骤
 
-1. 确认 `blog-data`、`blog-search` 笔记带 `#shareHiddenFromTree` `#shareRaw` `#shareAlias`
-2. 建 `博客预处理面板` 渲染笔记关联 `BlogPreprocessRender.js`
-3. `BlogPreprocessRender.js` 为父，`data.js` 为子（标题须一致）
-4. 子脚本加标签：
-
-   | 子脚本 | 必需标签 |
-   |---|---|
-   | `data.js` | `#dataSaveNoteId=blog-data笔记ID` `#searchSaveNoteId=blog-search笔记ID` `#rootNoteId=博客根笔记ID` `#dataLen=150(可选)` `#searchLen=500(可选)` |
-
-5. 打开渲染笔记一键同步或逐个运行
-
-支持 `#run` 自动执行（见 [Trilium 后端脚本事件](https://docs.triliumnotes.org/user-guide/scripts/backend-basics/events)）。
+1. `BlogPreprocessRender.js` 为父，`data.js` 为其子笔记（标题须一致）。
+2. 子笔记 `data.js` 加标签：`#rootNoteId=博客根笔记ID`。
+3. 打开渲染笔记，点击「写入创建时间标签」即可。
+4. 可配 `#run` 自动执行（见 [Trilium 后端脚本事件](https://docs.triliumnotes.org/user-guide/scripts/backend-basics/events)）。
 
 ### 独立运行
 
@@ -261,80 +245,101 @@ server {
 }
 ```
 
-`location /` → `proxy_pass http://trilium/share/` 隐藏 `/share/` 前缀，静态/JSON/页面共用路由；安全拦截只针对后台路径，不误伤 `/api/attachments/`。
+`location /` → `proxy_pass http://trilium/share/` 隐藏 `/share/` 前缀，静态/页面共用路由；安全拦截只针对后台路径，不误伤 `/api/attachments/`。
 
 ---
 
-## PromotedAttributes
+## 标签与配置清单
 
-在根笔记上用 PromotedAttributes 声明标签体系。`~relation` 需手动在 Relation Map 链接；所有 `#label:` 标签写在一行空格分隔（下面按类别展示，粘贴时合并）。
+> `~relation` 需在 Relation Map 手动链接；所有 `#label:` 写在一行空格分隔（下面按类别展示，粘贴时合并）。
 
 ### 关系 Relations
 
 ```text
-~shareTemplate(inheritable)=blog.ejs  ~shareFavicon(inheritable)=favicon.ico  ~shareLogo(inheritable)=logo.icon
+~shareTemplate(inheritable)=blog.min.ejs
 ```
 
-用单文件部署时把 `blog.ejs` 换成 `blog.min.ejs`。
+模板笔记带 `~shareTemplate` 后，分享页即套用本主题（**必填**）。用源码调试时可换成 `blog.ejs`。
 
-### 根笔记标签
+### 根笔记标签（全局配置）
+
+| 标签 | 说明 | 默认 |
+|---|---|---|
+| `#isHome=true` | 标记博客根笔记 | — |
+| `#homeId=<id>` | 博客主页ID（可选，自带检测） | — |
+| `#blogTitle=` | 博客标题 | — |
+| `#blogDescription=` | 博客副标题 / 描述 | — |
+| `#appearanceDefaultTheme=` | 默认主题 `dark`/`light` | `dark` |
+| `#coverDefaultImage=` | PC 背景 URL | `/bg-pc.png` |
+| `#coverMobileImage=` | 移动背景 URL | `/bg-mobile.png` |
+| `#twikooEnabled=true` | 启用评论系统 | — |
+| `#twikooEnvId=` | Twikoo 环境 ID | — |
+| `#twikooVersion=` | Twikoo 版本 | `1.6.41` |
+| `#footerCopyright=` | 页脚版权文本 | — |
+| `#footerIcp=` | 工信部备案号 | — |
+| `#footerPolice=` | 公安备案号 | — |
+| `#footerPoliceUrl=` | 公安备案链接 | — |
+| `#footerBeianIcon=` | 备案图标 URL | `/beian.png` |
+| `#siteStartDate=` | 建站日期，用于"已运行 N 天" | — |
+| `#tagCloudIconClass=` | 标签图标 class | `bx bx-purchase-tag-alt` |
+| `#statTagRecommend=` | 「推荐」统计跳转用标签名 | `推荐阅读` |
+| `#statTagArticle=` | 「文章」统计跳转用标签名 | `文章` |
+| `#statTagUpdate=` | 「动态」统计跳转用标签名 | `动态` |
+| `#statTagAnnounce=` | 「公告」统计跳转用标签名 | `公告` |
+| `#readOnly` | 系统：只读 | — |
+| `#shareDescription=` | 系统：分享描述 | — |
+| `#iconClass=` | 根笔记图标 | — |
+
+### 子笔记标签（继承，定义在根笔记）
+
+已在所有子笔记中以 `(inheritable)` 暴露。直接打在子笔记上即生效：
+
+| 标签 | 说明 |
+|---|---|
+| `#article=true` | 文章 |
+| `#recentUpdate=true` | 动态 |
+| `#announcement=true` | 公告 |
+| `#recommend=true` | 推荐（推荐计数仅认笔记自身拥有） |
+| `#category=true` | 分类节点 |
+| `#noteTag=<值>` | 标签（可多个，进标签云/模块/文章标签） |
+| `#shareAlias=<别名>` | 别名 URL |
+| `#shareExternalLink=<url>` | 外链跳转 |
+| `#shareHiddenFromTree=true` | 从分类树/搜索/打标排除 |
+| `#articleCover=<图片url>` | 文章封面 |
+| `#dateCreated=` | 创建时间（由脚本写入，勿手改） |
+| `#color=<hex>` | 标题/图标颜色 |
+| `#iconClass=<图标class>` | 图标 |
+| `#enableTwikoo=true` | 单篇开启评论 |
+
+> 说明：`#recommend` 只统计"笔记自身拥有"的该标签，避免继承导致全部计数。
+
+### 标签云笔记
+
+| 标签 | 说明 |
+|---|---|
+| `#tagCloud` | 标记该笔记为标签云页 |
+| `#tagCloudIconClass=` | 覆盖标签图标 class |
+
+### 一键复制（根笔记标签）
 
 ```text
-#label:isHome="promoted,alias=博客主页,single,boolean"        #isHome=true
-#label:homeId="promoted,alias=博客主页ID,single,text"         #homeId="笔记ID"
-#label:blogTitle="promoted,alias=博客标题,single,text"        #blogTitle="我的博客"
-#label:blogDescription="promoted,alias=博客副标题,single,text" #blogDescription="子非鱼，安知鱼之乐"
-#label:appearanceDefaultTheme="promoted,alias=博客默认主题,single,text"  #appearanceDefaultTheme="dark"
-#label:coverDefaultImage="promoted,alias=PC端背景URL,single,text"        #coverDefaultImage="/bg-pc.png"
-#label:coverMobileImage="promoted,alias=移动端背景URL,single,text"       #coverMobileImage="/bg-mobile.png"
-#label:twikooEnabled="promoted,alias=评论系统,single,boolean"   #twikooEnabled=true
-#label:twikooEnvId="promoted,alias=Twikoo环境ID,single,text"   #twikooEnvId="你的EnvId"
-#label:twikooVersion="promoted,alias=Twikoo版本,single,text"   #twikooVersion="1.6.41"
-#label:footerCopyright="promoted,alias=页脚版权,single,text"   #footerCopyright="© 2026 YourName"
-#label:footerIcp="promoted,alias=工信部备案号,single,text"     #footerIcp="你的ICP备案号"
-#label:footerPolice="promoted,alias=公安备案号,single,text"    #footerPolice="你的公安备案号"
-#label:footerPoliceUrl="promoted,alias=公安备案链接,single,text"  #footerPoliceUrl="你的公安备案链接"
-#label:footerBeianIcon="promoted,alias=备案图标URL,single,text"  #footerBeianIcon="/beian.png"
-#label:siteStartDate="promoted,alias=建站日期,single,text"    #siteStartDate="2026-04-10"
+#label:isHome="promoted,alias=博客主页,single,boolean" #isHome=true #label:blogTitle="promoted,alias=博客标题,single,text" #blogTitle="我的博客" #label:blogDescription="promoted,alias=博客副标题,single,text" #blogDescription="子非鱼，安知鱼之乐"
 ```
 
-系统标签：
-
 ```text
-#readOnly  #shareDescription="我的博客描述"  #iconClass="bx bxs-yin-yang"
+#label:appearanceDefaultTheme="promoted,alias=默认主题,single,text" #appearanceDefaultTheme="dark" #label:coverDefaultImage="promoted,alias=PC背景,single,text" #coverDefaultImage="/bg-pc.png" #label:coverMobileImage="promoted,alias=移动背景,single,text" #coverMobileImage="/bg-mobile.png" #label:siteStartDate="promoted,alias=建站日期,single,text" #siteStartDate="2026-04-10"
 ```
 
-### 子笔记标签（继承）
-
-定义在根笔记，`(inheritable)` 对子可见：
-
 ```text
-#label:recommend(inheritable)="promoted,alias=推荐阅读,single,boolean"
-#label:article(inheritable)="promoted,alias=文章,single,boolean"
-#label:recentUpdate(inheritable)="promoted,alias=动态,single,boolean"
-#label:announcement(inheritable)="promoted,alias=公告,single,boolean"
-#label:enableTwikoo(inheritable)="promoted,alias=评论,single,boolean"
-#label:category(inheritable)="promoted,alias=类别,single,boolean"
-#label:shareHiddenFromTree(inheritable)="promoted,alias=隐藏,single,boolean"
-#label:iconClass(inheritable)="promoted,alias=图标,single,text"
-#label:dateNote(inheritable)="promoted,alias=日期覆盖,single,text"
-#label:shareAlias(inheritable)="promoted,alias=别名,single,text"
-```
-
-### 一键复制
-
-5 段拼接为 1 行（空格分隔）后粘贴到根笔记标签框：
-
-```text
-#label:isHome="promoted,alias=博客主页,single,boolean" #isHome=true #label:homeId="promoted,alias=博客主页ID,single,text" #homeId="笔记ID" #label:blogTitle="promoted,alias=博客标题,single,text" #blogTitle="我的博客" #label:blogDescription="promoted,alias=博客副标题,single,text" #blogDescription="子非鱼，安知鱼之乐"
-
-#label:appearanceDefaultTheme="promoted,alias=博客默认主题,single,text" #appearanceDefaultTheme="dark" #label:coverDefaultImage="promoted,alias=PC端背景URL,single,text" #coverDefaultImage="/bg-pc.png" #label:coverMobileImage="promoted,alias=移动端背景URL,single,text" #coverMobileImage="/bg-mobile.png"
-
 #label:twikooEnabled="promoted,alias=评论系统,single,boolean" #twikooEnabled=true #label:twikooEnvId="promoted,alias=Twikoo环境ID,single,text" #twikooEnvId="你的EnvId" #label:twikooVersion="promoted,alias=Twikoo版本,single,text" #twikooVersion="1.6.41"
+```
 
-#label:footerCopyright="promoted,alias=页脚版权,single,text" #footerCopyright="© 2026 YourName" #label:footerIcp="promoted,alias=工信部备案号,single,text" #footerIcp="你的ICP备案号" #label:footerPolice="promoted,alias=公安备案号,single,text" #footerPolice="你的公安备案号" #label:footerPoliceUrl="promoted,alias=公安备案链接,single,text" #footerPoliceUrl="你的公安备案链接" #label:footerBeianIcon="promoted,alias=备案图标URL,single,text" #footerBeianIcon="/beian.png" #label:siteStartDate="promoted,alias=建站日期,single,text" #siteStartDate="2026-04-10"
+```text
+#label:footerCopyright="promoted,alias=页脚版权,single,text" #footerCopyright="© 2026 YourName" #label:footerIcp="promoted,alias=工信部备案号,single,text" #footerIcp="你的ICP" #label:footerPolice="promoted,alias=公安备案号,single,text" #footerPolice="你的公安备案号" #label:footerPoliceUrl="promoted,alias=公安备案链接,single,text" #footerPoliceUrl="你的链接" #label:footerBeianIcon="promoted,alias=备案图标URL,single,text" #footerBeianIcon="/beian.png"
+```
 
-#label:recommend(inheritable)="promoted,alias=推荐阅读,single,boolean" #label:article(inheritable)="promoted,alias=文章,single,boolean" #label:recentUpdate(inheritable)="promoted,alias=动态,single,boolean" #label:announcement(inheritable)="promoted,alias=公告,single,boolean" #label:enableTwikoo(inheritable)="promoted,alias=评论,single,boolean" #label:category(inheritable)="promoted,alias=类别,single,boolean" #label:shareHiddenFromTree(inheritable)="promoted,alias=隐藏,single,boolean" #label:iconClass(inheritable)="promoted,alias=图标,single,text" #label:dateNote(inheritable)="promoted,alias=日期覆盖,single,text" #label:shareAlias(inheritable)="promoted,alias=别名,single,text"
+```text
+#label:recommend(inheritable)="promoted,alias=推荐阅读,single,boolean" #label:article(inheritable)="promoted,alias=文章,single,boolean" #label:recentUpdate(inheritable)="promoted,alias=动态,single,boolean" #label:announcement(inheritable)="promoted,alias=公告,single,boolean" #label:enableTwikoo(inheritable)="promoted,alias=评论,single,boolean" #label:category(inheritable)="promoted,alias=类别,single,boolean" #label:noteTag(inheritable)="promoted,alias=标签,text" #label:shareAlias(inheritable)="promoted,alias=别名,single,text" #label:shareExternalLink(inheritable)="promoted,alias=外链,single,text" #label:shareHiddenFromTree(inheritable)="promoted,alias=隐藏,single,boolean" #label:articleCover(inheritable)="promoted,alias=封面,single,text" #label:color(inheritable)="promoted,alias=颜色,single,text" #label:iconClass(inheritable)="promoted,alias=图标,single,text"
 ```
 
 ---
@@ -350,7 +355,7 @@ share/
 
 博客预处理控件/
 ├── BlogPreprocessRender.js  # 编排入口（JSX 面板）
-└── data.js                  # 聚合数据 + 搜索索引脚本（syncData/syncSearch）
+└── data.js                  # 写 #dateCreated 创建时间标签（stampDates）
 
 build-min.js          # 构建脚本（生成 blog.min.ejs）
 压缩部署说明.md        # 压缩部署文档
@@ -360,11 +365,13 @@ build-min.js          # 构建脚本（生成 blog.min.ejs）
 
 ## FAQ
 
-- **页面空白**：检查根笔记及资源已开启分享；`~shareTemplate` Relation 是否链接。
-- **分类树/关于菜单不显示**：确认 `#rootNoteId` 指向正确根笔记；存在「关于」笔记；`#category=true` 已加。
-- **搜索无结果**：确认 data.js 的 syncSearch 已写入 blog-search；`#rootNoteId` 正确。
-- **样式错乱**：硬刷新（Ctrl+F5）；三件套部署时确认 blog.css/blog.js 分享状态；检查 nginx 路径。
-- **`content.trim is not a function`**：更新旧脚本至最新（commit `39afe5f` 已修复 blob Buffer→String）。
+- **页面空白**：确认根笔记及资源已开启分享；`~shareTemplate` Relation 是否链接。
+- **分类树 / 关于菜单不显示**：确认「关于」笔记存在于根下；分类节点已加 `#category=true`。
+- **文章不出现在首页**：确认文章笔记加 `#article=true`。
+- **内容页没有"创建时间"**：运行一次预处理脚本写 `#dateCreated`（见 [预处理脚本](#预处理脚本)）。
+- **标签云不显示**：确认标签云笔记已加 `#tagCloud` 并开启分享；笔记打了 `#noteTag`。
+- **样式错乱**：硬刷新（Ctrl+F5）；确认只用 `blog.min.ejs` 一个分享笔记。
+- **搜索找不到**：搜索仅匹配标题；确认笔记未加 `#shareHiddenFromTree` 或 `#category`。
 
 ---
 

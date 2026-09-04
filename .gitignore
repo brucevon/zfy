@@ -9,3 +9,6 @@ package-lock.json
 
 # Build cache
 .build-cache
+
+# 本地排查/调试上传的临时附件（截图、dump 文本等），不入库
+.uploads/

@@ -130,7 +130,7 @@ var _twCard = _ogImage ? 'summary_large_image' : 'summary';
 
 <% 
 // ── 服务端实时聚合：分类树 + 关于菜单 + 右侧统计/动态（所有页面头部共用） ──
-// 取代浏览器 fetch(/blog-data) 的 tree / aboutTree / stats / recentUpdate。
+// 由服务端实时遍历笔记树生成，取代浏览器 fetch(/blog-data)。
 // 遍历起点 = homeNote || subRoot（分享根），跳过体根自身与 #shareHiddenFromTree。
 var _SSR_TREE = '', _SSR_ABOUT = '';
 var _SSR_STATS = { article:0, recentUpdate:0, recommend:0, announcement:0 };
@@ -374,10 +374,9 @@ function _blogCreated(n){
        原理：模板在服务端渲染时，从博客根/subRoot 实时遍历笔记树，
        收集 #article / #recentUpdate / #announcement / #recommend 标签的笔记，
        直接生成 HTML，浏览器不再需要预生成的 JSON 快照（改文即见、无手动重建）。
-       注意：全站搜索、分类树、关于菜单仍走 /blog-data 与 /blog-search
-       （fetchNote 无法做全库按标签查询）。
+       标题搜索索引（window.__SSR_SEARCH__）与标签云（__SSR_TAGDATA__）亦由模板注入。
        ──────────────────────────────────────────────────────────────── */
-    var SSR = { nodes:0, err:'', traceEnter:0, traceNFalsy:0, traceNoId:0, traceSeen:0, traceNodeId:'', traceErrGetChild:'', callArgFalsy:false, callArgId:'', articles:[], updates:[], recommend:[], announcement:null,
+    var SSR = { articles:[], updates:[], recommend:[], announcement:null,
                 heatmap:{}, heatmapArr:[], hmHTML:'', hmGridStyle:'',
                 stats:{ article:0, recentUpdate:0, recommend:0, announcement:0 } };
     try {
@@ -414,13 +413,11 @@ function _blogCreated(n){
             return s;
         };
         var _walk = function(n){
-            SSR.traceEnter++;
-            if(!n){ SSR.traceNFalsy++; return; }
+            if(!n) return;
             var id = n.noteId;
-            if(!id){ SSR.traceNoId++; return; }
-            if(_seen[id]){ SSR.traceSeen++; return; }
-            _seen[id] = true; SSR.nodes++;
-            SSR.traceNodeId = String(id).slice(0,20);
+            if(!id) return;
+            if(_seen[id]) return;
+            _seen[id] = true;
             var h = function(name){ try{ var _at=n.ownedAttributes; if(_at){ for(var _i2=0;_i2<_at.length;_i2++){ var _aa=_at[_i2]; if(_aa && _aa.type==='label' && _aa.name===name){ var _vv=_aa.value; if(_vv===undefined||_vv===null||_vv===''||_vv==='true') return true; } } return false; } }catch(e){} return false; };
             var g = function(name){ try{ return n.getLabelValue ? (n.getLabelValue(name)||'') : ''; }catch(e){ return ''; } };
             var isArticle=h('article'), isUpdate=h('recentUpdate'), isAnn=h('announcement'), isRec=h('recommend');
@@ -440,12 +437,10 @@ function _blogCreated(n){
             /* 热力图口径与原脚本一致：按「全部笔记的修改日期」逐日计数（修订创建不重复计入） */
             var _nd = n.utcDateModified || n.dateCreated;
             if(_nd){ var _d=_ymd(_nd); SSR.heatmap[_d]=(SSR.heatmap[_d]||0)+1; }
-            var kids=null; try{ kids=n.getChildNotes(); }catch(e){ SSR.traceErrGetChild = String(e); }
+            var kids=null; try{ kids=n.getChildNotes(); }catch(e){}
             if(kids) for(var i=0;i<kids.length;i++) _walk(kids[i]);
         };
         var _callArg = homeNote || subRoot;
-        SSR.callArgFalsy = !_callArg;
-        SSR.callArgId = _callArg ? String(_callArg.noteId):'(falsy)';
         _walk(_callArg);
         SSR.articles.sort(_sortD); SSR.updates.sort(_sortD); SSR.recommend.sort(_sortD);
         SSR.stats = { article:SSR.articles.length, recentUpdate:SSR.updates.length, recommend:SSR.recommend.length, announcement:SSR.announcement?1:0 };
@@ -490,7 +485,7 @@ function _blogCreated(n){
             }
         }
         SSR.hmHTML = hmHTML;
-    } catch(_e){ try{ SSR.err = (_e && (_e.stack || _e.message)) ? String(_e.stack || _e.message) : String(_e); }catch(_ee){ SSR.err = 'ERR_UNREADABLE'; } }
+    } catch(_e) { SSR.articles = []; SSR.updates = []; }
     SSR.articlesJSON = JSON.stringify(SSR.articles).split('</').join('<\/');
     %>
 <script>window.__SSR_HOME__ = true;window.__SSR_ARTICLES__ = <%- SSR.articlesJSON %>;</script>

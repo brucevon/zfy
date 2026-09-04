@@ -332,7 +332,7 @@ plugin/
 - **Blank page** — verify the root note and resources have sharing enabled; the `~shareTemplate` Relation is linked.
 - **Category tree / About menu missing** — confirm an About note exists under the root; category nodes have `#category=true`.
 - **Article missing on homepage** — confirm the article note has `#article=true`.
-- **No "create time" on a content page** — a shared template can't read real create time; run `plugin/add-date-created-label.js` in Trilium to batch-write it, or add `#dateCreated=YYYY-MM-DD HH:mm:ss` manually to the article.
+- **No "create time" on a content page** — a shared template can't read real create time; run `plugin/add-date-created-label.js` in Trilium to batch-write it, or add `#dateCreated="YYYY-MM-DD HH:mm:ss"` manually to the article.
 - **Tag cloud not showing** — confirm the tag-cloud note has `#tagCloud` with sharing enabled; notes have `#noteTag`.
 - **Broken styles** — hard refresh (Ctrl+F5); use only the single `blog.min.ejs` shared note.
 - **Search finds nothing** — search matches titles only; confirm the note doesn't have `#shareHiddenFromTree` or `#category`.

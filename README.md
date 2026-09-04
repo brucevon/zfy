@@ -332,7 +332,7 @@ plugin/
 - **页面空白**：确认根笔记及资源已开启分享；`~shareTemplate` Relation 是否链接。
 - **分类树 / 关于菜单不显示**：确认「关于」笔记存在于根下；分类节点已加 `#category=true`。
 - **文章不出现在首页**：确认文章笔记加 `#article=true`。
-- **内容页不显示"创建时间"**：共享模板读不到真实创建时间，可在 Trilium 中运行 `plugin/add-date-created-label.js` 一键批量写入，或手动给文章加 `#dateCreated=YYYY-MM-DD HH:mm:ss` 标签。
+- **内容页不显示"创建时间"**：共享模板读不到真实创建时间，可在 Trilium 中运行 `plugin/add-date-created-label.js` 一键批量写入，或手动给文章加 `#dateCreated="YYYY-MM-DD HH:mm:ss"` 标签。
 - **标签云不显示**：确认标签云笔记已加 `#tagCloud` 并开启分享；笔记打了 `#noteTag`。
 - **样式错乱**：硬刷新（Ctrl+F5）；确认只用 `blog.min.ejs` 一个分享笔记。
 - **搜索找不到**：搜索仅匹配标题；确认笔记未加 `#shareHiddenFromTree` 或 `#category`。

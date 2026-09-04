@@ -1308,6 +1308,10 @@
                         if (sData[j].noteId === info.noteId[i]) { notes.push(sData[j]); break; }
                     }
                 }
+                /* 按创建时间倒序 */
+                notes.sort(function (a, b) {
+                    return String(b.dateCreated).localeCompare(String(a.dateCreated));
+                });
                 var total = notes.length;
                 var totalPages = Math.ceil(total / pageSize) || 1;
                 var start = curPage * pageSize;

@@ -60,6 +60,9 @@ export default function () {
                     if (_module.exports && typeof _module.exports.syncSearch === "function") {
                         await _module.exports.syncSearch();
                     }
+                    if (_module.exports && typeof _module.exports.stampDates === "function") {
+                        await _module.exports.stampDates();
+                    }
                 },
                 [noteId],
             );

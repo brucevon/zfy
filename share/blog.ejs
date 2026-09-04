@@ -598,26 +598,6 @@ function _blogCreated(n){
         %></div>
                 <h1 class="note-title"<% try { var _noteC = note.getLabelValue('color'); if (_noteC) { %> style="color:<%= _noteC %>"<% } } catch(_e){} %>><% if (_noteIconCls) { %><i class="<%= _noteIconCls %>"></i> <% } %><%= note.title %><button class="share-btn" aria-label="分享链接" title="复制链接"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button></h1>
                 <div class="note-meta"></div>
-                <% /* 临时诊断(创建时间)：给文章加 #isDebug 后取 <pre#debug-note>.textContent 发我 */
-                var _dbgDates=''; try {
-                  var _dl=[];
-                  var _pr=function(k,v){ _dl.push(k+'='+(v===undefined||v===null?'<null>':String(v))); };
-                  _pr('dateCreated', note.dateCreated);
-                  _pr('dateModified', note.dateModified);
-                  _pr('utcDateCreated', note.utcDateCreated);
-                  _pr('utcDateModified', note.utcDateModified);
-                  _pr('typeof.dateCreatedObj', typeof note.dateCreatedObj);
-                  if(note.dateCreatedObj){ try{ _dl.push('dateCreatedObj='+String(note.dateCreatedObj)); }catch(e){ _dl.push('dCObjErr='+e); } }
-                  _pr('typeof.getNoteMetadata', typeof note.getNoteMetadata);
-                  _pr('typeof.fetchNote', typeof (typeof fetchNote!=='undefined'?fetchNote:undefined));
-                  _pr('typeof.api', typeof (typeof api!=='undefined'?api:undefined));
-                  _pr('typeof.becca', typeof (typeof becca!=='undefined'?becca:undefined));
-                  _pr('ctor', note.constructor ? note.constructor.name : '<none>');
-                  try{ _dl.push('protoKeys='+JSON.stringify(Object.getOwnPropertyNames(Object.getPrototypeOf(note)||{}))); }catch(e){ _dl.push('protoErr='+e); }
-                  try{ var _c2=note.getChildNotes?note.getChildNotes():null; if(_c2&&_c2.length){ var _cc=_c2[0]; _pr('child.dateCreated',_cc.dateCreated); _pr('child.utcDateCreated',_cc.utcDateCreated); _pr('child.ctor',_cc.constructor?_cc.constructor.name:'<none>'); } }catch(e){ _dl.push('childErr='+e); }
-                  _dbgDates=_dl.join('\n');
-                }catch(e){ _dbgDates='debugErr='+e; } %>
-                <% if (_cfg.isHome===false && note.hasLabel && note.hasLabel('isDebug')) { %><pre id="debug-note" style="display:none;white-space:pre-wrap"><%= _dbgDates %></pre><% } %>
                 <div class="note-body">
                     <%- content.replace(/<img /g, '<img loading="lazy" ') %>
                 </div>

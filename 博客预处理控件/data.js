@@ -563,7 +563,66 @@ async function syncSearch() {
     return { count: result.length, elapsedMs: Date.now() - startTime };
 }
 
-// ── 写入目标笔记 ──
+// ── 创建时间标签：共享模板 note 不暴露创建时间，只能靠标签。给分享子树内可见笔记写 #dateCreated（读真实 dateCreated）。 ──
+
+async function stampDates() {
+    var cfg = api._syncConfig || {};
+    var rootNoteId = cfg.rootNoteId;
+    if (!rootNoteId) throw new Error("缺少配置: rootNoteId");
+
+    var rows = [];
+    try {
+        rows = await api.sql.getRows(
+            "WITH RECURSIVE subtree AS (" +
+            "  SELECT n.noteId, n.dateCreated, 0 AS depth" +
+            "  FROM notes n JOIN branches b ON n.noteId = b.noteId AND b.isDeleted = 0 AND b.parentNoteId = ? AND n.isDeleted = 0" +
+            "  UNION ALL" +
+            "  SELECT n.noteId, n.dateCreated, s.depth + 1" +
+            "  FROM notes n JOIN branches b ON n.noteId = b.noteId AND b.isDeleted = 0" +
+            "  JOIN subtree s ON b.parentNoteId = s.noteId" +
+            "  WHERE n.isDeleted = 0 AND s.depth < 50" +
+            ") SELECT noteId, dateCreated FROM subtree",
+            [rootNoteId],
+        );
+    } catch (e) {
+        console.error("dateCreated 标签查询失败: " + e.message);
+    }
+
+    // 排除 #shareHiddenFromTree / #category
+    var labels = [];
+    var ids = rows.map(function (r) { return r.noteId; });
+    if (ids.length) labels = await queryLabels(ids);
+    var skip = {};
+    for (var i = 0; i < labels.length; i++) {
+        if (
+            (labels[i].name === "shareHiddenFromTree" && labels[i].value === "true") ||
+            (labels[i].name === "category" && labels[i].value === "true")
+        ) {
+            skip[labels[i].noteId] = true;
+        }
+    }
+
+    var stamped = 0, updated = 0;
+    for (var r = 0; r < rows.length; r++) {
+        var row = rows[r];
+        if (skip[row.noteId]) continue;
+        if (!row.dateCreated) continue;
+        var note;
+        try { note = await api.getNote(row.noteId); } catch (e) { continue; }
+        if (!note) continue;
+        try {
+            var cur = note.getOwnedLabelValue ? note.getOwnedLabelValue("dateCreated") : "";
+            if (cur) { continue; } /* 已打过标签，跳过 */
+            note.setLabel("dateCreated", row.dateCreated);
+            await note.save();
+            stamped++;
+        } catch (e) {
+            console.error("写入 dateCreated 标签失败: " + row.noteId + " " + e.message);
+        }
+    }
+    console.log("创建时间标签写入完成（新增 " + stamped + " 条）");
+    return { stamped: stamped };
+}
 
 async function writeNote(noteId, content) {
     var note = await api.getNote(noteId);
@@ -574,4 +633,4 @@ async function writeNote(noteId, content) {
 
 // ── 导出 ──
 
-module.exports = { syncData: syncData, syncSearch: syncSearch };
+module.exports = { syncData: syncData, syncSearch: syncSearch, stampDates: stampDates };

@@ -16,7 +16,6 @@
 - [特性](#特性)
 - [架构](#架构)
 - [快速开始](#快速开始)
-- [预处理脚本](#预处理脚本)
 - [压缩部署](#压缩部署)
 - [nginx 参考](#nginx-参考)
 - [标签与配置清单](#标签与配置清单)
@@ -40,7 +39,7 @@
 | 图片灯箱 | 点击放大，大号左右切换按钮，支持方向键 |
 | shareAlias | 别名 URL 自动反查真实 noteId |
 | 单文件部署 | 构建脚本把 CSS/JS 内联压缩为单个 EJS |
-| 零后端依赖 | 唯一的后端脚本只负责写 `#dateCreated` 创建时间标签 |
+| 零后端依赖 | 全站数据由模板服务端实时聚合，无需任何后端脚本 |
 
 ---
 
@@ -57,14 +56,13 @@
        ├─ #recommend  → 推荐计数
        ├─ #category   → 分类树 + 内容页面包屑路径
        ├─ #noteTag    → 标签云 / 模块标签 / 文章标签
-       ├─ 全部可见笔记 → 标题搜索索引（window.__SSR_SEARCH__）
-       └─ 全部隐藏笔记 → #dateCreated 创建时间
+       └─ 全部可见笔记 → 标题搜索索引（window.__SSR_SEARCH__）
             └─ 结果直接生成 HTML，并注入 window.__SSR_*__ 供客户端交互
 ```
 
 - **服务端渲染**：首页四模块、分类树、关于菜单、导航统计、面包屑、热力图全部在模板端生成 HTML（SEO 友好、改文即见）。
 - **客户端交互**：`blog.js` 基于模板注入的 `window.__SSR_HOME__ / __SSR_ARTICLES__ / __SSR_TAGDATA__ / __SSR_HUB__ / __SSR_SEARCH__ / __BLOG_CONFIG__` 完成展开折叠、定位、搜索、分页、灯箱、主题等，**不再请求 `/blog-data`、`/blog-search`**。
-- **唯一后端脚本**：`data.js` 只执行 `stampDates()`，给分享子树内可见笔记写 `#dateCreated`（共享模板 `note` 不暴露真实创建时间）。
+- **零后端依赖**：全部数据由模板实时聚合生成，仓库不包含任何预处理脚本，部署仅需一个 `blog.min.ejs`。
 
 ---
 
@@ -142,41 +140,9 @@ Trilium 下建 `分享` 主笔记，再建一个模板笔记并开启分享，�
 
 建一个笔记并加 `#tagCloud`（或作为根笔记的子笔记带上该标签），该笔记成为标签云页面。首页「查看全部 →」与导航「文章/动态/推荐/公告」计数会跳到它。可用 `#tagCloudIconClass` 自定义标签图标。
 
-### 8. 导入预处理脚本
+### 8. 创建时间（可选）
 
-仅需写创建时间标签，一次性配置：
-
-- `BlogPreprocessRender.js` → 导入为 **JSX** 笔记，建渲染笔记关联。
-- `data.js` → 导入为 **Backend Script** 笔记，作为 JSX 的子笔记，标题需为 `data`。
-- 在 `data.js` 上设置 `#rootNoteId=<博客根笔记ID>`，打开渲染面板点「写入创建时间标签」。
-
-> 若历史笔记已有 `#dateCreated`，脚本会跳过，不会重复写入。
-
----
-
-## 预处理脚本
-
-页面数据已全部由模板服务端实时聚合，**无需预生成 json 快照**。唯一的后端脚本用于写创建时间标签：
-
-| 脚本 | 功能 | 必需标签 |
-|---|---|---|
-| `BlogPreprocessRender.js` | 编排入口，JSX 渲染面板 | 经 `~renderNote` 关联，子笔记为 `data` |
-| `data.js` | 写 `#dateCreated` 创建时间标签（`stampDates`） | `#rootNoteId` |
-
-### 为什么需要它
-
-共享模板的 `note` 对象不暴露真实创建时间（`utcDateCreated` / `dateCreated` 为 `null`），模板只能通过标签读取创建时间。`stampDates()` 把每个可见笔记的真实 `dateCreated` 固化到 `#dateCreated` 标签上，内容页"创建时间"即正常显示。
-
-### 设置步骤
-
-1. `BlogPreprocessRender.js` 为父，`data.js` 为其子笔记（标题须一致）。
-2. 子笔记 `data.js` 加标签：`#rootNoteId=博客根笔记ID`。
-3. 打开渲染笔记，点击「写入创建时间标签」即可。
-4. 可配 `#run` 自动执行（见 [Trilium 后端脚本事件](https://docs.triliumnotes.org/user-guide/scripts/backend-basics/events)）。
-
-### 独立运行
-
-脚本右键 → Execute script 可独立运行，standalone 块自动读自身标签。
+共享模板默认读不到笔记的真实创建时间。如需要在内容页显示"创建时间"，可手动给文章加 `#dateCreated=YYYY-MM-DD` 标签（见 [标签与配置清单](#标签与配置清单)）。
 
 ---
 
@@ -306,7 +272,7 @@ server {
 | `#shareExternalLink=<url>` | 外链跳转 |
 | `#shareHiddenFromTree=true` | 从分类树/搜索/打标排除 |
 | `#articleCover=<图片url>` | 文章封面 |
-| `#dateCreated=` | 创建时间（由脚本写入，勿手改） |
+| `#dateCreated=` | 创建时间（可选，手动设置后内容页显示创建日期） |
 | `#color=<hex>` | 标题/图标颜色 |
 | `#iconClass=<图标class>` | 图标 |
 | `#enableTwikoo=true` | 单篇开启评论 |
@@ -353,10 +319,6 @@ share/
 ├── css/blog.css      # 样式（源码）
 └── js/blog.js        # 脚本（源码）
 
-博客预处理控件/
-├── BlogPreprocessRender.js  # 编排入口（JSX 面板）
-└── data.js                  # 写 #dateCreated 创建时间标签（stampDates）
-
 build-min.js          # 构建脚本（生成 blog.min.ejs）
 压缩部署说明.md        # 压缩部署文档
 ```
@@ -368,7 +330,7 @@ build-min.js          # 构建脚本（生成 blog.min.ejs）
 - **页面空白**：确认根笔记及资源已开启分享；`~shareTemplate` Relation 是否链接。
 - **分类树 / 关于菜单不显示**：确认「关于」笔记存在于根下；分类节点已加 `#category=true`。
 - **文章不出现在首页**：确认文章笔记加 `#article=true`。
-- **内容页没有"创建时间"**：运行一次预处理脚本写 `#dateCreated`（见 [预处理脚本](#预处理脚本)）。
+- **内容页不显示"创建时间"**：共享模板读不到真实创建时间，需手动给文章加 `#dateCreated=YYYY-MM-DD` 标签。
 - **标签云不显示**：确认标签云笔记已加 `#tagCloud` 并开启分享；笔记打了 `#noteTag`。
 - **样式错乱**：硬刷新（Ctrl+F5）；确认只用 `blog.min.ejs` 一个分享笔记。
 - **搜索找不到**：搜索仅匹配标题；确认笔记未加 `#shareHiddenFromTree` 或 `#category`。

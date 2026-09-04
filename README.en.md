@@ -16,7 +16,6 @@
 - [Features](#features)
 - [Architecture](#architecture)
 - [Quick Start](#quick-start)
-- [Preprocessing Script](#preprocessing-script)
 - [Minified Deployment](#minified-deployment)
 - [nginx Reference](#nginx-reference)
 - [Labels & Config Reference](#labels--config-reference)
@@ -40,7 +39,7 @@
 | Image lightbox | Click to zoom, large prev/next buttons, arrow-key support |
 | shareAlias | Alias URLs auto-resolve to the real noteId |
 | Single-file deploy | Build script inlines minified CSS/JS into one EJS |
-| Zero backend reliance | The only backend script writes `#dateCreated` create-time labels |
+| Zero backend reliance | All page data aggregated server-side by the template; no backend script needed |
 
 ---
 
@@ -57,14 +56,13 @@ Root note (#isHome=true)
        ├─ #recommend      → recommendation count
        ├─ #category       → category tree + content breadcrumbs
        ├─ #noteTag        → tag cloud / module & note tags
-       ├─ all visible notes → title search index (window.__SSR_SEARCH__)
-       └─ all notes       → #dateCreated create time
+       └─ all visible notes → title search index (window.__SSR_SEARCH__)
             └─ result renders HTML directly and injects window.__SSR_*__ for client interaction
 ```
 
 - **Server render** — the four homepage modules, category tree, About menu, nav stats, breadcrumbs and heatmap are generated as HTML in the template (SEO-friendly, edit-and-live).
 - **Client interaction** — `blog.js` uses the injected `window.__SSR_HOME__ / __SSR_ARTICLES__ / __SSR_TAGDATA__ / __SSR_HUB__ / __SSR_SEARCH__ / __BLOG_CONFIG__` to handle expand/collapse, locating, search, pagination, lightbox and theming. It **no longer fetches `/blog-data` or `/blog-search`**.
-- **Only backend script** — `data.js` runs `stampDates()` to write `#dateCreated` on visible shared-subtree notes (a shared-template `note` doesn't expose real create time).
+- **Zero backend** — all data is aggregated by the template at render time; the repo contains no preprocessing script, deployment needs only one `blog.min.ejs`.
 
 ---
 
@@ -142,41 +140,9 @@ Add labels to child notes (inherit from the root note; toggle them directly on c
 
 Create a note and add `#tagCloud` (or add it as a child of the root with that label); it becomes the tag-cloud page. The homepage "View all →" and the "article/updates/recommend/announcement" counters jump to it. Use `#tagCloudIconClass` to customize the tag icon.
 
-### 8. Import the Preprocessing Script
+### 8. Create Time (optional)
 
-Only for create-time labels; configure once:
-
-- `BlogPreprocessRender.js` → import as a **JSX** note, create a render note linked to it.
-- `data.js` → import as a **Backend Script** note, as a child of the JSX note titled `data`.
-- On `data.js` set `#rootNoteId=<root note id>`, open the render panel and click "Write create-time labels".
-
-> Notes that already have `#dateCreated` are skipped; the script won't rewrite them.
-
----
-
-## Preprocessing Script
-
-Page data is fully aggregated by the template at render time, so **no pre-generated json snapshot is needed**. The only backend script writes create-time labels:
-
-| Script | Purpose | Required Labels |
-|---|---|---|
-| `BlogPreprocessRender.js` | orchestrator, JSX panel | linked via `~renderNote`, child note `data` |
-| `data.js` | writes `#dateCreated` (`stampDates`) | `#rootNoteId` |
-
-### Why it's needed
-
-A shared-template `note` object doesn't expose its real create time (`utcDateCreated` / `dateCreated` are `null`); the template can only read it from a label. `stampDates()` bakes each visible note's real `dateCreated` into a `#dateCreated` label so the content page "create time" shows correctly.
-
-### Setup Steps
-
-1. Make `BlogPreprocessRender.js` the parent; `data.js` its child (titles must match).
-2. On `data.js` add `#rootNoteId=<root note id>`.
-3. Open the render note and click "Write create-time labels".
-4. `#run` auto-execution is supported (see [Trilium backend script events](https://docs.triliumnotes.org/user-guide/scripts/backend-basics/events)).
-
-### Standalone Run
-
-Right-click a script note → Execute script; the standalone block auto-reads its own labels.
+A shared template can't read a note's real create time. To show "create time" on a content page, add the `#dateCreated=YYYY-MM-DD` label to the article manually (see [Labels & Config Reference](#labels--config-reference)).
 
 ---
 
@@ -306,7 +272,7 @@ Exposed to all children. Toggle them directly on child notes:
 | `#shareExternalLink=<url>` | external link |
 | `#shareHiddenFromTree=true` | exclude from tree/search/stamping |
 | `#articleCover=<image url>` | article cover |
-| `#dateCreated=` | create time (written by script; don't edit) |
+| `#dateCreated=` | create time (optional; shows create date on content page when set) |
 | `#color=<hex>` | title/icon color |
 | `#iconClass=<icon class>` | icon |
 | `#enableTwikoo=true` | enable comments per note |
@@ -353,10 +319,6 @@ share/
 ├── css/blog.css      # styles (source)
 └── js/blog.js        # script (source)
 
-博客预处理控件/
-├── BlogPreprocessRender.js  # orchestrator (JSX panel)
-└── data.js                  # writes #dateCreated (stampDates)
-
 build-min.js          # build script (generates blog.min.ejs)
 压缩部署说明.md        # minified deployment guide
 ```
@@ -368,7 +330,7 @@ build-min.js          # build script (generates blog.min.ejs)
 - **Blank page** — verify the root note and resources have sharing enabled; the `~shareTemplate` Relation is linked.
 - **Category tree / About menu missing** — confirm an About note exists under the root; category nodes have `#category=true`.
 - **Article missing on homepage** — confirm the article note has `#article=true`.
-- **No "create time" on a content page** — run the preprocessing script to write `#dateCreated` (see [Preprocessing Script](#preprocessing-script)).
+- **No "create time" on a content page** — a shared template can't read real create time; add `#dateCreated=YYYY-MM-DD` manually to the article.
 - **Tag cloud not showing** — confirm the tag-cloud note has `#tagCloud` with sharing enabled; notes have `#noteTag`.
 - **Broken styles** — hard refresh (Ctrl+F5); use only the single `blog.min.ejs` shared note.
 - **Search finds nothing** — search matches titles only; confirm the note doesn't have `#shareHiddenFromTree` or `#category`.

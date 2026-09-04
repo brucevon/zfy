@@ -1,8 +1,9 @@
 import { showMessage } from "trilium:api";
 
+// 全站已改为服务端实时聚合（SSR），/blog-data、/blog-search 快照已废弃。
+// 唯一需要后端执行的预处理是写 #dateCreated 创建时间标签（对分享子树内可见笔记）。
 var MODULES = [
-    { label: "聚合数据", url: "/blog-data",   icon: "📦" },
-    { label: "搜索索引", url: "/blog-search", icon: "🔍" },
+    { label: "创建时间标签", url: "#dateCreated", icon: "🕐" },
 ];
 
 export default function () {
@@ -32,41 +33,22 @@ export default function () {
                     var code = await targetNote.getContent();
 
                     var rootId = targetNote.getLabelValue("rootNoteId");
-                    var dataSaveId = targetNote.getLabelValue("dataSaveNoteId");
-                    var searchSaveId = targetNote.getLabelValue("searchSaveNoteId");
-
-                    var dataLen = targetNote.getLabelValue("dataLen");
-                    if (dataLen) dataLen = parseInt(dataLen, 10);
-                    if (!dataLen || isNaN(dataLen)) dataLen = null;
-                    var searchLen = targetNote.getLabelValue("searchLen");
-                    if (searchLen) searchLen = parseInt(searchLen, 10);
-                    if (!searchLen || isNaN(searchLen)) searchLen = null;
 
                     api._syncConfig = {
                         rootNoteId: rootId,
-                        dataSaveNoteId: dataSaveId,
-                        searchSaveNoteId: searchSaveId,
-                        dataLen: dataLen,
-                        searchLen: searchLen,
                     };
 
                     var _module = { exports: null };
                     var fn = new Function("module", "exports", "api", code);
                     fn(_module, _module.exports || {}, api);
 
-                    if (_module.exports && typeof _module.exports.syncData === "function") {
-                        await _module.exports.syncData();
-                    }
-                    if (_module.exports && typeof _module.exports.syncSearch === "function") {
-                        await _module.exports.syncSearch();
-                    }
                     if (_module.exports && typeof _module.exports.stampDates === "function") {
                         await _module.exports.stampDates();
                     }
                 },
                 [noteId],
             );
-            showMessage("同步完成 🎉");
+            showMessage("创建时间标签写入完成 🎉");
         } catch (e) {
             console.error("同步失败:", e);
             showMessage("同步失败: " + e.message);
@@ -105,11 +87,11 @@ export default function () {
                 博客预处理
             </h1>
             <p style={{ margin: "0 0 20px", fontSize: "13px", color: "#888" }}>
-                点击按钮同步聚合数据与搜索索引
+                页面已由模板服务端实时聚合，此按钮仅写入 #dateCreated 创建时间标签
             </p>
 
             <button style={allBtnStyle} onClick={runAll}>
-                一键同步全部
+                写入创建时间标签
             </button>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>

@@ -137,7 +137,8 @@ var _SSR_STATS = { article:0, recentUpdate:0, recommend:0, announcement:0 };
 var _SSR_MEGA_UPDATES = '';
 var _SSR_TAGDATA = {};    // noteTag 标签索引 { name: { count, noteId:[...] } }（自包含 SSR，供标签云）
 var _SSR_HUB = [];        // 枢纽笔记（含 noteTag/article 等）：标签云文章列表源
-var _SSR_TAGJSON = '{}', _SSR_HUBJSON = '[]';
+var _SSR_SEARCH = [];     // 标题索引（可见的非分类笔记）：前端标题搜索，无需 /blog-search 快照
+var _SSR_TAGJSON = '{}', _SSR_HUBJSON = '[]', _SSR_SEARCHJSON = '[]';
 var _SSR_CATPATH = {};   // noteId → 分类祖先路径 [{noteId,title}]（面包屑用）
 // 封面兜底：优先 #articleCover，缺失时取文章正文首张图片；再无图片则空（不显示封面）。
 function _blogFirstImg(html){ if(!html) return ''; try{ var m=String(html).match(/<img[^>]+src=["']([^"']+)["']/i); return m?m[1]:''; }catch(e){ return ''; } }
@@ -149,11 +150,12 @@ function _blogCover(n){
   if(!html){ try{ if(typeof n.content==='string') html=n.content; }catch(e){} }
   return _blogFirstImg(html);
 }
-/* 创建时间：模板 note 未暴露，尝试用 fetchNote(noteId) 取完整笔记；取不到返回空 */
-var _blogCreatedCache = {}; /* 每次渲染进程内缓存，避免对同一 note 重复 fetchNote */
+/* 创建时间：优先级 = 预处理写入的 #dateCreated 标签 → note 字段 → fetchNote(noteId) 取完整笔记 */
+var _blogCreatedCache = {}; /* 每次渲染进程内缓存，避免重复取 */
 function _blogCreated(n){
   if(!n || !n.noteId) return '';
-  if(_blogCreatedCache[n.noteId]) return _blogCreatedCache[n.noteId];
+  if(_blogCreatedCache[n.noteId] !== undefined) return _blogCreatedCache[n.noteId];
+  try{ var L = n.getLabelValue ? (n.getLabelValue('dateCreated')||'') : ''; if(L){ return _blogCreatedCache[n.noteId]=L; } }catch(e){}
   try{ var c = n.utcDateCreated || n.dateCreated; if(c){ return _blogCreatedCache[n.noteId]=c; } }catch(e){}
   try{ if(typeof fetchNote === 'function'){ var f = fetchNote(n.noteId); if(f){ var c2 = f.utcDateCreated || f.dateCreated; if(c2){ return _blogCreatedCache[n.noteId]=c2; } } } }catch(e){}
   return _blogCreatedCache[n.noteId] = '';
@@ -218,6 +220,12 @@ function _blogCreated(n){
     var cp = cpath || [];
     if(_lbl(n,'category')==='true') cp = cp.concat([{ noteId:n.noteId, title:n.title||'' }]);
     _SSR_CATPATH[n.noteId] = cp;
+    // 标题索引：收集可见的"内容笔记"（非分类、非隐藏），供前端标题搜索
+    if(n.title && _lbl(n,'shareHiddenFromTree')!=='true' && _lbl(n,'category')!=='true'){
+      _SSR_SEARCH.push({ noteId:n.noteId, title:n.title, shareAlias:_lbl(n,'shareAlias')||'',
+        shareExternalLink:_lbl(n,'shareExternalLink')||'', noteIcon:_lbl(n,'icon')||_lbl(n,'iconClass')||'',
+        color:_lbl(n,'color')||'', cat:cp });
+    }
     _count(n);
     var k=_kids(n);
     if(k) for(var i=0;i<k.length;i++) _countWalk(k[i], seen, cp);
@@ -265,9 +273,10 @@ function _blogCreated(n){
   // 预生成 JSON（避开构建压缩对 // 注释的误判），并转义可能的 </script>
   _SSR_TAGJSON = JSON.stringify(_SSR_TAGDATA).split('</').join('<\/');
   _SSR_HUBJSON = JSON.stringify(_SSR_HUB).split('</').join('<\/');
+  _SSR_SEARCHJSON = JSON.stringify(_SSR_SEARCH).split('</').join('<\/');
 })();
 %>
-<script>window.__SSR_TAGDATA__ = <%- _SSR_TAGJSON %>;window.__SSR_HUB__ = <%- _SSR_HUBJSON %>;</script>
+<script>window.__SSR_TAGDATA__ = <%- _SSR_TAGJSON %>;window.__SSR_HUB__ = <%- _SSR_HUBJSON %>;window.__SSR_SEARCH__ = <%- _SSR_SEARCHJSON %>;</script>
 <header class="header">
   <div class="header-inner">
     <div class="logo-area">
@@ -589,6 +598,26 @@ function _blogCreated(n){
         %></div>
                 <h1 class="note-title"<% try { var _noteC = note.getLabelValue('color'); if (_noteC) { %> style="color:<%= _noteC %>"<% } } catch(_e){} %>><% if (_noteIconCls) { %><i class="<%= _noteIconCls %>"></i> <% } %><%= note.title %><button class="share-btn" aria-label="分享链接" title="复制链接"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button></h1>
                 <div class="note-meta"></div>
+                <% /* 临时诊断(创建时间)：给文章加 #isDebug 后取 <pre#debug-note>.textContent 发我 */
+                var _dbgDates=''; try {
+                  var _dl=[];
+                  var _pr=function(k,v){ _dl.push(k+'='+(v===undefined||v===null?'<null>':String(v))); };
+                  _pr('dateCreated', note.dateCreated);
+                  _pr('dateModified', note.dateModified);
+                  _pr('utcDateCreated', note.utcDateCreated);
+                  _pr('utcDateModified', note.utcDateModified);
+                  _pr('typeof.dateCreatedObj', typeof note.dateCreatedObj);
+                  if(note.dateCreatedObj){ try{ _dl.push('dateCreatedObj='+String(note.dateCreatedObj)); }catch(e){ _dl.push('dCObjErr='+e); } }
+                  _pr('typeof.getNoteMetadata', typeof note.getNoteMetadata);
+                  _pr('typeof.fetchNote', typeof (typeof fetchNote!=='undefined'?fetchNote:undefined));
+                  _pr('typeof.api', typeof (typeof api!=='undefined'?api:undefined));
+                  _pr('typeof.becca', typeof (typeof becca!=='undefined'?becca:undefined));
+                  _pr('ctor', note.constructor ? note.constructor.name : '<none>');
+                  try{ _dl.push('protoKeys='+JSON.stringify(Object.getOwnPropertyNames(Object.getPrototypeOf(note)||{}))); }catch(e){ _dl.push('protoErr='+e); }
+                  try{ var _c2=note.getChildNotes?note.getChildNotes():null; if(_c2&&_c2.length){ var _cc=_c2[0]; _pr('child.dateCreated',_cc.dateCreated); _pr('child.utcDateCreated',_cc.utcDateCreated); _pr('child.ctor',_cc.constructor?_cc.constructor.name:'<none>'); } }catch(e){ _dl.push('childErr='+e); }
+                  _dbgDates=_dl.join('\n');
+                }catch(e){ _dbgDates='debugErr='+e; } %>
+                <% if (_cfg.isHome===false && note.hasLabel && note.hasLabel('isDebug')) { %><pre id="debug-note" style="display:none;white-space:pre-wrap"><%= _dbgDates %></pre><% } %>
                 <div class="note-body">
                     <%- content.replace(/<img /g, '<img loading="lazy" ') %>
                 </div>

@@ -198,6 +198,11 @@
     var ensureSearchData = makeLoader(
         function () { return !!searchData; },
         function () {
+            /* 优先用模板内嵌的标题索引，无需 /blog-search 快照 */
+            if (window.__SSR_SEARCH__ && window.__SSR_SEARCH__.length) {
+                searchData = window.__SSR_SEARCH__;
+                return Promise.resolve();
+            }
             return fetchJSON("/blog-search").then(function (data) {
                 searchData = data || [];
             });
@@ -230,7 +235,6 @@
         for (var i = 0; i < searchData.length; i++) {
             var item = searchData[i];
             var title = (item.title || "").toLowerCase();
-            var content = (item.content || "").toLowerCase();
             var score = 0;
             for (var t = 0; t < tokens.length; t++) {
                 var token = tokens[t];
@@ -239,10 +243,6 @@
                 var ti = -1, tc = 0;
                 while ((ti = title.indexOf(token, ti + 1)) !== -1 && tc < 4) { tc++; }
                 if (tc > 0) score += 10 + Math.min(tc - 1, 3) * 5;
-                /* 内容匹配: 基础 1 分 + 频次 bonus (每多一次 +0.5，上限 +2) */
-                var ci = -1, cc = 0;
-                while ((ci = content.indexOf(token, ci + 1)) !== -1 && cc < 6) { cc++; }
-                if (cc > 0) score += 1 + Math.min(cc - 1, 4) * 0.5;
             }
             if (score > 0) scored.push({ item: item, s: score });
         }
@@ -268,13 +268,12 @@
 
     function renderResults(q) {
         if (!searchResults) return;
-        /* 先确保数据就绪再做匹配，否则 searchData 未加载时会被误判为"无结果" */
-        if (!blogData || !searchData) {
+        /* 标题索引已内嵌（window.__SSR_SEARCH__），不再依赖 /blog-data / /blog-search */
+        if (!searchData) {
             var tries = 0;
             ensureSearchData();
-            ensureBlogData();
             (function check() {
-                if (blogData && searchData) { renderResults(q); return; }
+                if (searchData) { renderResults(q); return; }
                 if (tries++ < 60) setTimeout(check, 80);
             })();
             return;
@@ -293,14 +292,8 @@
             var item = items[i];
             var title = (item.title || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
             var titleHl = highlightText(title, tokens);
-            var snippet = item.content
-                ? highlightText(
-                      item.content.substring(0, 120).replace(/</g, "&lt;").replace(/>/g, "&gt;"),
-                      tokens
-                  )
-                : "";
-            /* 面包屑：该笔记的分类路径（纯展示） */
-            var path = categoryPathMap[item.noteId] || [];
+            /* 面包屑：优先使用标题索引里内嵌的分类路径 */
+            var path = item.cat || categoryPathMap[item.noteId] || [];
             var crumb = "";
             if (path.length) {
                 crumb = '<span class="search-result-crumb">';
@@ -322,11 +315,7 @@
                     ? '<i class="' + escapeHtml(item.noteIcon) + '"></i> '
                     : "") +
                 titleHl +
-                "</span>" +
-                (snippet
-                    ? '<span class="search-result-content">' + snippet + "</span>"
-                    : "") +
-                "</a>";
+                "</span></a>";
         }
         searchResults.innerHTML = html;
     }

@@ -1494,6 +1494,7 @@
                 (it.color ? ' style="color:' + escapeHtml(it.color) + '"' : '') + '>';
             if (it.icon) body += '<i class="' + escapeHtml(it.icon) + ' rec-item-icon"></i> ';
             body += escapeHtml(it.title) + '</a></h4>';
+            if (it.snippet) body += '<div class="rec-summary">' + escapeHtml(it.snippet) + '</div>';
             if (it.tags && it.tags.length) {
                 body += '<div class="module-tags">';
                 for (var t = 0; t < it.tags.length; t++) {

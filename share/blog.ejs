@@ -403,6 +403,7 @@ function _blogCreated(n){
             s+='>';
             if(it.icon) s+='<i class="'+_esc(it.icon)+' rec-item-icon"></i> ';
             s+=_esc(it.title)+'</a></h4>';
+            if(it.snippet) s+='<div class="rec-summary">'+_esc(it.snippet)+'</div>';
             if(it.tags && it.tags.length){
                 s+='<div class="module-tags">';
                 for(var _ti=0;_ti<it.tags.length;_ti++){ s+='<span class="tag-chip tag-chip--note" data-tag="'+_esc(it.tags[_ti])+'" style="'+_tagStyle(it.tags[_ti])+'"><i class="bx bx-purchase-tag-alt"></i> '+_esc(it.tags[_ti])+'</span>'; }
@@ -425,9 +426,12 @@ function _blogCreated(n){
                 var _tg=[];
                 try{ var _at=n.ownedAttributes; if(_at){ for(var _ai=0;_ai<_at.length;_ai++){ if(_at[_ai]&&_at[_ai].type==='label'&&_at[_ai].name==='noteTag'&&_at[_ai].value) _tg.push(_at[_ai].value); } } }catch(e){}
                 if(!_tg.length){ var _gv = (function(){ try{ return n.getLabelValue ? (n.getLabelValue('noteTag')||'') : ''; }catch(e){ return ''; } })(); if(_gv) _tg=[_gv]; }
+                /* 摘要：正文去标签截取前 80 字（复用 cover 的内容读取思路） */
+                var _snip='';
+                try{ if(typeof n.getContent==='function'){ var _sc=n.getContent(); if(typeof _sc==='string'){ _snip=_sc.replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/\s+/g,' ').trim(); if(_snip.length>80) _snip=_snip.substring(0,80)+'…'; } } }catch(_e){}
                 var it = { noteId:id, title:n.title||'', alias:g('shareAlias'), ext:g('shareExternalLink'),
                            icon:g('icon')||g('iconClass'), color:g('color'), dateCreated:(_blogCreated(n) || n.utcDateModified)||'', tags:_tg,
-                           cover:_blogCover(n),
+                           cover:_blogCover(n), snippet:_snip,
                            cat:(_SSR_CATPATH[id]||[]) };
                 if(isAnn && !SSR.announcement) SSR.announcement = it;
                 if(isUpdate) SSR.updates.push(it);

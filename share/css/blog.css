@@ -363,18 +363,48 @@ a { color: inherit; text-decoration: none; }
 }
 
 .article-mod {
+    position: relative;
     background: var(--surface);
     border: none;
     border-radius: var(--radius);
     padding: 20px 24px;
-    transition: all .3s;
+    transition: box-shadow .3s, transform .3s, border-color .3s;
     content-visibility: auto;
-    contain-intrinsic-size: 0 120px;
+    contain-intrinsic-size: auto 120px;
 }
 .article-mod:hover {
     box-shadow: var(--shadow-lg);
     border-color: transparent;
     transform: translateY(-2px);
+}
+
+/* 文章卡片整卡可点（stretched link）：标题链接铺满卡片，内部可交互元素提升层级 */
+.article-mod .rec-title a::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+}
+.article-mod .rec-bc-link,
+.article-mod .module-tags .tag-chip--note {
+    position: relative;
+    z-index: 1;
+}
+
+/* 文章摘要 */
+.rec-summary {
+    margin-top: 6px;
+    font-size: 13.5px;
+    color: var(--text-dim);
+    line-height: 1.6;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.article-mod--has-cover .rec-summary {
+    color: rgba(255, 255, 255, .9);
 }
 
 /* 文章面包屑（最新文章卡片顶部分类路径） */

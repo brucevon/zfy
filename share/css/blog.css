@@ -465,6 +465,14 @@ a { color: inherit; text-decoration: none; }
     border-color: var(--primary);
     color: var(--primary);
 }
+.article-pager-btn:disabled {
+    opacity: .45;
+    cursor: not-allowed;
+}
+.article-pager-btn:disabled:hover {
+    border-color: var(--border);
+    color: var(--text);
+}
 .article-pager-info {
     font-size: 13px;
     color: var(--text-faint);

@@ -1523,11 +1523,19 @@
             if (!pager) return;
             var h = '';
             var info = '<span class="article-pager-info">' + (curPage + 1) + ' / ' + totalPages + ' 页</span>';
-            if (curPage > 0) h += '<button class="article-pager-btn" data-page="' + (curPage - 1) + '">上一页</button>';
+            if (curPage > 0) {
+                h += '<button class="article-pager-btn" data-page="' + (curPage - 1) + '">上一页</button>';
+            } else {
+                h += '<button class="article-pager-btn" disabled>上一页</button>';
+            }
             h += info;
-            if (curPage < totalPages - 1) h += '<button class="article-pager-btn" data-page="' + (curPage + 1) + '">下一页</button>';
+            if (curPage < totalPages - 1) {
+                h += '<button class="article-pager-btn" data-page="' + (curPage + 1) + '">下一页</button>';
+            } else {
+                h += '<button class="article-pager-btn" disabled>下一页</button>';
+            }
             pager.innerHTML = h;
-            pager.querySelectorAll(".article-pager-btn").forEach(function (btn) {
+            pager.querySelectorAll(".article-pager-btn:not([disabled])").forEach(function (btn) {
                 btn.addEventListener("click", function () {
                     curPage = parseInt(this.getAttribute("data-page"), 10);
                     render();

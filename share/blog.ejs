@@ -222,9 +222,14 @@ function _blogCreated(n){
     _SSR_CATPATH[n.noteId] = cp;
     // 标题索引：收集可见的"内容笔记"（非分类、非隐藏），供前端标题搜索
     if(n.title && _lbl(n,'shareHiddenFromTree')!=='true' && _lbl(n,'category')!=='true'){
+      // 正文摘要：仅对文章类笔记取纯文本前 120 字入索引（前端正文匹配权重低于标题）
+      var _sC='';
+      if(_has(n,'article') || _has(n,'recentUpdate') || _has(n,'recommend') || _has(n,'announcement')){
+        try{ if(typeof n.getContent==='function'){ var _sx=n.getContent(); if(typeof _sx==='string'){ _sC=_sx.replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/\s+/g,' ').trim(); if(_sC.length>120) _sC=_sC.substring(0,120); } } }catch(_e){}
+      }
       _SSR_SEARCH.push({ noteId:n.noteId, title:n.title, shareAlias:_lbl(n,'shareAlias')||'',
         shareExternalLink:_lbl(n,'shareExternalLink')||'', noteIcon:_lbl(n,'icon')||_lbl(n,'iconClass')||'',
-        color:_lbl(n,'color')||'', cat:cp });
+        color:_lbl(n,'color')||'', cat:cp, content:_sC });
     }
     _count(n);
     var k=_kids(n);

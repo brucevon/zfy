@@ -190,6 +190,7 @@
         for (var i = 0; i < searchData.length; i++) {
             var item = searchData[i];
             var title = (item.title || "").toLowerCase();
+            var content = (item.content || "").toLowerCase();
             var score = 0;
             for (var t = 0; t < tokens.length; t++) {
                 var token = tokens[t];
@@ -198,6 +199,10 @@
                 var ti = -1, tc = 0;
                 while ((ti = title.indexOf(token, ti + 1)) !== -1 && tc < 4) { tc++; }
                 if (tc > 0) score += 10 + Math.min(tc - 1, 3) * 5;
+                /* 正文匹配: 基础 3 分 + 频次 bonus (每多一次 +2，上限 +6)，权重低于标题 */
+                var ci = -1, cc = 0;
+                while ((ci = content.indexOf(token, ci + 1)) !== -1 && cc < 4) { cc++; }
+                if (cc > 0) score += 3 + Math.min(cc - 1, 3) * 2;
             }
             if (score > 0) scored.push({ item: item, s: score });
         }
@@ -258,6 +263,13 @@
                 }
                 crumb += '</span>';
             }
+            /* 正文摘要：命中内容时在标题下方展示，关键词高亮 */
+            var contentHl = "";
+            if (item.content) {
+                var escContent = escapeHtml(item.content);
+                contentHl = highlightText(escContent, tokens);
+                contentHl = '<span class="search-result-content">' + contentHl + "</span>";
+            }
             html +=
                 '<a class="search-result-item" href="' +
                 noteUrl(item) +
@@ -270,7 +282,9 @@
                     ? '<i class="' + escapeHtml(item.noteIcon) + '"></i> '
                     : "") +
                 titleHl +
-                "</span></a>";
+                "</span>" +
+                contentHl +
+                "</a>";
         }
         searchResults.innerHTML = html;
     }

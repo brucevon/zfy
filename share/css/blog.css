@@ -74,6 +74,10 @@ html {
 }
 
 /* ── Custom scrollbar (PC) ── */
+/* 预留滚动条位置：菜单/面板打开锁定滚动时，滚动条消失不产生横向位移抖动 */
+html {
+    scrollbar-gutter: stable;
+}
 ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
@@ -106,6 +110,10 @@ body {
     min-height: 100vh;
     -webkit-font-smoothing: antialiased;
     transition: background-color .3s, color .3s;
+}
+/* 菜单/面板打开时锁定背景滚动 */
+body.menu-open {
+    overflow: hidden;
 }
 
 [data-theme="light"] body {
@@ -256,7 +264,7 @@ a { color: inherit; text-decoration: none; }
     font-size: 14px;
     font-weight: 500;
     color: var(--text-dim);
-    transition: all .2s;
+    transition: color .2s, background .2s;
     white-space: nowrap;
 }
 .nav-links a:hover,
@@ -783,6 +791,14 @@ a { color: inherit; text-decoration: none; }
 .about-dropdown.open {
     display: block;
 }
+/* 桌面端「关于」下拉入场动画（移动端 variant 不用） */
+.about-dropdown.open:not(.about-dropdown--mobile) {
+    animation: aboutIn 0.18s ease-out;
+}
+@keyframes aboutIn {
+    from { opacity: 0; transform: translate(-50%, -4px); }
+    to { opacity: 1; transform: translate(-50%, 0); }
+}
 .about-menu {
     list-style: none;
     padding: 0;
@@ -1122,6 +1138,37 @@ a { color: inherit; text-decoration: none; }
     letter-spacing: 0.08em;
     margin-bottom: 12px;
 }
+/* 分类树头部：标题 + 展开/折叠全部 */
+.cat-mega-left-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+.cat-mega-left-head .cat-mega-label {
+    margin-bottom: 12px;
+}
+.cat-mega-actions {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+.tree-action {
+    font-size: 0.72rem;
+    line-height: 1;
+    padding: 4px 9px;
+    border-radius: 999px;
+    border: 1px solid var(--glass-border);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+.tree-action:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: rgba(83, 157, 253, 0.08);
+}
 .cat-mega-section {
     display: flex;
     flex-direction: column;
@@ -1147,15 +1194,31 @@ a { color: inherit; text-decoration: none; }
     gap: 8px;
 }
 .cat-mega-update-item {
+    position: relative;
     font-size: 0.8rem;
     color: var(--muted);
     line-height: 1.45;
-    padding-left: 10px;
+    padding-left: 12px;
     border-left: 2px solid var(--glass-border);
     transition: border-color 0.15s;
 }
+.cat-mega-update-item::before {
+    content: "";
+    position: absolute;
+    left: -4px;
+    top: 0.5em;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--glass-border);
+    transition: background 0.15s, transform 0.15s;
+}
 .cat-mega-update-item:hover {
     border-left-color: var(--accent);
+}
+.cat-mega-update-item:hover::before {
+    background: var(--accent);
+    transform: scale(1.3);
 }
 .cat-mega-update-item a {
     color: var(--text);
@@ -1320,8 +1383,20 @@ html.mobile-view .cat-mega-right {
     background: transparent;
     padding: 0;
 }
+.tree-toggle i {
+    font-size: 1.05rem;
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.tree-toggle.expanded i {
+    transform: rotate(90deg);
+}
 .tree-toggle:hover {
     color: var(--text);
+}
+.tree-toggle:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+    border-radius: 4px;
 }
 .tree-toggle--empty {
     visibility: hidden;
@@ -1329,9 +1404,11 @@ html.mobile-view .cat-mega-right {
 }
 
 .tree-children {
-    display: none;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.28s cubic-bezier(0.4, 0, 0.2, 1);
     padding-left: 22px;
-    border-left: 1px solid rgba(128, 128, 128, 0.12);
+    border-left: 1px solid rgba(128, 128, 128, 0.18);
     margin-left: 9px;
     list-style: none;
 }
@@ -1353,6 +1430,30 @@ html.mobile-view .cat-mega-right {
 }
 [data-theme="dark"] .tag-chip:hover {
     background: rgba(255, 255, 255, 0.06);
+}
+/* 分类节点：加粗 + 文件夹图标兜底，与文章/外链区分 */
+.tree-node .tag-chip--category,
+.about-menu .tag-chip--category {
+    font-weight: 600;
+    color: var(--text);
+}
+.tree-node .tag-chip--category > i.bx-folder,
+.about-menu .tag-chip--category > i.bx-folder {
+    color: var(--muted);
+    font-size: 0.9em;
+}
+/* 菜单统一为行级高亮：条目与标题一致，隐藏标签上的小药丸背景（文章页标签不受影响） */
+.tree-list .tree-node > .tag-chip:hover,
+.about-menu .tree-node > .tag-chip:hover {
+    background: transparent;
+}
+[data-theme="light"] .about-menu .tree-node > .tag-chip:hover {
+    color: var(--text);
+    font-weight: 500;
+}
+/* 关于菜单深色主题补齐行级背景，与分类树一致 */
+[data-theme="dark"] .about-menu .tree-node:hover {
+    background: rgba(255, 255, 255, 0.05);
 }
 
 .note-tags {
@@ -3867,6 +3968,8 @@ html.mobile-view .lightbox-close {
     flex-direction: column;
     gap: 4px;
     box-shadow: var(--shadow);
+    max-height: calc(100vh - var(--header-h));
+    overflow-y: auto;
 }
 .mobile-menu a,
 .mobile-menu .nav-item {

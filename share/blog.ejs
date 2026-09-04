@@ -246,19 +246,22 @@ function _blogCreated(n){
       var icon=_lbl(n,'icon')||_lbl(n,'iconClass'), color=_lbl(n,'color'), alias=_lbl(n,'shareAlias');
       var nk=_kids(n), hasKids=!!(nk&&nk.length) && !isArt;
       if(isArt) nk=null; // 文章不再展开子内容
+      // 分类节点无自定义图标时用文件夹兜底，与文章/链接区分
+      if(cat && !icon) icon='bx bx-folder';
       var st = color ? ' style="color:'+_escT(color)+'"' : '';
       var openT, closeT;
       if(ext){ openT='<a class="tag-chip" href="'+_escT(ext)+'" target="_blank" rel="noopener"'+st+' data-ssr="hdr">'; closeT='</a>'; }
       else if(cat){ openT='<span class="tag-chip tag-chip--category" data-ssr-cat="1"'+st+'>'; closeT='</span>'; }
       else { openT='<a class="tag-chip" href="'+_escT((alias?'/'+alias:'/'+n.noteId))+'" data-ssr-link="1"'+st+'>'; closeT='</a>'; }
       out+='<li class="tree-item" data-note-id="'+_escT(n.noteId)+'" data-ssr="hdr"><div class="tree-node">';
-      out+='<span class="tree-toggle'+(hasKids?'':' tree-toggle--empty')+'">▶</span>';
+      out+='<span class="tree-toggle'+(hasKids?'':' tree-toggle--empty')+'"'+(hasKids?' role="button" tabindex="0" aria-expanded="false"':'')+'>';
+      out+='<i class="bx bx-chevron-right"></i></span>';
       out+=openT;
       if(icon) out+='<i class="'+_escT(icon)+'"></i> ';
       out+=_escT(n.title||'');
       out+=closeT;
       out+='</div>';
-      if(hasKids){ out+='<ul class="tree-children" style="display:none">'+_build(n)+'</ul>'; }
+      if(hasKids){ out+='<ul class="tree-children">'+_build(n)+'</ul>'; }
       out+='</li>';
     }
     return out;
@@ -291,10 +294,10 @@ function _blogCreated(n){
 
     <nav class="nav-links">
       <a class="nav-item<%= isHome ? ' active' : '' %>" href="./">首页</a>
-      <a class="nav-item category-btn" id="category-btn" href="#">分类</a>
+      <a class="nav-item category-btn" id="category-btn" href="#" aria-expanded="false" aria-controls="category-panel">分类</a>
       <div class="nav-item-wrap" id="about-wrap">
-        <a class="nav-item" href="#" id="about-btn">关于</a>
-        <div class="about-dropdown" id="about-dropdown">
+        <a class="nav-item" href="#" id="about-btn" aria-expanded="false" aria-controls="about-dropdown">关于</a>
+        <div class="about-dropdown" id="about-dropdown" role="dialog" aria-label="关于菜单">
           <ul class="about-menu" id="about-menu"><%- _SSR_ABOUT %></ul>
         </div>
       </div>
@@ -322,19 +325,25 @@ function _blogCreated(n){
 
 <div class="mobile-menu" id="mobile-menu">
   <a class="nav-item<%= isHome ? ' active' : '' %>" href="./">首页</a>
-  <a class="nav-item category-btn" id="category-btn-mobile" href="#">分类</a>
-  <a class="nav-item" id="about-btn-mobile" href="#">关于</a>
-  <div class="about-dropdown about-dropdown--mobile" id="about-dropdown-mobile">
+  <a class="nav-item category-btn" id="category-btn-mobile" href="#" aria-expanded="false" aria-controls="category-panel">分类</a>
+  <a class="nav-item" id="about-btn-mobile" href="#" aria-expanded="false" aria-controls="about-dropdown-mobile">关于</a>
+  <div class="about-dropdown about-dropdown--mobile" id="about-dropdown-mobile" role="dialog" aria-label="关于菜单">
     <ul class="about-menu" id="about-menu-mobile"><%- _SSR_ABOUT %></ul>
   </div>
 </div>
 
-<div class="category-panel" id="category-panel">
+<div class="category-panel" id="category-panel" role="dialog" aria-label="分类菜单">
     <div class="cat-mega" id="cat-mega">
         <div class="cat-mega-inner">
             <!-- 左侧：分类树 -->
             <div class="cat-mega-left">
-                <div class="cat-mega-label">分类</div>
+                <div class="cat-mega-left-head">
+                    <div class="cat-mega-label">分类</div>
+                    <div class="cat-mega-actions">
+                        <button type="button" class="tree-action" id="tree-expand-all">展开全部</button>
+                        <button type="button" class="tree-action" id="tree-collapse-all">折叠全部</button>
+                    </div>
+                </div>
                 <ul class="tree-list" id="tree-list"><%- _SSR_TREE %></ul>
             </div>
             <!-- 右侧：统计简报 + 最近更新 -->

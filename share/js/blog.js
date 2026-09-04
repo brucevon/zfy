@@ -406,11 +406,20 @@
         });
 
     /* ── 浮层关闭 ── */
+    function setMenuScrollLock(locked) {
+        if (document.body) document.body.classList.toggle("menu-open", !!locked);
+    }
     function closeMobileMenu() {
         if (mobileMenu) mobileMenu.classList.remove("open");
+        setMenuScrollLock(false);
     }
     function closeCategoryPanel() {
         if (categoryPanel) categoryPanel.classList.remove("open");
+        var cb = document.getElementById("category-btn");
+        var cbm = document.getElementById("category-btn-mobile");
+        if (cb) cb.setAttribute("aria-expanded", "false");
+        if (cbm) cbm.setAttribute("aria-expanded", "false");
+        setMenuScrollLock(false);
     }
 
     /* ── 移动端菜单 ── */
@@ -419,7 +428,12 @@
             e.stopPropagation();
             var opening = !mobileMenu.classList.contains("open");
             mobileMenu.classList.toggle("open");
-            if (opening) closeCategoryPanel();
+            if (opening) {
+                closeCategoryPanel();
+                setMenuScrollLock(true);
+            } else {
+                setMenuScrollLock(false);
+            }
         });
         mobileMenu.querySelectorAll(".nav-item").forEach(function (link) {
             if (link.id !== "about-btn-mobile") {
@@ -495,6 +509,11 @@
         closeMobileMenu();
         if (categoryPanel) {
             categoryPanel.classList.add("open");
+            var cb = document.getElementById("category-btn");
+            var cbm = document.getElementById("category-btn-mobile");
+            if (cb) cb.setAttribute("aria-expanded", "true");
+            if (cbm) cbm.setAttribute("aria-expanded", "true");
+            setMenuScrollLock(true);
             loadCategoryTree();
             loadCategoryMegaData();
         }
@@ -843,6 +862,41 @@
             curLink.scrollIntoView({ behavior: "smooth", block: "nearest" });
         }
     }
+    /* 展开/收起某节点：动画 + 箭头旋转 + aria。
+       展开过渡结束后把 max-height 释放为 none，祖先不再按固定像素钳制，
+       避免嵌套展开时父级测量过早导致子笔记被裁掉（闪一下/不可见）。 */
+    function clearTreeTx(el) {
+        if (el._zfyTx) { clearTimeout(el._zfyTx); el._zfyTx = null; }
+    }
+    function setTreeOpen(kids, open) {
+        if (!kids) return;
+        var item = kids.parentElement;
+        var toggle = item && item.querySelector(":scope > .tree-node > .tree-toggle");
+        var wasOpen = kids.classList.contains("open");
+        if (open) {
+            kids.classList.add("open");
+            kids.style.maxHeight = kids.scrollHeight + "px";
+            clearTreeTx(kids);
+            kids._zfyTx = setTimeout(function () {
+                if (kids.classList.contains("open")) kids.style.maxHeight = "none";
+            }, 320);
+        } else {
+            kids.classList.remove("open");
+            if (wasOpen) {
+                /* 已释放为 none：先回落到实际内容高度（强制重排），再动画收起 */
+                if (kids.style.maxHeight === "none" || kids.style.maxHeight === "") {
+                    kids.style.maxHeight = kids.scrollHeight + "px";
+                    void kids.offsetHeight;
+                }
+                kids.style.maxHeight = "0px";
+            }
+            clearTreeTx(kids);
+        }
+        if (toggle) {
+            toggle.classList.toggle("expanded", open);
+            toggle.setAttribute("aria-expanded", open ? "true" : "false");
+        }
+    }
     /* 展开路径上的所有节点（含目标自身，若其有子项） */
     function expandToNote(path) {
         if (!path || path.length === 0) return;
@@ -850,12 +904,7 @@
             var li = document.querySelector('#tree-list li[data-note-id="' + path[i] + '"]');
             if (li) {
                 var kids = li.querySelector(':scope > .tree-children');
-                var toggle = li.querySelector(':scope > .tree-node > .tree-toggle');
-                if (kids && toggle) {
-                    kids.style.display = 'block';
-                    toggle.textContent = '▼';
-                    toggle.classList.add('expanded');
-                }
+                if (kids) setTreeOpen(kids, true);
             }
         }
     }
@@ -878,19 +927,22 @@
         var treeList = document.getElementById("tree-list");
         if (!treeList) return;
         /* 分类树已由服务端实时渲染（SSR），客户端只做定位/滚动，不再 fetch 重绘 */
-        /* 先整体折叠，保证点击某层面包屑时只展开该层、收起其它层 */
-        var _ssrUls = treeList.querySelectorAll('ul.tree-children');
-        for (var _su = 0; _su < _ssrUls.length; _su++) _ssrUls[_su].style.display = 'none';
-        var _ssrTgs = treeList.querySelectorAll('.tree-toggle');
-        for (var _st = 0; _st < _ssrTgs.length; _st++) { _ssrTgs[_st].textContent = '▶'; _ssrTgs[_st].classList.remove('expanded'); }
-        if (pendingCatId) {
-            /* 面包屑点击：只展开到该分类所在层 */
-            expandToNote(domPathTo(pendingCatId));
-            scrollToCurrentNote(pendingCatId);
+        /* 打开菜单一律先整体折叠：首页默认只显示主目录；文章页定位到当前文章路径，其余折叠 */
+        var uls = treeList.querySelectorAll("ul.tree-children");
+        for (var i = 0; i < uls.length; i++) setTreeOpen(uls[i], false);
+        var sc = treeList.closest(".cat-mega-left") || treeList;
+        /* 定位目标：优先面包屑指定；否则取当前文章（首页根笔记不在分类树时为空） */
+        var targetId = pendingCatId || getCurrentNoteId();
+        if (targetId) {
+            var path = domPathTo(targetId);
+            if (path && path.length) {
+                expandToNote(path);
+                scrollToCurrentNote(targetId);
+            } else {
+                sc.scrollTop = 0;
+            }
         } else {
-            /* 顶部「分类」菜单打开：整体保持折叠 */
-            var _sc = treeList.closest('.cat-mega-left') || treeList;
-            _sc.scrollTop = 0;
+            sc.scrollTop = 0;
         }
         pendingCatId = null;
     }
@@ -920,10 +972,7 @@
                     var item = toggle.closest(".tree-item");
                     var kids = item && item.querySelector(":scope > .tree-children");
                     if (!kids) return;
-                    var open = kids.style.display !== "none" && kids.style.display !== "";
-                    kids.style.display = open ? "none" : "block";
-                    toggle.textContent = open ? "▶" : "▼";
-                    toggle.classList.toggle("expanded", !open);
+                    setTreeOpen(kids, !kids.classList.contains("open"));
                     return;
                 }
                 var row = el.closest(".tree-item");
@@ -938,10 +987,7 @@
                     e.preventDefault(); e.stopPropagation();
                     var kids2 = row.querySelector(":scope > .tree-children");
                     if (!kids2) return;
-                    var o2 = kids2.style.display !== "none" && kids2.style.display !== "";
-                    kids2.style.display = o2 ? "none" : "block";
-                    var t2 = row.querySelector(":scope > .tree-node > .tree-toggle");
-                    if (t2) { t2.textContent = o2 ? "▶" : "▼"; t2.classList.toggle("expanded", !o2); }
+                    setTreeOpen(kids2, !kids2.classList.contains("open"));
                     return;
                 }
                 if (link) {
@@ -950,6 +996,33 @@
                     window.location.href = link.getAttribute("href");
                 }
             });
+            /* 键盘：Enter / Space 在折叠箭头上展开/收起 */
+            c.addEventListener("keydown", function (e) {
+                if (e.key !== "Enter" && e.key !== " ") return;
+                var t = e.target && e.target.closest ? e.target.closest(".tree-toggle") : null;
+                if (!t) return;
+                e.preventDefault();
+                var item = t.closest(".tree-item");
+                var kids = item && item.querySelector(":scope > .tree-children");
+                if (!kids) return;
+                setTreeOpen(kids, !kids.classList.contains("open"));
+            });
+        });
+    }
+
+    /* ── 分类树：展开全部 / 折叠全部 ── */
+    function initTreeActions() {
+        var treeList = document.getElementById("tree-list");
+        if (!treeList) return;
+        var expAll = document.getElementById("tree-expand-all");
+        var colAll = document.getElementById("tree-collapse-all");
+        if (expAll) expAll.addEventListener("click", function () {
+            var uls = treeList.querySelectorAll("ul.tree-children");
+            for (var i = 0; i < uls.length; i++) setTreeOpen(uls[i], true);
+        });
+        if (colAll) colAll.addEventListener("click", function () {
+            var uls = treeList.querySelectorAll("ul.tree-children");
+            for (var j = 0; j < uls.length; j++) setTreeOpen(uls[j], false);
         });
     }
 
@@ -959,6 +1032,7 @@
 
     function closeAboutDropdown() {
         if (aboutDropdown) aboutDropdown.classList.remove("open");
+        if (aboutBtn) aboutBtn.setAttribute("aria-expanded", "false");
     }
 
     function toggleAboutDropdown(e) {
@@ -968,6 +1042,7 @@
             closeAboutDropdown();
         } else {
             aboutDropdown.classList.add("open");
+            if (aboutBtn) aboutBtn.setAttribute("aria-expanded", "true");
         }
     }
 
@@ -1006,8 +1081,10 @@
         if (!aboutDropdownM) return;
         if (aboutDropdownM.classList.contains("open")) {
             aboutDropdownM.classList.remove("open");
+            if (aboutBtnM) aboutBtnM.setAttribute("aria-expanded", "false");
         } else {
             aboutDropdownM.classList.add("open");
+            if (aboutBtnM) aboutBtnM.setAttribute("aria-expanded", "true");
         }
     }
 
@@ -1578,6 +1655,7 @@
         initTocMobile();
         initBackTop();
         initSsrTree();
+        initTreeActions();
         if (isHome) {
             loadHomeModules();
             initHomeArticlePager();

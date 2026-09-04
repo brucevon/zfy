@@ -1398,7 +1398,7 @@
         /* 面包屑已由模板服务端实时渲染（data-ssr="bc" + .note-bc-link），点击定位由外层事件委托处理 */
     }
 
-    /* 更新热力图悬浮提示：SSR/客户端渲染的 .hm-cell 通用 */
+    /* 更新热力图悬浮提示：SSR/客户端渲染的 .hm-cell 通用（鼠标 + 触屏 + 键盘） */
     function initHeatmapTooltip() {
         var grid = document.getElementById("heatmap-grid");
         if (!grid) return;
@@ -1406,17 +1406,30 @@
         tip.className = "hm-tip";
         tip.style.display = "none";
         document.body.appendChild(tip);
+        var activeCell = null;
         function show(cell) {
             var date = cell.getAttribute("data-date") || "";
             var cnt = parseInt(cell.getAttribute("data-count"), 10) || 0;
             tip.textContent = date + (cnt ? " · 更新 " + cnt + " 次" : "");
             tip.style.display = "block";
+            if (activeCell && activeCell !== cell) activeCell.classList.remove("active");
+            activeCell = cell;
+            cell.classList.add("active");
         }
         function move(e) {
             tip.style.left = e.clientX + "px";
             tip.style.top = (e.clientY - 14) + "px";
         }
-        function hide() { tip.style.display = "none"; }
+        function positionNear(cell) {
+            var rect = cell.getBoundingClientRect();
+            tip.style.left = (rect.left + rect.width / 2) + "px";
+            tip.style.top = (rect.top - 8) + "px";
+        }
+        function hide() {
+            tip.style.display = "none";
+            if (activeCell) { activeCell.classList.remove("active"); activeCell = null; }
+        }
+        /* 鼠标悬浮 */
         grid.addEventListener("mouseover", function (e) {
             var c = e.target.closest ? e.target.closest(".hm-cell") : null;
             if (c) { show(c); move(e); }
@@ -1428,6 +1441,26 @@
             var c = e.target.closest ? e.target.closest(".hm-cell") : null;
             if (!c) hide();
         });
+        /* 触屏点击：点击显示，再点/移出隐藏 */
+        grid.addEventListener("click", function (e) {
+            var c = e.target.closest ? e.target.closest(".hm-cell") : null;
+            if (!c) return;
+            if (activeCell === c && tip.style.display !== "none") { hide(); return; }
+            show(c); positionNear(c);
+        });
+        /* 键盘可达：Enter/Space 显示，失焦隐藏 */
+        grid.addEventListener("keydown", function (e) {
+            var c = e.target.closest ? e.target.closest(".hm-cell") : null;
+            if (!c) return;
+            if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                if (activeCell === c && tip.style.display !== "none") { hide(); return; }
+                show(c); positionNear(c);
+            }
+        });
+        grid.addEventListener("blur", function (e) {
+            if (e.target.closest && e.target.closest(".hm-cell")) hide();
+        }, true);
     }
 
     /* 首页最新文章分页：SSR 只渲染第一页，>5 条时由客户端翻页 */

@@ -2465,32 +2465,27 @@ a.stat-pill.stat-pill--static {
     background: var(--ink-start);
 }
 .hm-l1 {
-    background: #0e4429;
+    background: color-mix(in srgb, var(--primary) 22%, transparent);
 }
 .hm-l2 {
-    background: #006d32;
+    background: color-mix(in srgb, var(--primary) 45%, transparent);
 }
 .hm-l3 {
-    background: #26a641;
+    background: color-mix(in srgb, var(--primary) 68%, transparent);
 }
 .hm-l4 {
-    background: #39d353;
+    background: var(--primary);
+}
+
+/* 键盘聚焦提示 */
+.hm-cell:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+    border-radius: 4px;
 }
 
 [data-theme="light"] .hm-l0 {
     background: #ebedf0;
-}
-[data-theme="light"] .hm-l1 {
-    background: #9be9a8;
-}
-[data-theme="light"] .hm-l2 {
-    background: #40c463;
-}
-[data-theme="light"] .hm-l3 {
-    background: #30a14e;
-}
-[data-theme="light"] .hm-l4 {
-    background: #216e39;
 }
 
 .mono {

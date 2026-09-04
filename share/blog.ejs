@@ -483,7 +483,8 @@ function _blogCreated(n){
                 var cell=hmWeeks[wi][di], lvl=0;
                 if(cell.count>0){ lvl=Math.ceil((cell.count/_hmMax)*4); if(lvl<1)lvl=1; if(lvl>4)lvl=4; }
                 var cls=cell.future?'hm-future':'hm-cell hm-l'+lvl;
-                hmHTML+='<div class="'+cls+'" style="grid-column:'+(wi+2)+';grid-row:'+(di+2)+'" data-date="'+cell.date+'" data-count="'+cell.count+'"></div>';
+                var _hmA = cell.future ? '' : ' role="button" tabindex="0"';
+                hmHTML+='<div class="'+cls+'" style="grid-column:'+(wi+2)+';grid-row:'+(di+2)+'" data-date="'+cell.date+'" data-count="'+cell.count+'"'+_hmA+'></div>';
             }
         }
         SSR.hmHTML = hmHTML;
@@ -658,73 +659,4 @@ function _blogCreated(n){
     </footer>
 </div>
 
-<script>
-// 热力图 tooltip
-(function () {
-    var hmTip = null;
-    var hmActiveCell = null;
-    var isMobile = ('ontouchstart' in window) || (window.innerWidth <= 768);
-
-    function hmDismiss() {
-        if (hmTip) { hmTip.remove(); hmTip = null; }
-        if (hmActiveCell) { hmActiveCell.classList.remove('active'); hmActiveCell = null; }
-    }
-
-    function showTip(cell) {
-        if (hmTip) hmDismiss();
-        var date = cell.getAttribute('data-date');
-        var count = parseInt(cell.getAttribute('data-count')) || 0;
-        var text = date + (count > 0 ? '：更新了 ' + count + ' 个文件' : '：无更新');
-        var tip = document.createElement('div');
-        tip.className = 'hm-tip';
-        tip.textContent = text;
-        document.body.appendChild(tip);
-        var rect = cell.getBoundingClientRect();
-        var tipW = tip.offsetWidth;
-        var tipH = tip.offsetHeight;
-        var margin = 8;
-        var left = rect.left + rect.width / 2;
-        var top = rect.top - margin;
-        if (left - tipW / 2 < margin) left = margin + tipW / 2;
-        if (left + tipW / 2 > window.innerWidth - margin) left = window.innerWidth - margin - tipW / 2;
-        if (top - tipH < margin) top = rect.bottom + margin;
-        tip.style.left = (left - tipW / 2) + 'px';
-        tip.style.top = (top - tipH) + 'px';
-        hmTip = tip;
-        hmActiveCell = cell;
-        if (cell) { cell.classList.add('active'); }
-    }
-
-    function hmListen(grid) {
-        grid.addEventListener('mouseover', function (e) {
-            if (isMobile) return;
-            var cell = e.target.closest('.hm-cell');
-            if (!cell) { hmDismiss(); return; }
-            showTip(cell);
-        });
-        grid.addEventListener('mouseleave', function () {
-            if (isMobile) return;
-            hmDismiss();
-        });
-        grid.addEventListener('click', function (e) {
-            var cell = e.target.closest('.hm-cell');
-            if (!cell) return;
-            if (hmActiveCell === cell) { hmDismiss(); return; }
-            showTip(cell);
-        });
-        var scrollEl = document.querySelector('.page') || window;
-        scrollEl.addEventListener('scroll', hmDismiss, { passive: true });
-    }
-
-    var hmObs = new MutationObserver(function () {
-        var grid = document.getElementById('heatmap-grid');
-        if (grid && grid.children.length > 0) {
-            hmObs.disconnect();
-            hmListen(grid);
-        }
-    });
-    var hmTarget = document.getElementById('mod-heatmap');
-    if (hmTarget) hmObs.observe(hmTarget, { childList: true, subtree: true });
-})();
-</script>
 <script src="/blog.js" defer></script>

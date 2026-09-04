@@ -1002,6 +1002,11 @@
     }
 
     function loadHomeModules() {
+        if (window.__SSR_HOME__) {
+            /* 首页列表已由服务端实时渲染（SSR），跳过客户端列表渲染；
+               搜索 / 分类树 / 关于菜单 / CMS 统计仍由各自 loader 负责 */
+            return;
+        }
         ensureBlogData(function () {
             /* 推荐阅读 */
             var recRender = renderModule("mod-recommend", "暂无推荐", function (items) {
@@ -1184,9 +1189,43 @@
             }
         }
     }
+    /* 从 SSR 的 DOM 树中解析目标节点的祖先 noteId 路径（自下而上收集后反转） */
+    function domPathTo(focusId) {
+        var target = document.querySelector('#tree-list [data-note-id="' + focusId + '"]');
+        if (!target) return [];
+        var path = [], el = target;
+        while (el && el.id !== "tree-list") {
+            if (el.classList && el.classList.contains("tree-item")) {
+                var nid = el.getAttribute("data-note-id");
+                if (nid) path.push(nid);
+            }
+            el = el.parentElement;
+        }
+        return path.reverse();
+    }
+
     function loadCategoryTree() {
         var treeList = document.getElementById("tree-list");
         if (!treeList) return;
+        /* SSR 已在服务端渲染分类树：只做定位/滚动，不再 fetch 重绘 */
+        if (treeList.querySelector('li.tree-item[data-ssr="hdr"]')) {
+            /* 先整体折叠，保证点击某层面包屑时只展开该层、收起其它层 */
+            var _ssrUls = treeList.querySelectorAll('ul.tree-children');
+            for (var _su = 0; _su < _ssrUls.length; _su++) _ssrUls[_su].style.display = 'none';
+            var _ssrTgs = treeList.querySelectorAll('.tree-toggle');
+            for (var _st = 0; _st < _ssrTgs.length; _st++) { _ssrTgs[_st].textContent = '▶'; _ssrTgs[_st].classList.remove('expanded'); }
+            if (pendingCatId) {
+                /* 面包屑点击：只展开到该分类所在层 */
+                expandToNote(domPathTo(pendingCatId));
+                scrollToCurrentNote(pendingCatId);
+            } else {
+                /* 顶部「分类」菜单打开：整体保持折叠 */
+                var _sc = treeList.closest('.cat-mega-left') || treeList;
+                _sc.scrollTop = 0;
+            }
+            pendingCatId = null;
+            return;
+        }
         var focusId = pendingCatId || getCurrentNoteId();
         var renderAndLocate = function () {
             renderTreeMenu(treeData, treeList, { currentId: focusId });
@@ -1212,6 +1251,19 @@
 
     /* ── 加载分类 Mega Menu 右侧数据（统计 + 最近更新） ── */
     function loadCategoryMegaData() {
+        /* SSR 已在服务端渲染统计与最近动态，不再 fetch /blog-data，仅补一次计数动画 */
+        var stEl = document.querySelector('[data-ssr="st"].stat-pill__num');
+        var updEl = document.getElementById("cms-updates");
+        if (stEl || (updEl && updEl.getAttribute("data-ssr") === "upd")) {
+            if (stEl) {
+                var dynEls = document.querySelectorAll('[data-ssr="st"].stat-pill__num');
+                for (var d = 0; d < dynEls.length; d++) {
+                    var cur = parseInt(dynEls[d].textContent, 10) || 0;
+                    if (cur > 0) animateCount(dynEls[d], cur);
+                }
+            }
+            return;
+        }
         ensureBlogData(function () {
             /* 统计（原站点统计动画效果） */
             var st = blogData.stats || {};
@@ -1255,6 +1307,56 @@
         kids.style.display = open ? "none" : "block";
         toggle.textContent = open ? "▶" : "▼";
         toggle.classList.toggle("expanded", !open);
+    }
+
+    /* 通过容器事件委托接管 SSR 渲染的树交互（折叠箭头 / 分类节点点击展开）。
+       动态 renderTreeMenu 生成的箭头自带独立 handler 并 stopPropagation，不会触发此处，无冲突。 */
+    function initSsrTree() {
+        ["tree-list", "about-menu", "about-menu-mobile"].forEach(function (id) {
+            var c = document.getElementById(id);
+            if (!c) return;
+            c.addEventListener("click", function (e) {
+                var el = e.target;
+                if (el.nodeType !== 1) el = el.parentElement;
+                if (!el || !el.closest) return;
+                /* 折叠箭头：只切换本节点展开 */
+                var toggle = el.closest(".tree-toggle");
+                if (toggle) {
+                    e.preventDefault(); e.stopPropagation();
+                    var item = toggle.closest(".tree-item");
+                    var kids = item && item.querySelector(":scope > .tree-children");
+                    if (!kids) return;
+                    var open = kids.style.display !== "none" && kids.style.display !== "";
+                    kids.style.display = open ? "none" : "block";
+                    toggle.textContent = open ? "▶" : "▼";
+                    toggle.classList.toggle("expanded", !open);
+                    return;
+                }
+                var row = el.closest(".tree-item");
+                if (!row) return;
+                var link = row.querySelector(":scope > .tree-node > a[data-ssr-link], :scope > .tree-node > a[data-ssr='hdr']");
+                var catSpan = row.querySelector(":scope > .tree-node > .tag-chip--category");
+                var clickedA = el.closest("a");
+                /* 点到了链接本身：交给浏览器默认行为（跳转/新开） */
+                if (clickedA) return;
+                if (catSpan) {
+                    /* 分类节点：整行点击展开/收起 */
+                    e.preventDefault(); e.stopPropagation();
+                    var kids2 = row.querySelector(":scope > .tree-children");
+                    if (!kids2) return;
+                    var o2 = kids2.style.display !== "none" && kids2.style.display !== "";
+                    kids2.style.display = o2 ? "none" : "block";
+                    var t2 = row.querySelector(":scope > .tree-node > .tree-toggle");
+                    if (t2) { t2.textContent = o2 ? "▶" : "▼"; t2.classList.toggle("expanded", !o2); }
+                    return;
+                }
+                if (link) {
+                    /* 文章/外链：整行点击导航 */
+                    e.preventDefault(); e.stopPropagation();
+                    window.location.href = link.getAttribute("href");
+                }
+            });
+        });
     }
 
     /* 通用树渲染：分类面板 (tree-list) 与"关于"菜单 (about-menu) 共用 */
@@ -1388,6 +1490,11 @@
     function toggleAboutDropdown(e) {
         if (e) e.preventDefault();
         if (!aboutDropdown) return;
+        /* SSR 已渲染：直接展开，内容已在服务端生成 */
+        if (aboutMenu && aboutMenu.querySelector('li.tree-item[data-ssr="hdr"]')) {
+            if (!aboutDropdown.classList.contains("open")) aboutDropdown.classList.add("open");
+            return;
+        }
         var open = aboutDropdown.classList.contains("open");
         if (open) {
             closeAboutDropdown();
@@ -1439,6 +1546,11 @@
     function toggleAboutMobile(e) {
         if (e) e.preventDefault();
         if (!aboutDropdownM) return;
+        /* SSR 已渲染：直接展开 */
+        if (aboutMenuM && aboutMenuM.querySelector('li.tree-item[data-ssr="hdr"]')) {
+            if (!aboutDropdownM.classList.contains("open")) aboutDropdownM.classList.add("open");
+            return;
+        }
         var open = aboutDropdownM.classList.contains("open");
         if (open) {
             aboutDropdownM.classList.remove("open");
@@ -1648,6 +1760,7 @@
         function () { return !!tagData; },
         function () {
             return new Promise(function (resolve) {
+                if (window.__SSR_TAGDATA__) { tagData = window.__SSR_TAGDATA__; resolve(); return; }
                 ensureBlogData(function () {
                     tagData = blogData.tags || {};
                     resolve();
@@ -1784,9 +1897,9 @@
                 contentEl.innerHTML = '<div class="tagcloud-empty">该标签下暂无文章</div>';
                 return;
             }
-            ensureSearchData(function () {
+            var _hubArr = window.__SSR_HUB__ && window.__SSR_HUB__.length ? window.__SSR_HUB__ : null;
+            var _worker = function (sData) {
                 var notes = [];
-                var sData = searchData || [];
                 for (var i = 0; i < info.noteId.length; i++) {
                     for (var j = 0; j < sData.length; j++) {
                         if (sData[j].noteId === info.noteId[i]) { notes.push(sData[j]); break; }
@@ -1819,11 +1932,11 @@
                     }
                     var _dates = '';
                     if (n.dateCreated || n.dateModified) {
-                        _dates = '<span class="tagcloud-note-dates">' +
-                            (n.dateCreated ? '创建:' + fmtDate(n.dateCreated) : '') +
-                            (n.dateCreated && n.dateModified ? ' · ' : '') +
-                            (n.dateModified ? '修改:' + fmtDate(n.dateModified) : '') +
-                            '</span>';
+                        /* 共享模板仅有 utcDateModified，避免创建=修改时重复显示 */
+                        var _dp = [];
+                        if (n.dateCreated && String(n.dateCreated) !== String(n.dateModified)) _dp.push('创建:' + fmtDate(n.dateCreated));
+                        if (n.dateModified) _dp.push('修改:' + fmtDate(n.dateModified));
+                        if (_dp.length) _dates = '<span class="tagcloud-note-dates">' + _dp.join(' · ') + '</span>';
                     }
                     var noteCls = 'tagcloud-note' + (n.cover ? ' tagcloud-note--has-cover' : '');
                     var noteStyle = n.cover ? ' style="--cover-url:url(\'' + escapeHtml(n.cover).replace(/'/g, "\\'") + '\')"' : '';
@@ -1849,7 +1962,9 @@
                 contentEl.querySelectorAll(".tagcloud-pager-btn").forEach(function (btn) {
                     btn.addEventListener("click", function () { curPage = parseInt(this.getAttribute("data-page"), 10); renderTagList(); });
                 });
-            });
+            };
+            if (_hubArr) { _worker(_hubArr); }
+            else { ensureSearchData(function () { _worker(searchData || []); }); }
         }
     }
 
@@ -1874,6 +1989,8 @@
     function renderNoteBreadcrumb() {
         var el = document.getElementById("note-breadcrumb");
         if (!el) return;
+        /* SSR 已渲染面包屑：直接支持点击定位即可，不再 fetch /blog-data 重绘 */
+        if (el.getAttribute("data-ssr") === "bc" && el.querySelector(".note-bc-link")) return;
         ensureBlogData(function () {
             var curId = getCurrentNoteId(); /* 在 blogData 就绪后调用，alias 可正确反查 */
             if (!curId) return;
@@ -1886,23 +2003,149 @@
                 }
             }
             if (!path.length) return;
+            /* 过滤空标题节点，避免出现空面包屑后跟一个分隔符（最左侧 "/"） */
+            var crumbs = [];
+            for (var _cb = 0; _cb < path.length; _cb++) {
+                if (path[_cb] && path[_cb].title) crumbs.push(path[_cb]);
+            }
+            if (!crumbs.length) return;
             var html = '';
-            for (var b = 0; b < path.length; b++) {
+            for (var b = 0; b < crumbs.length; b++) {
                 if (b > 0) html += '<span class="note-bc-sep">/</span>';
-                html += '<a class="note-bc-link" href="javascript:;" data-cat-id="' + escapeHtml(path[b].noteId) + '">' + escapeHtml(path[b].title) + '</a>';
+                html += '<a class="note-bc-link" href="javascript:;" data-cat-id="' + escapeHtml(crumbs[b].noteId) + '">' + escapeHtml(crumbs[b].title) + '</a>';
             }
             el.innerHTML = html;
         });
     }
 
+    /* 更新热力图悬浮提示：SSR/客户端渲染的 .hm-cell 通用 */
+    function initHeatmapTooltip() {
+        var grid = document.getElementById("heatmap-grid");
+        if (!grid) return;
+        var tip = document.createElement("div");
+        tip.className = "hm-tip";
+        tip.style.display = "none";
+        document.body.appendChild(tip);
+        function show(cell) {
+            var date = cell.getAttribute("data-date") || "";
+            var cnt = parseInt(cell.getAttribute("data-count"), 10) || 0;
+            tip.textContent = date + (cnt ? " · 更新 " + cnt + " 次" : "");
+            tip.style.display = "block";
+        }
+        function move(e) {
+            tip.style.left = e.clientX + "px";
+            tip.style.top = (e.clientY - 14) + "px";
+        }
+        function hide() { tip.style.display = "none"; }
+        grid.addEventListener("mouseover", function (e) {
+            var c = e.target.closest ? e.target.closest(".hm-cell") : null;
+            if (c) { show(c); move(e); }
+        });
+        grid.addEventListener("mousemove", function (e) {
+            if (tip.style.display !== "none") move(e);
+        });
+        grid.addEventListener("mouseout", function (e) {
+            var c = e.target.closest ? e.target.closest(".hm-cell") : null;
+            if (!c) hide();
+        });
+    }
+
+    /* 首页最新文章分页：SSR 只渲染第一页，>5 条时由客户端翻页 */
+    function initHomeArticlePager() {
+        var list = document.getElementById("mod-article");
+        if (!list) return;
+        var articles = window.__SSR_ARTICLES__;
+        if (!articles || !articles.length) return;
+        var pageSize = 5;
+        var totalPages = Math.max(1, Math.ceil(articles.length / pageSize));
+        if (totalPages < 2) return; /* 不足一页交给 SSR 即可，不接管 */
+
+        function artHtml(it) {
+            var coverH = "";
+            var cls = "article-mod";
+            if (it.cover) {
+                cls += " article-mod--has-cover";
+                coverH = ' style="--cover-url:url(\'' + escapeHtml(it.cover).replace(/'/g, "\\'") + '\')"';
+            }
+            var body = '<div class="rec-card-body rec-card-body--wide">';
+            if (it.cat && it.cat.length) {
+                body += '<div class="rec-breadcrumb">';
+                for (var b = 0; b < it.cat.length; b++) {
+                    if (b > 0) body += '<span class="rec-bc-sep">/</span>';
+                    body += '<a class="rec-bc-link" href="javascript:;" data-cat-id="' + escapeHtml(it.cat[b].noteId) + '">' + escapeHtml(it.cat[b].title) + '</a>';
+                }
+                body += '</div>';
+            }
+            body += '<h4 class="rec-title"><a href="' + escapeHtml(noteUrl(it)) + '"' +
+                (it.ext ? ' target="_blank" rel="noopener"' : '') +
+                (it.color ? ' style="color:' + escapeHtml(it.color) + '"' : '') + '>';
+            if (it.icon) body += '<i class="' + escapeHtml(it.icon) + ' rec-item-icon"></i> ';
+            body += escapeHtml(it.title) + '</a></h4>';
+            if (it.tags && it.tags.length) {
+                body += '<div class="module-tags">';
+                for (var t = 0; t < it.tags.length; t++) {
+                    body += '<span class="tag-chip tag-chip--note" data-tag="' + escapeHtml(it.tags[t]) + '" style="' + tagStyle(it.tags[t]) + '"><i class="' + escapeHtml(_tagIcon) + '"></i> ' + escapeHtml(it.tags[t]) + '</span>';
+                }
+                body += '</div>';
+            }
+            if (it.dateCreated) body += '<div class="rec-meta"><time class="rec-date">' + escapeHtml(fmtDateOnly(it.dateCreated)) + '</time></div>';
+            body += '</div>';
+            return '<div class="' + cls + '"' + coverH + '>' + body + '</div>';
+        }
+
+        var curPage = 0;
+        var pager = document.getElementById("article-pager");
+
+        function render() {
+            var start = curPage * pageSize;
+            var end = Math.min(start + pageSize, articles.length);
+            var html = '';
+            for (var i = start; i < end; i++) html += artHtml(articles[i]);
+            list.innerHTML = html;
+            renderPager();
+        }
+
+        function renderPager() {
+            if (!pager) return;
+            var h = '';
+            var info = '<span class="article-pager-info">' + (curPage + 1) + ' / ' + totalPages + ' 页</span>';
+            if (curPage > 0) h += '<button class="article-pager-btn" data-page="' + (curPage - 1) + '">上一页</button>';
+            h += info;
+            if (curPage < totalPages - 1) h += '<button class="article-pager-btn" data-page="' + (curPage + 1) + '">下一页</button>';
+            pager.innerHTML = h;
+            pager.querySelectorAll(".article-pager-btn").forEach(function (btn) {
+                btn.addEventListener("click", function () {
+                    curPage = parseInt(this.getAttribute("data-page"), 10);
+                    render();
+                });
+            });
+        }
+
+        render();
+    }
+
+    /* 兜底：确保内容页面包屑最左侧不带 "/"（移除首节点若为分隔符） */
+    function normalizeNoteBreadcrumb() {
+        var el = document.getElementById("note-breadcrumb");
+        if (!el) return;
+        var first = el.firstElementChild;
+        if (first && first.classList && first.classList.contains("note-bc-sep")) {
+            el.removeChild(first);
+        }
+    }
+
     function init() {
+        normalizeNoteBreadcrumb();
         initTagCloud();
         renderNoteTags();
         initToc();
         initTocMobile();
         initBackTop();
+        initSsrTree();
         if (isHome) {
             loadHomeModules();
+            initHomeArticlePager();
+            initHeatmapTooltip();
         } else if (document.getElementById("note-breadcrumb")) {
             renderNoteBreadcrumb();
         }

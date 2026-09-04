@@ -128,6 +128,146 @@ var _twCard = _ogImage ? 'summary_large_image' : 'summary';
 
 <div class="page<%= isHome ? ' page--home' : '' %>">
 
+<% 
+// ── 服务端实时聚合：分类树 + 关于菜单 + 右侧统计/动态（所有页面头部共用） ──
+// 取代浏览器 fetch(/blog-data) 的 tree / aboutTree / stats / recentUpdate。
+// 遍历起点 = homeNote || subRoot（分享根），跳过体根自身与 #shareHiddenFromTree。
+var _SSR_TREE = '', _SSR_ABOUT = '';
+var _SSR_STATS = { article:0, recentUpdate:0, recommend:0, announcement:0 };
+var _SSR_MEGA_UPDATES = '';
+var _SSR_TAGDATA = {};    // noteTag 标签索引 { name: { count, noteId:[...] } }（自包含 SSR，供标签云）
+var _SSR_HUB = [];        // 枢纽笔记（含 noteTag/article 等）：标签云文章列表源
+var _SSR_TAGJSON = '{}', _SSR_HUBJSON = '[]';
+var _SSR_CATPATH = {};   // noteId → 分类祖先路径 [{noteId,title}]（面包屑用）
+// 封面兜底：优先 #articleCover，缺失时取文章正文首张图片；再无图片则空（不显示封面）。
+function _blogFirstImg(html){ if(!html) return ''; try{ var m=String(html).match(/<img[^>]+src=["']([^"']+)["']/i); return m?m[1]:''; }catch(e){ return ''; } }
+function _blogCover(n){
+  if(!n) return '';
+  try{ var c = n.getLabelValue ? (n.getLabelValue('articleCover')||'') : ''; if(c) return c; }catch(e){}
+  var html='';
+  try{ if(typeof n.getContent==='function'){ var r=n.getContent(); if(typeof r==='string') html=r; } }catch(e){}
+  if(!html){ try{ if(typeof n.content==='string') html=n.content; }catch(e){} }
+  return _blogFirstImg(html);
+}
+/* 创建时间：模板 note 未暴露，尝试用 fetchNote(noteId) 取完整笔记；取不到返回空 */
+var _blogCreatedCache = {}; /* 每次渲染进程内缓存，避免对同一 note 重复 fetchNote */
+function _blogCreated(n){
+  if(!n || !n.noteId) return '';
+  if(_blogCreatedCache[n.noteId]) return _blogCreatedCache[n.noteId];
+  try{ var c = n.utcDateCreated || n.dateCreated; if(c){ return _blogCreatedCache[n.noteId]=c; } }catch(e){}
+  try{ if(typeof fetchNote === 'function'){ var f = fetchNote(n.noteId); if(f){ var c2 = f.utcDateCreated || f.dateCreated; if(c2){ return _blogCreatedCache[n.noteId]=c2; } } } }catch(e){}
+  return _blogCreatedCache[n.noteId] = '';
+}
+(function(){
+  function _escT(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&#34;').replace(/'/g,'&#39;'); }
+  function _lbl(n,name){ try{ return n.getLabelValue ? (n.getLabelValue(name)||'') : ''; }catch(e){ return ''; } }
+  /* 仅统计“笔记自身拥有”的标签（避免从根/分类继承导致 #recommend=true 覆盖所有笔记） */
+  function _has(n,name){ try{ var _at=n.ownedAttributes; if(_at){ for(var _i2=0;_i2<_at.length;_i2++){ var _aa=_at[_i2]; if(_aa && _aa.type==='label' && _aa.name===name){ var _vv=_aa.value; if(_vv===undefined||_vv===null||_vv===''||_vv==='true') return true; } } return false; } }catch(e){} try{ return n.hasLabel ? !!n.hasLabel(name) : (_lbl(n,name)!==''); }catch(e2){ return false; } }
+  function _kids(n){ try{ return n.getChildNotes(); }catch(e){ return null; } }
+  function _ymdH(v){ if(!v) return ''; try{ var o=new Date(v); if(!isNaN(o.getTime())) return o.getFullYear()+'-'+String(o.getMonth()+1).padStart(2,'0')+'-'+String(o.getDate()).padStart(2,'0'); }catch(e){} return String(v).slice(0,10); }
+  // 读取某笔记所有 #noteTag 值（ownedAttributes 遍历，兼容多个 noteTag）
+  function _noteTags(n){
+    var arr=[];
+    try{
+      var attrs=n.ownedAttributes;
+      if(attrs) for(var i=0;i<attrs.length;i++){ var a=attrs[i]; if(a && a.type==='label' && a.name==='noteTag' && a.value) arr.push(a.value); }
+    }catch(e){}
+    if(!arr.length){ var v=_lbl(n,'noteTag'); if(v) arr=[v]; }
+    return arr;
+  }
+  function _megaLi(n, dateStr){
+    var ext=_lbl(n,'shareExternalLink'), icon=_lbl(n,'icon')||_lbl(n,'iconClass'), color=_lbl(n,'color'), alias=_lbl(n,'shareAlias');
+    var href = ext ? ext : ('/'+(alias||n.noteId));
+    var st = color ? ' style="color:'+_escT(color)+'"' : '';
+    var s='<li class="cat-mega-update-item">';
+    if(icon) s+='<i class="'+_escT(icon)+'"></i> ';
+    s+='<a href="'+_escT(href)+'"'+(ext?' target="_blank" rel="noopener"':'')+st+'>'+_escT(n.title||'')+'</a>';
+    s+='<time>'+_escT(_ymdH(dateStr))+'</time></li>';
+    return s;
+  }
+  // 遍历计数：同步收集统计与"最近动态"。动态先全量收集，遍历后按时间倒序取前 3（与首页模块一致）
+  var _UPD_ARR = [];
+  function _count(n){
+    var a=_has(n,'article'), u=_has(n,'recentUpdate'), r=_has(n,'recommend'), an=_has(n,'announcement');
+    if(a) _SSR_STATS.article++;
+    if(u) _SSR_STATS.recentUpdate++;
+    // 推荐统计与首页底部计数器口径一致：计所有带 #recommend 的笔记数
+    if(r) _SSR_STATS.recommend++;
+    if(an) _SSR_STATS.announcement++;
+    if(u && n.title) _UPD_ARR.push({ n:n, d:n.utcDateModified||n.dateCreated||'' });
+    // 标签索引 + 枢纽笔记
+    if(n.title){
+      var tg=_noteTags(n);
+      if(tg.length){
+        for(var t=0;t<tg.length;t++){
+          var ti=_SSR_TAGDATA[tg[t]] || (_SSR_TAGDATA[tg[t]]={count:0,noteId:[]});
+          if(ti.noteId.indexOf(n.noteId)===-1){ ti.noteId.push(n.noteId); ti.count++; }
+        }
+        _SSR_HUB.push({ noteId:n.noteId, title:n.title, noteIcon:_lbl(n,'icon')||_lbl(n,'iconClass')||'', color:_lbl(n,'color')||'',
+          shareAlias:_lbl(n,'shareAlias')||'', shareExternalLink:_lbl(n,'shareExternalLink')||'',
+          cover:_blogCover(n),
+          dateCreated:_blogCreated(n)||n.utcDateModified||'', dateModified:n.utcDateModified||n.dateModified||'', tags:tg });
+      }
+    }
+  }
+  // 全量遍历（含 #shareHiddenFromTree 隐藏节点 + 去重）：收集统计、最近动态、标签云、分类路径。
+  function _countWalk(n, seen, cpath){
+    if(!n || !n.noteId) return;
+    if(seen[n.noteId]) return;
+    seen[n.noteId]=true;
+    var cp = cpath || [];
+    if(_lbl(n,'category')==='true') cp = cp.concat([{ noteId:n.noteId, title:n.title||'' }]);
+    _SSR_CATPATH[n.noteId] = cp;
+    _count(n);
+    var k=_kids(n);
+    if(k) for(var i=0;i<k.length;i++) _countWalk(k[i], seen, cp);
+  }
+  function _build(parent, skipId){
+    var out='', k=_kids(parent); if(!k) return out;
+    for(var i=0;i<k.length;i++){
+      var n=k[i]; if(!n||!n.noteId) continue;
+      if(n.noteId===skipId) continue;
+      if(_lbl(n,'shareHiddenFromTree')==='true') continue;
+      var ext=_lbl(n,'shareExternalLink'), cat=_lbl(n,'category')==='true';
+      var isArt=_lbl(n,'article')==='true'; // 具体文章，其子笔记为附加内容（如封面），不在菜单展开
+      var icon=_lbl(n,'icon')||_lbl(n,'iconClass'), color=_lbl(n,'color'), alias=_lbl(n,'shareAlias');
+      var nk=_kids(n), hasKids=!!(nk&&nk.length) && !isArt;
+      if(isArt) nk=null; // 文章不再展开子内容
+      var st = color ? ' style="color:'+_escT(color)+'"' : '';
+      var openT, closeT;
+      if(ext){ openT='<a class="tag-chip" href="'+_escT(ext)+'" target="_blank" rel="noopener"'+st+' data-ssr="hdr">'; closeT='</a>'; }
+      else if(cat){ openT='<span class="tag-chip tag-chip--category" data-ssr-cat="1"'+st+'>'; closeT='</span>'; }
+      else { openT='<a class="tag-chip" href="'+_escT((alias?'/'+alias:'/'+n.noteId))+'" data-ssr-link="1"'+st+'>'; closeT='</a>'; }
+      out+='<li class="tree-item" data-note-id="'+_escT(n.noteId)+'" data-ssr="hdr"><div class="tree-node">';
+      out+='<span class="tree-toggle'+(hasKids?'':' tree-toggle--empty')+'">▶</span>';
+      out+=openT;
+      if(icon) out+='<i class="'+_escT(icon)+'"></i> ';
+      out+=_escT(n.title||'');
+      out+=closeT;
+      out+='</div>';
+      if(hasKids){ out+='<ul class="tree-children" style="display:none">'+_build(n)+'</ul>'; }
+      out+='</li>';
+    }
+    return out;
+  }
+  var root = homeNote || subRoot;
+  if(root){
+    _countWalk(root, {}, []);
+    // 按修改时间倒序，取前 3 生成菜单"最近动态"（与首页模块同口径）
+    _UPD_ARR.sort(function(x,y){ return String(y.d).localeCompare(String(x.d)); });
+    var _MEGA_N=0;
+    for(var _mi=0; _mi<_UPD_ARR.length && _MEGA_N<3; _mi++){ _MEGA_N++; _SSR_MEGA_UPDATES += _megaLi(_UPD_ARR[_mi].n, _UPD_ARR[_mi].d); }
+    _SSR_TREE = _build(root, root.noteId);
+    var rk=_kids(root), found=null;
+    if(rk){ for(var b=0;b<rk.length;b++){ if(rk[b]&&rk[b].title==='关于'){ found=rk[b]; break; } } }
+    if(found) _SSR_ABOUT = _build(found, found.noteId);
+  }
+  // 预生成 JSON（避开构建压缩对 // 注释的误判），并转义可能的 </script>
+  _SSR_TAGJSON = JSON.stringify(_SSR_TAGDATA).split('</').join('<\/');
+  _SSR_HUBJSON = JSON.stringify(_SSR_HUB).split('</').join('<\/');
+})();
+%>
+<script>window.__SSR_TAGDATA__ = <%- _SSR_TAGJSON %>;window.__SSR_HUB__ = <%- _SSR_HUBJSON %>;</script>
 <header class="header">
   <div class="header-inner">
     <div class="logo-area">
@@ -141,7 +281,7 @@ var _twCard = _ogImage ? 'summary_large_image' : 'summary';
       <div class="nav-item-wrap" id="about-wrap">
         <a class="nav-item" href="#" id="about-btn">关于</a>
         <div class="about-dropdown" id="about-dropdown">
-          <ul class="about-menu" id="about-menu"></ul>
+          <ul class="about-menu" id="about-menu"><%- _SSR_ABOUT %></ul>
         </div>
       </div>
     </nav>
@@ -171,7 +311,7 @@ var _twCard = _ogImage ? 'summary_large_image' : 'summary';
   <a class="nav-item category-btn" id="category-btn-mobile" href="#">分类</a>
   <a class="nav-item" id="about-btn-mobile" href="#">关于</a>
   <div class="about-dropdown about-dropdown--mobile" id="about-dropdown-mobile">
-    <ul class="about-menu" id="about-menu-mobile"></ul>
+    <ul class="about-menu" id="about-menu-mobile"><%- _SSR_ABOUT %></ul>
   </div>
 </div>
 
@@ -181,7 +321,7 @@ var _twCard = _ogImage ? 'summary_large_image' : 'summary';
             <!-- 左侧：分类树 -->
             <div class="cat-mega-left">
                 <div class="cat-mega-label">分类</div>
-                <ul class="tree-list" id="tree-list"></ul>
+                <ul class="tree-list" id="tree-list"><%- _SSR_TREE %></ul>
             </div>
             <!-- 右侧：统计简报 + 最近更新 -->
             <div class="cat-mega-right">
@@ -191,55 +331,193 @@ var _twCard = _ogImage ? 'summary_large_image' : 'summary';
                         <a class="stat-pill stat-pill--article<%= _statLink ? '' : ' stat-pill--static' %>" href="<%= _tagListUrl(_st.article) %>" title="查看文章列表">
                             <i class="bx bx-news stat-pill__icon"></i>
                             <span class="stat-pill__label">文章</span>
-                            <em class="stat-pill__num" id="cms-article">--</em>
+                            <em class="stat-pill__num" id="cms-article" data-ssr="st"><%= _SSR_STATS.article %></em>
                         </a>
                         <a class="stat-pill stat-pill--update<%= _statLink ? '' : ' stat-pill--static' %>" href="<%= _tagListUrl(_st.recentUpdate) %>" title="查看动态">
                             <i class="bx bx-time-five stat-pill__icon"></i>
                             <span class="stat-pill__label">动态</span>
-                            <em class="stat-pill__num" id="cms-update">--</em>
+                            <em class="stat-pill__num" id="cms-update" data-ssr="st"><%= _SSR_STATS.recentUpdate %></em>
                         </a>
                         <a class="stat-pill stat-pill--recommend<%= _statLink ? '' : ' stat-pill--static' %>" href="<%= _tagListUrl(_st.recommend) %>" title="查看推荐阅读">
                             <i class="bx bx-star stat-pill__icon"></i>
                             <span class="stat-pill__label">推荐</span>
-                            <em class="stat-pill__num" id="cms-recommend">--</em>
+                            <em class="stat-pill__num" id="cms-recommend" data-ssr="st"><%= _SSR_STATS.recommend %></em>
                         </a>
                         <a class="stat-pill stat-pill--announce<%= _statLink ? '' : ' stat-pill--static' %>" href="<%= _tagListUrl(_st.announcement) %>" title="查看公告">
                             <i class="bx bx-bell stat-pill__icon"></i>
                             <span class="stat-pill__label">公告</span>
-                            <em class="stat-pill__num" id="cms-announce">--</em>
+                            <em class="stat-pill__num" id="cms-announce" data-ssr="st"><%= _SSR_STATS.announcement %></em>
                         </a>
                     </div>
                 </div>
                 <div class="cat-mega-section">
                     <div class="cat-mega-label">最近动态</div>
-                    <ul class="cat-mega-updates" id="cms-updates"></ul>
+                    <ul class="cat-mega-updates" id="cms-updates" data-ssr="upd"><% if (_SSR_MEGA_UPDATES) { %><%- _SSR_MEGA_UPDATES %><% } else { %><li class="cat-mega-update-item">暂无动态</li><% } %></ul>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-    <% if (isHome) { %>
+    <% if (isHome) {
+    /* ────────────────────────────────────────────────────────────────
+       服务端实时聚合（SSR）——替代浏览器 fetch(/blog-data) 的「列表」部分。
+       原理：模板在服务端渲染时，从博客根/subRoot 实时遍历笔记树，
+       收集 #article / #recentUpdate / #announcement / #recommend 标签的笔记，
+       直接生成 HTML，浏览器不再需要预生成的 JSON 快照（改文即见、无手动重建）。
+       注意：全站搜索、分类树、关于菜单仍走 /blog-data 与 /blog-search
+       （fetchNote 无法做全库按标签查询）。
+       ──────────────────────────────────────────────────────────────── */
+    var SSR = { nodes:0, err:'', traceEnter:0, traceNFalsy:0, traceNoId:0, traceSeen:0, traceNodeId:'', traceErrGetChild:'', callArgFalsy:false, callArgId:'', articles:[], updates:[], recommend:[], announcement:null,
+                heatmap:{}, heatmapArr:[], hmHTML:'', hmGridStyle:'',
+                stats:{ article:0, recentUpdate:0, recommend:0, announcement:0 } };
+    try {
+        var _seen = {}, _monthStart = 0;
+        var _ymd = function(d){ if(!d) return ''; try{ var o=new Date(d); if(!isNaN(o.getTime())) return o.getFullYear()+'-'+String(o.getMonth()+1).padStart(2,'0')+'-'+String(o.getDate()).padStart(2,'0'); }catch(e){} return String(d).slice(0,10); };
+        var _esc = function(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&#34;').replace(/'/g,'&#39;'); };
+        var _sortD = function(a,b){ return String(b.dateCreated).localeCompare(String(a.dateCreated)); };
+        var _url = function(it){ return it.ext ? it.ext : ('/' + (it.alias || it.noteId)); };
+        var _TAG_COLORS=['#e74c3c','#e67e22','#f1c40f','#2ecc71','#1abc9c','#3498db','#9b59b6','#e91e63','#00bcd4','#ff5722','#795548','#607d8b','#4caf50','#03a9f4','#cddc39'];
+        var _tagH = function(s){ var x=0; for(var i=0;i<s.length;i++) x=((x<<5)-x)+s.charCodeAt(i); return Math.abs(x); };
+        var _tagStyle = function(name){ var c=_TAG_COLORS[_tagH(name)%_TAG_COLORS.length]; return 'color:'+c+';--tag-color:'+c; };
+        var _bc = function(it){
+            if(!it.cat || !it.cat.length) return '';
+            var s='<div class="rec-breadcrumb">';
+            for(var b=0;b<it.cat.length;b++){ if(b>0) s+='<span class="rec-bc-sep">/</span>'; s+='<a class="rec-bc-link" href="javascript:;" data-cat-id="'+_esc(it.cat[b].noteId)+'">'+_esc(it.cat[b].title)+'</a>'; }
+            return s+'</div>';
+        };
+        var _card = function(it, extraCls, noBc){
+            var s='<div class="rec-card-body'+(extraCls?' '+extraCls:'')+'">';
+            if(!noBc) s += _bc(it);
+            s+='<h4 class="rec-title"><a href="'+_esc(_url(it))+'"';
+            if(it.ext) s+=' target="_blank" rel="noopener"';
+            if(it.color) s+=' style="color:'+_esc(it.color)+'"';
+            s+='>';
+            if(it.icon) s+='<i class="'+_esc(it.icon)+' rec-item-icon"></i> ';
+            s+=_esc(it.title)+'</a></h4>';
+            if(it.tags && it.tags.length){
+                s+='<div class="module-tags">';
+                for(var _ti=0;_ti<it.tags.length;_ti++){ s+='<span class="tag-chip tag-chip--note" data-tag="'+_esc(it.tags[_ti])+'" style="'+_tagStyle(it.tags[_ti])+'"><i class="bx bx-purchase-tag-alt"></i> '+_esc(it.tags[_ti])+'</span>'; }
+                s+='</div>';
+            }
+            if(it.dateCreated) s+='<div class="rec-meta"><time class="rec-date">'+_esc(_ymd(it.dateCreated))+'</time></div>';
+            s+='</div>';
+            return s;
+        };
+        var _walk = function(n){
+            SSR.traceEnter++;
+            if(!n){ SSR.traceNFalsy++; return; }
+            var id = n.noteId;
+            if(!id){ SSR.traceNoId++; return; }
+            if(_seen[id]){ SSR.traceSeen++; return; }
+            _seen[id] = true; SSR.nodes++;
+            SSR.traceNodeId = String(id).slice(0,20);
+            var h = function(name){ try{ var _at=n.ownedAttributes; if(_at){ for(var _i2=0;_i2<_at.length;_i2++){ var _aa=_at[_i2]; if(_aa && _aa.type==='label' && _aa.name===name){ var _vv=_aa.value; if(_vv===undefined||_vv===null||_vv===''||_vv==='true') return true; } } return false; } }catch(e){} return false; };
+            var g = function(name){ try{ return n.getLabelValue ? (n.getLabelValue(name)||'') : ''; }catch(e){ return ''; } };
+            var isArticle=h('article'), isUpdate=h('recentUpdate'), isAnn=h('announcement'), isRec=h('recommend');
+            if(isArticle || isUpdate || isAnn || isRec){
+                var _tg=[];
+                try{ var _at=n.ownedAttributes; if(_at){ for(var _ai=0;_ai<_at.length;_ai++){ if(_at[_ai]&&_at[_ai].type==='label'&&_at[_ai].name==='noteTag'&&_at[_ai].value) _tg.push(_at[_ai].value); } } }catch(e){}
+                if(!_tg.length){ var _gv = (function(){ try{ return n.getLabelValue ? (n.getLabelValue('noteTag')||'') : ''; }catch(e){ return ''; } })(); if(_gv) _tg=[_gv]; }
+                var it = { noteId:id, title:n.title||'', alias:g('shareAlias'), ext:g('shareExternalLink'),
+                           icon:g('icon')||g('iconClass'), color:g('color'), dateCreated:(_blogCreated(n) || n.utcDateModified)||'', tags:_tg,
+                           cover:_blogCover(n),
+                           cat:(_SSR_CATPATH[id]||[]) };
+                if(isAnn && !SSR.announcement) SSR.announcement = it;
+                if(isUpdate) SSR.updates.push(it);
+                if(isRec) SSR.recommend.push(it);
+                if(isArticle) SSR.articles.push(it);
+            }
+            /* 热力图口径与原脚本一致：按「全部笔记的修改日期」逐日计数（修订创建不重复计入） */
+            var _nd = n.utcDateModified || n.dateCreated;
+            if(_nd){ var _d=_ymd(_nd); SSR.heatmap[_d]=(SSR.heatmap[_d]||0)+1; }
+            var kids=null; try{ kids=n.getChildNotes(); }catch(e){ SSR.traceErrGetChild = String(e); }
+            if(kids) for(var i=0;i<kids.length;i++) _walk(kids[i]);
+        };
+        var _callArg = homeNote || subRoot;
+        SSR.callArgFalsy = !_callArg;
+        SSR.callArgId = _callArg ? String(_callArg.noteId):'(falsy)';
+        _walk(_callArg);
+        SSR.articles.sort(_sortD); SSR.updates.sort(_sortD); SSR.recommend.sort(_sortD);
+        SSR.stats = { article:SSR.articles.length, recentUpdate:SSR.updates.length, recommend:SSR.recommend.length, announcement:SSR.announcement?1:0 };
+        var _hk = Object.keys(SSR.heatmap), _hmMax = 1;
+        for(var _x=0;_x<_hk.length;_x++){ SSR.heatmapArr.push({date:_hk[_x], count:SSR.heatmap[_hk[_x]]}); if(SSR.heatmap[_hk[_x]]>_hmMax) _hmMax=SSR.heatmap[_hk[_x]]; }
+        /* ---- 热力图（复刻 renderHeatmap 算法，窗口放宽到整站历史）---- */
+        var now=new Date(); now.setHours(0,0,0,0);
+        var hmStart=new Date(now); hmStart.setDate(hmStart.getDate()-363);
+        var _hmKeys=Object.keys(SSR.heatmap).filter(function(k){ return /^\d{4}-\d{2}-\d{2}$/.test(k); });
+        if(_hmKeys.length){
+            _hmKeys.sort();
+            var _earliest=new Date(_hmKeys[0]);
+            if(!isNaN(_earliest.getTime()) && _earliest<now){
+                var _wide=new Date(_earliest); _wide.setDate(_wide.getDate()-363);
+                if(_wide<hmStart) hmStart=_wide;
+            }
+        }
+        while(hmStart.getDay()!==1) hmStart.setDate(hmStart.getDate()-1);
+        var cur=new Date(hmStart), prevMonth=-1, hmWeeks=[], hmMonths=[];
+        while(cur<=now){
+            if(cur.getMonth()!==prevMonth){ if(prevMonth!==-1) hmMonths.push({label:(prevMonth+1)+'月', start:_monthStart, span:hmWeeks.length-_monthStart}); prevMonth=cur.getMonth(); _monthStart=hmWeeks.length; }
+            var week=[];
+            for(var dd=0;dd<7;dd++){
+                var key=cur.getFullYear()+'-'+String(cur.getMonth()+1).padStart(2,'0')+'-'+String(cur.getDate()).padStart(2,'0');
+                week.push({date:key, count:SSR.heatmap[key]||0, future:cur>now});
+                cur.setDate(cur.getDate()+1);
+            }
+            hmWeeks.push(week);
+        }
+        if(prevMonth!==-1) hmMonths.push({label:(prevMonth+1)+'月', start:_monthStart, span:hmWeeks.length-_monthStart});
+        SSR.hmGridStyle = 'grid-template-columns:28px repeat('+hmWeeks.length+',13px);grid-template-rows:18px repeat(7,13px);';
+        var hmHTML='';
+        for(var mi=0;mi<hmMonths.length;mi++){ var mo=hmMonths[mi]; hmHTML+='<div class="hm-month" style="grid-column:'+(2+mo.start)+' / span '+mo.span+';grid-row:1">'+_esc(mo.label)+'</div>'; }
+        var wdays=['一','二','三','四','五','六','日'];
+        for(var di=0;di<7;di++){
+            hmHTML+='<div class="hm-wday" style="grid-column:1;grid-row:'+(di+2)+'">'+wdays[di]+'</div>';
+            for(var wi=0;wi<hmWeeks.length;wi++){
+                var cell=hmWeeks[wi][di], lvl=0;
+                if(cell.count>0){ lvl=Math.ceil((cell.count/_hmMax)*4); if(lvl<1)lvl=1; if(lvl>4)lvl=4; }
+                var cls=cell.future?'hm-future':'hm-cell hm-l'+lvl;
+                hmHTML+='<div class="'+cls+'" style="grid-column:'+(wi+2)+';grid-row:'+(di+2)+'" data-date="'+cell.date+'" data-count="'+cell.count+'"></div>';
+            }
+        }
+        SSR.hmHTML = hmHTML;
+    } catch(_e){ try{ SSR.err = (_e && (_e.stack || _e.message)) ? String(_e.stack || _e.message) : String(_e); }catch(_ee){ SSR.err = 'ERR_UNREADABLE'; } }
+    SSR.articlesJSON = JSON.stringify(SSR.articles).split('</').join('<\/');
+    %>
+<script>window.__SSR_HOME__ = true;window.__SSR_ARTICLES__ = <%- SSR.articlesJSON %>;</script>
 <div class="layout">
   <aside class="sidebar-col">
     <div class="panel">
       <div class="panel-header">📢 公告</div>
       <div class="panel-body">
-        <div class="notice-list" id="mod-announcement"></div>
+        <div class="notice-list" id="mod-announcement" data-ssr="home"><%- SSR.announcement ? _card(SSR.announcement, 'rec-card-body--compact', true) : '<div class="rec-empty">暂无公告</div>' %></div>
       </div>
     </div>
     <div class="panel">
       <div class="panel-header">⚡ 动态</div>
       <div class="panel-body">
-        <div class="notice-list" id="mod-updates"></div>
+        <div class="notice-list" id="mod-updates" data-ssr="home">
+<%
+      var _updLim = Math.min(SSR.updates.length, 3);
+      for (var _ui = 0; _ui < _updLim; _ui++) {
+        var _u = SSR.updates[_ui];
+%>
+          <div class="rec-upd-item"><% if (_u.icon) { %><i class="<%= _u.icon %> upd-item-icon"></i> <% } %><time class="rec-date"><%= _ymd(_u.dateCreated) %></time><h4 class="rec-title"><a href="<%= _url(_u) %>"<%= _u.ext ? ' target="_blank" rel="noopener"' : '' %>><%= _u.title %></a></h4><% if (_u.tags && _u.tags.length) { %><div class="module-tags"><% for (var _u2=0;_u2<_u.tags.length;_u2++){ %><span class="tag-chip tag-chip--note" data-tag="<%= _esc(_u.tags[_u2]) %>" style="<%= _tagStyle(_u.tags[_u2]) %>"><i class="bx bx-purchase-tag-alt"></i> <%= _esc(_u.tags[_u2]) %></span><% } %></div><% } %></div>
+<%
+      } if (!SSR.updates.length) {
+%>
+          <div class="rec-empty">暂无动态</div>
+<% } %>
+        </div>
       </div>
     </div>
     <div class="panel">
       <div class="panel-header">📅 更新热力</div>
       <div class="panel-body">
-        <div class="hm-wrap" id="mod-heatmap">
-          <div class="hm-grid" id="heatmap-grid"></div>
+        <div class="hm-wrap" id="mod-heatmap" data-ssr="home">
+          <div class="hm-grid" id="heatmap-grid" style="<%- SSR.hmGridStyle %>"><%- SSR.hmHTML %></div>
         </div>
+        <script>document.addEventListener('DOMContentLoaded',function(){var w=document.querySelector('.hm-wrap');if(w)w.scrollLeft=w.scrollWidth-w.clientWidth;});</script>
       </div>
     </div>
   </aside>
@@ -251,7 +529,20 @@ var _twCard = _ogImage ? 'summary_large_image' : 'summary';
       <% } %>
     </div>
     <div class="article-panel">
-      <div class="article-list" id="mod-article"></div>
+      <div class="article-list" id="mod-article" data-ssr="home">
+<%
+      var _pageSize = 5;
+      for (var _ai = 0; _ai < Math.min(_pageSize, SSR.articles.length); _ai++) {
+        var _a = SSR.articles[_ai];
+%>
+        <div class="article-mod<% if (_a.cover) { %> article-mod--has-cover<% } %>"<% if (_a.cover) { %> style="--cover-url:url('<%= _esc(_a.cover) %>')"<% } %>><%- _card(_a, 'rec-card-body--wide') %></div>
+<%
+      } if (!SSR.articles.length) {
+%>
+        <div class="rec-empty">暂无文章</div>
+<% } %>
+      </div>
+<% if (SSR.articles.length > _pageSize) { %><nav class="article-pager" id="article-pager"></nav><% } %>
     </div>
   </main>
 </div>
@@ -289,8 +580,13 @@ var _twCard = _ogImage ? 'summary_large_image' : 'summary';
     <div id="reading-progress"></div>
     <main class="note-content">
         <div class="note-layout">
-            <article class="mod" data-created="<%= note.dateCreated %>" data-modified="<%= note.dateModified %>">
-                <div class="note-breadcrumb" id="note-breadcrumb"></div>
+            <article class="mod" data-created="<% try { %><%= _blogCreated(note) %><% } catch(_e){ %><% } %>" data-modified="<% try { %><%= note.utcDateModified || note.dateModified || '' %><% } catch(_e){ %><% } %>">
+                <div class="note-breadcrumb" id="note-breadcrumb" data-ssr="bc"><%
+          var _bcA = (_SSR_CATPATH[note.noteId]) || [];
+          var _bcShow = [];
+          for (var _bi=0;_bi<_bcA.length;_bi++){ if (_bcA[_bi] && _bcA[_bi].title) _bcShow.push(_bcA[_bi]); }
+          for (var _bi2=0;_bi2<_bcShow.length;_bi2++){ if(_bi2>0) %><span class="note-bc-sep">/</span><% %><a class="note-bc-link" href="javascript:;" data-cat-id="<%= _bcShow[_bi2].noteId %>"><%= _bcShow[_bi2].title %></a><% }
+        %></div>
                 <h1 class="note-title"<% try { var _noteC = note.getLabelValue('color'); if (_noteC) { %> style="color:<%= _noteC %>"<% } } catch(_e){} %>><% if (_noteIconCls) { %><i class="<%= _noteIconCls %>"></i> <% } %><%= note.title %><button class="share-btn" aria-label="分享链接" title="复制链接"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button></h1>
                 <div class="note-meta"></div>
                 <div class="note-body">

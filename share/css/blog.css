@@ -3053,6 +3053,7 @@ html.mobile-view .site-footer {
     color: var(--md-h-color);
     line-height: 1.4;
     margin: 2em 0 0.75em;
+    scroll-margin-top: calc(var(--header-h) + 14px);
 }
 .note-body h1 {
     font-size: 1.65rem;
@@ -3063,6 +3064,19 @@ html.mobile-view .site-footer {
     font-size: 1.35rem;
     padding-bottom: 0.3em;
     border-bottom: 1px solid var(--md-hr);
+    padding-left: 0.6em;
+    position: relative;
+}
+.note-body h2::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.22em;
+    bottom: 0.32em;
+    width: 4px;
+    border-radius: 4px;
+    background: var(--primary);
+    opacity: 0.8;
 }
 .note-body h3 {
     font-size: 1.15rem;
@@ -3234,6 +3248,13 @@ html.mobile-view .share-btn {
     border-radius: 8px;
     display: block;
     margin: 1em auto;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.12);
+    cursor: zoom-in;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.note-body img:hover {
+    transform: scale(1.01);
+    box-shadow: 0 8px 26px rgba(0, 0, 0, 0.18);
 }
 
 /* 表格 —— 修复文字太淡 */
@@ -3369,6 +3390,18 @@ html.mobile-view .share-btn {
 .toc-link--h3 {
     padding-left: 24px;
     font-size: 0.78rem;
+}
+
+.toc-link--h4 {
+    padding-left: 36px;
+    font-size: 0.76rem;
+    opacity: 0.92;
+}
+
+.toc-link--h5 {
+    padding-left: 48px;
+    font-size: 0.74rem;
+    opacity: 0.82;
 }
 
 /* TOC 浮动按钮（小于 1500px 宽时显示） */

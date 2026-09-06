@@ -692,6 +692,9 @@
 
         var lb = document.createElement("div");
         lb.className = "lightbox";
+        lb.setAttribute("role", "dialog");
+        lb.setAttribute("aria-modal", "true");
+        lb.setAttribute("aria-label", "图片预览");
         lb.innerHTML =
             '<button class="lightbox-close" aria-label="关闭">&times;</button>' +
             '<button class="lightbox-prev" aria-label="上一张">&#8249;</button>' +
@@ -705,6 +708,7 @@
         var lbNext = lb.querySelector(".lightbox-next");
         var images = [];
         var currentIndex = -1;
+        var lastFocus = null;
 
         function getImageList() {
             var list = [];
@@ -727,19 +731,23 @@
             lbNext.style.display = (len > 1 && currentIndex < len - 1) ? "" : "none";
         }
 
-        function open(src) {
+        function open(src, trigger) {
             images = getImageList();
             currentIndex = findIndex(images, src);
             lbImg.src = src;
             updateNav();
             lb.classList.add("active");
             document.body.style.overflow = "hidden";
+            lastFocus = trigger || document.activeElement;
+            lbClose.focus();
         }
 
         function close() {
             lb.classList.remove("active");
             document.body.style.overflow = "";
             currentIndex = -1;
+            if (lastFocus && lastFocus.focus) lastFocus.focus();
+            lastFocus = null;
         }
 
         function prev() {
@@ -765,14 +773,32 @@
         lbPrev.addEventListener("click", function (e) { e.stopPropagation(); prev(); });
         lbNext.addEventListener("click", function (e) { e.stopPropagation(); next(); });
         document.addEventListener("keydown", function (e) {
-            if (e.key === "Escape") close();
-            if (e.key === "ArrowLeft") prev();
-            if (e.key === "ArrowRight") next();
+            if (!lb.classList.contains("active")) return;
+            if (e.key === "Escape") { close(); return; }
+            if (e.key === "ArrowLeft") { e.preventDefault(); prev(); return; }
+            if (e.key === "ArrowRight") { e.preventDefault(); next(); return; }
+            if (e.key === "Tab") {
+                var focusables = [lbClose, lbPrev, lbNext].filter(function (b) {
+                    return b.style.display !== "none";
+                });
+                var first = focusables[0];
+                var lastBtn = focusables[focusables.length - 1];
+                var cur = document.activeElement;
+                if (e.shiftKey) {
+                    if (cur === first || cur === lb) {
+                        e.preventDefault();
+                        if (lastBtn.focus) lastBtn.focus();
+                    }
+                } else if (cur === lastBtn) {
+                    e.preventDefault();
+                    first.focus();
+                }
+            }
         });
 
         body.addEventListener("click", function (e) {
             if (e.target.tagName === "IMG" && !e.target.closest("a")) {
-                open(e.target.src);
+                open(e.target.src, e.target);
             }
         });
     }
@@ -1097,7 +1123,7 @@
         var tocBody = document.getElementById("toc-body");
         if (!noteBody || !tocBody) return;
 
-        var headings = noteBody.querySelectorAll("h1, h2, h3");
+        var headings = noteBody.querySelectorAll("h1, h2, h3, h4, h5");
         if (headings.length < 2) return;
 
         var tocId = 0;
@@ -1108,7 +1134,7 @@
                 h.id = "toc-" + ++tocId;
             }
             var tag = h.tagName.toLowerCase();
-            var level = tag === "h1" ? 1 : tag === "h2" ? 2 : 3;
+            var level = tag === "h1" ? 1 : tag === "h2" ? 2 : tag === "h3" ? 3 : tag === "h4" ? 4 : 5;
             items.push({
                 id: h.id,
                 text: h.textContent.trim(),
@@ -1124,6 +1150,8 @@
             var cls = "toc-link";
             if (item.level === 2) cls += " toc-link--h2";
             else if (item.level === 3) cls += " toc-link--h3";
+            else if (item.level === 4) cls += " toc-link--h4";
+            else if (item.level === 5) cls += " toc-link--h5";
             html +=
                 '<a class="' +
                 cls +

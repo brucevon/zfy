@@ -381,7 +381,13 @@
         /* 同步 Twikoo 主题 */
         var tc = document.getElementById("twikoo-container");
         if (tc) tc.setAttribute("data-theme", m);
-        if (themeBtn) themeBtn.textContent = m === "dark" ? "☀" : "☾";
+        /* 顶部主题图标：深色主题显示“太阳”（点击切亮色），浅色显示“月亮” */
+        if (themeBtn) themeBtn.innerHTML = m === "dark"
+            ? '<i class="bx bx-sun"></i>'
+            : '<i class="bx bx-moon"></i>';
+        /* 同步浏览器主题色（深→#232931，浅→#f9f9f9） */
+        var mt = document.querySelector('meta[name="theme-color"]');
+        if (mt) mt.setAttribute("content", m === "dark" ? "#232931" : "#f9f9f9");
     }
     var saved = (function () {
         try {

@@ -1,5 +1,12 @@
 <link rel="stylesheet" href="/blog.css" />
 <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet" />
+<meta name="theme-color" content="#232931" />
+<link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="preconnect" href="https://unpkg.com" crossorigin />
+<noscript><style>
+body:after{content:"提示：本站部分交互（搜索 / 菜单 / 主题切换）需要启用 JavaScript";position:fixed;left:0;right:0;bottom:0;z-index:9999;padding:8px 12px;text-align:center;font-size:0.8rem;background:var(--surface);border-top:1px solid var(--border);color:var(--text)}
+</style></noscript>
 
 <%
 // -- 标签化主页检测 --
@@ -305,7 +312,7 @@ function _blogCreated(n){
 
     <div class="header-actions">
       <button class="btn-icon" id="search-toggle" aria-label="搜索"><i class="bx bx-search"></i></button>
-      <button class="btn-icon" id="theme-toggle" aria-label="切换主题">☀</button>
+      <button class="btn-icon" id="theme-toggle" aria-label="切换主题"><i class="bx bx-sun"></i></button>
       <button class="hamburger" id="menu-toggle" aria-label="菜单">
         <span></span><span></span><span></span>
       </button>
@@ -574,7 +581,9 @@ function _blogCreated(n){
     <% } else if (note.hasLabel && note.hasLabel('tagCloud')) { %>
     <div id="tagCloudPage"><%- content %></div>
     <% } else { %>
-    <!-- highlight.js 代码高亮（仅文章页加载） -->
+    <% var _hasCode = /<(?:pre|code)[ ><]/i.test(content || ''); %>
+    <% if (_hasCode) { %>
+    <!-- highlight.js 代码高亮（仅含代码块的文章页按需加载） -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" id="hljs-theme-dark" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css" id="hljs-theme-light" disabled />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
@@ -602,6 +611,7 @@ function _blogCreated(n){
         observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
     })();
     </script>
+    <% } %>
     <div id="reading-progress"></div>
     <main class="note-content">
         <div class="note-layout">
@@ -612,7 +622,7 @@ function _blogCreated(n){
           for (var _bi=0;_bi<_bcA.length;_bi++){ if (_bcA[_bi] && _bcA[_bi].title) _bcShow.push(_bcA[_bi]); }
           for (var _bi2=0;_bi2<_bcShow.length;_bi2++){ if(_bi2>0) %><span class="note-bc-sep">/</span><% %><a class="note-bc-link" href="javascript:;" data-cat-id="<%= _bcShow[_bi2].noteId %>"><%= _bcShow[_bi2].title %></a><% }
         %></div>
-                <h1 class="note-title"<% try { var _noteC = note.getLabelValue('color'); if (_noteC) { %> style="color:<%= _noteC %>"<% } } catch(_e){} %>><% if (_noteIconCls) { %><i class="<%= _noteIconCls %>"></i> <% } %><%= note.title %><button class="share-btn" aria-label="分享链接" title="复制链接"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button></h1>
+                <h1 class="note-title"<% try { var _noteC = note.getLabelValue('color'); if (_noteC) { %> style="--note-color:<%= _noteC %>"<% } } catch(_e){} %>><% if (_noteIconCls) { %><i class="<%= _noteIconCls %>"></i> <% } %><%= note.title %><button class="share-btn" aria-label="分享链接" title="复制链接"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button></h1>
                 <div class="note-meta"></div>
                 <div class="note-body">
                     <%- content.replace(/<img /g, '<img loading="lazy" ') %>
